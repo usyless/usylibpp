@@ -17,7 +17,7 @@ namespace usylibpp::windows {
         }
 
         std::wstring wstr(buffer_size - 1, L'\0');
-        MultiByteToWideChar(CP_UTF8, 0, utf8, -1, &wstr[0], buffer_size);
+        MultiByteToWideChar(CP_UTF8, 0, utf8, -1, wstr.data(), buffer_size);
         return wstr;
     }
 
@@ -56,7 +56,7 @@ namespace usylibpp::windows {
         }
 
         std::string utf8_str(buffer_size - 1, '\0');
-        WideCharToMultiByte(CP_UTF8, 0, wstr, -1, &utf8_str[0], buffer_size - 1, nullptr, nullptr);
+        WideCharToMultiByte(CP_UTF8, 0, wstr, -1, utf8_str.data(), buffer_size - 1, nullptr, nullptr);
 
         return utf8_str;
     }
