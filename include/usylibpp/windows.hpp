@@ -253,6 +253,13 @@ namespace usylibpp::windows {
         freopen_s(&fp_stderr, "CONOUT$", "w", stderr);
     }
 
+    // Make sure to pass in just the name without the extension
+    // Checks both the current directory and the PATH
+    inline bool exe_exists(const std::wstring& exeName) {
+        std::error_code ec;
+        return std::filesystem::exists(exeName + L".exe", ec) || SearchPathW(NULL, exeName.c_str(), L".exe", 0, NULL, NULL) > 0;
+    }
+
     namespace admin {
         inline bool is_admin() {
             static bool has_run = false;
