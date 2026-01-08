@@ -37,7 +37,7 @@ namespace usylibpp::strings {
             buffer = to_wstr(str);
             if (!buffer) return L"";
             return buffer->c_str();
-        } else if constexpr (types::is_filesystem_path<T>) {
+        } else if constexpr (types::filesystem_path<T>) {
             return str.native().c_str();
         } else {
             static_assert(!std::is_same_v<T, T>, "Unsupported type passed to usylibpp::strings::wchar_t_from_compatible, must have forgotten a branch");

@@ -20,11 +20,11 @@ namespace usylibpp::types {
     concept string = std::is_same_v<std::decay_t<T>, std::string>;
 
     template<typename T>
-    concept is_filesystem_path = std::is_same_v<std::decay_t<T>, std::filesystem::path>;
+    concept filesystem_path = std::is_same_v<std::decay_t<T>, std::filesystem::path>;
 
     template <typename T>
     concept wchar_t_strict = wchar_ptr<T> || wstring<T>;
 
     template <typename T>
-    concept wchar_t_compatible = wchar_t_strict<T> || string<T> || is_filesystem_path<T>;
+    concept wchar_t_compatible = wchar_t_strict<T> || string<T> || filesystem_path<T>;
 }
