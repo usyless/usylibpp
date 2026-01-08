@@ -3,13 +3,12 @@
 int main() {
     using namespace usylibpp;
     
-    print::println("Hello! Welcome to my silly library");
+    print::println("Hello! Welcome to my silly library\n");
 
-    print::println();
     print::println("Time functions:");
     print::println("time::current_datetime: {}", time::current_datetime());
-
     print::println();
+
     print::println("String functions:");
     print::println("strings::concat_strings (chars): {}", strings::concat_strings("hello", " ", "there!"));
     print::println(L"strings::concat_strings (wide chars): {}", strings::concat_strings(L"hello", L" ", L"there!"));
@@ -26,7 +25,21 @@ int main() {
         auto str = "?this_is_a_get=lol a space??&ts=!!!%";
         print::println("strings::url_encode before: {}, after: {}", str, strings::url_encode(str));
     }
+    print::println();
 
     #ifdef WIN32
+    print::println("Windows functions:");
+    // These break the vscode terminal
+    // {
+    //     auto str = "a not wide string: 你好";
+    //     print::println("windows::to_wstr input: {}", str);
+    //     print::println(L"windows::to_wstr output: {}", *windows::to_wstr(str));
+    // }
+    // {
+    //     auto str = L"a not wide string: 你好";
+    //     print::println(L"windows::to_utf8 input: {}", str);
+    //     print::println("windows::to_utf8 output: {}", *windows::to_utf8(str));
+    // }
+    print::println("windows::current_executable_path: {}", *windows::to_utf8(windows::current_executable_path()->get()));
     #endif
 }

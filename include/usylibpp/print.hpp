@@ -9,14 +9,16 @@ namespace usylibpp::print {
      * Prints to cout or wcout depending on the args passed in
      */
     template<typename Fmt = const char*, typename... Ts>
-    inline void print(Fmt&& fmt = "", Ts&&... args) {
+    inline auto& print(Fmt&& fmt = "", Ts&&... args) {
         // using Char = typename std::basic_string_view<std::remove_cvref_t<decltype(fmt[0])>>::value_type;
         using Char = std::remove_cvref_t<decltype(fmt[0])>;
 
         if constexpr (std::is_same_v<Char, char>) {
             std::cout << std::vformat(std::forward<Fmt>(fmt), std::make_format_args(args...));
+            return std::cout;
         } else if constexpr (std::is_same_v<Char, wchar_t>) {
             std::wcout << std::vformat(std::forward<Fmt>(fmt), std::make_wformat_args(args...));
+            return std::wcout;
         } else {
             static_assert(!std::is_same_v<Char, Char>, "Unsupported type passed to usylibpp::print::print");
         }
@@ -30,6 +32,6 @@ namespace usylibpp::print {
     inline void println(Fmt&& fmt = "", Ts&&... args) {
         using Char = std::remove_cvref_t<decltype(fmt[0])>;
 
-        print(fmt, args..., Char('\n'));
+        print(fmt, args...) << Char('\n');
     }
 }
