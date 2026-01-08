@@ -118,4 +118,29 @@ namespace usylibpp::windows {
 
         return reinterpret_cast<INT_PTR>(result) > 32;
     }
+
+    inline std::wstring current_executable_path() {
+        DWORD size = 260;
+        std::wstring buffer;
+        DWORD copied = 0;
+
+        while (true) {
+            buffer.resize(size);
+            copied = GetModuleFileNameW(NULL, buffer.data(), size);
+
+            if (copied == 0) {
+                return {};
+            }
+
+            if (copied < size - 1) { 
+                break;
+            }
+
+            size *= 2;
+        };
+
+        buffer.resize(copied);
+
+        return buffer;
+    }
 }
