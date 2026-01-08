@@ -61,7 +61,7 @@ namespace usylibpp::strings {
         } else if constexpr (strings::is_wstring_v<T>) {
             return str.c_str();
         } else {
-            static_assert(!std::is_same_v<T, T>, "Unsupported type passed to wchar_t_from_strict, must have forgotten a branch");
+            static_assert(!std::is_same_v<T, T>, "Unsupported type passed to usylibpp::strings::wchar_t_from_strict, must have forgotten a branch");
         }
     }
 

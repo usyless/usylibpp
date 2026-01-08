@@ -43,7 +43,7 @@ namespace usylibpp::windows {
         } else if constexpr (strings::is_filesystem_path_v<T>) {
             return str.native().c_str();
         } else {
-            static_assert(!std::is_same_v<T, T>, "Unsupported type passed to wchar_t_from_compatible, must have forgotten a branch");
+            static_assert(!std::is_same_v<T, T>, "Unsupported type passed to usylibpp::windows::wchar_t_from_compatible, must have forgotten a branch");
         }
     }
 
