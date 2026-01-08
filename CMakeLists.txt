@@ -16,18 +16,19 @@ if (PROJECT_IS_TOP_LEVEL)
   set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 endif()
 
-add_library(usylibpp INTERFACE)
+add_library(usylibpp_usylibpp INTERFACE)
+add_library(usylibpp::usylibpp ALIAS usylibpp_usylibpp)
 
-target_compile_features(usylibpp INTERFACE
+target_compile_features(usylibpp_usylibpp INTERFACE
     cxx_std_20
 )
 
-target_include_directories(usylibpp INTERFACE
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
+target_include_directories(usylibpp_usylibpp INTERFACE
+    ${PROJECT_SOURCE_DIR}/include
 )
 
 if (WIN32)
-    target_compile_definitions(usylibpp INTERFACE
+    target_compile_definitions(usylibpp_usylibpp INTERFACE
         "WIN32_LEAN_AND_MEAN"
         "_UNICODE"
         "UNICODE"
@@ -49,7 +50,7 @@ if (PROJECT_IS_TOP_LEVEL)
     )
 
     target_link_libraries(usylibpp_test PRIVATE 
-        usylibpp
+        usylibpp::usylibpp
     )
 
     if (MSVC)
