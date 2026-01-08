@@ -14,13 +14,13 @@ namespace usylibpp::types {
     concept wchar_ptr = std::is_pointer_v<std::decay_t<T>> && std::is_same_v<std::remove_cvref_t<std::remove_pointer_t<std::decay_t<T>>>, wchar_t>;
 
     template<typename T>
-    concept wstring = std::is_same<std::decay_t<T>, std::wstring>::value;
+    concept wstring = std::is_same_v<std::decay_t<T>, std::wstring>;
 
     template<typename T>
-    concept string = std::is_same<std::decay_t<T>, std::string>::value;
+    concept string = std::is_same_v<std::decay_t<T>, std::string>;
 
     template<typename T>
-    concept is_filesystem_path = std::is_same<std::decay_t<T>, std::filesystem::path>::value;
+    concept is_filesystem_path = std::is_same_v<std::decay_t<T>, std::filesystem::path>;
 
     template <typename T>
     concept wchar_t_strict = wchar_ptr<T> || wstring<T>;
