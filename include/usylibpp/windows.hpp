@@ -208,7 +208,7 @@ namespace usylibpp::windows {
         return selected_path;
     }
 
-    namespace task_dialog {
+    namespace task_dialog_internal {
         inline int create(PCWSTR title, PCWSTR message, PCWSTR mainContent, PCWSTR icon, TASKDIALOG_BUTTON* buttons, UINT buttons_size) {
             TASKDIALOGCONFIG td_config{};
             td_config.cbSize = sizeof(td_config);
@@ -240,20 +240,46 @@ namespace usylibpp::windows {
             return create(title, message, mainContent, icon, buttons, ARRAYSIZE(buttons)) == IDOK;
         }
     }
-    
-    inline void error_message(const std::wstring& title, const std::wstring& message, const std::wstring& message_body) noexcept {
-        task_dialog::ok(title.c_str(), message.c_str(), message_body.c_str(), TD_ERROR_ICON);
-    }
 
-    inline void warning_message(const std::wstring& title, const std::wstring& message, const std::wstring& message_body) noexcept {
-        task_dialog::ok(title.c_str(), message.c_str(), message_body.c_str(), TD_WARNING_ICON);
-    }
+    namespace task_dialog {
+        template <strings::wchar_t_strict T1, strings::wchar_t_strict T2, strings::wchar_t_strict T3>
+        inline void error(T1&& title, T2&& message, T3&& message_body) noexcept {
+            task_dialog_internal::ok(
+                strings::wchar_t_from_strict(std::forward<T1>(title)), 
+                strings::wchar_t_from_strict(std::forward<T2>(message)), 
+                strings::wchar_t_from_strict(std::forward<T3>(message_body)), 
+                TD_ERROR_ICON
+            );
+        }
 
-    inline void info_message(const std::wstring& title, const std::wstring& message, const std::wstring& message_body) noexcept {
-        task_dialog::ok(title.c_str(), message.c_str(), message_body.c_str(), TD_INFORMATION_ICON);
-    }
+        template <strings::wchar_t_strict T1, strings::wchar_t_strict T2, strings::wchar_t_strict T3>
+        inline void warning(T1&& title, T2&& message, T3&& message_body) noexcept {
+            task_dialog_internal::ok(
+                strings::wchar_t_from_strict(std::forward<T1>(title)), 
+                strings::wchar_t_from_strict(std::forward<T2>(message)), 
+                strings::wchar_t_from_strict(std::forward<T3>(message_body)), 
+                TD_WARNING_ICON
+            );
+        }
 
-    inline bool confirmation_message(const std::wstring& title, const std::wstring& message, const std::wstring& message_body) noexcept {
-        return task_dialog::confirmation(title.c_str(), message.c_str(), message_body.c_str(), TD_INFORMATION_ICON);
+        template <strings::wchar_t_strict T1, strings::wchar_t_strict T2, strings::wchar_t_strict T3>
+        inline void info(T1&& title, T2&& message, T3&& message_body) noexcept {
+            task_dialog_internal::ok(
+                strings::wchar_t_from_strict(std::forward<T1>(title)), 
+                strings::wchar_t_from_strict(std::forward<T2>(message)), 
+                strings::wchar_t_from_strict(std::forward<T3>(message_body)), 
+                TD_INFORMATION_ICON
+            );
+        }
+
+        template <strings::wchar_t_strict T1, strings::wchar_t_strict T2, strings::wchar_t_strict T3>
+        inline bool confirmation(T1&& title, T2&& message, T3&& message_body) noexcept {
+            return task_dialog_internal::confirmation(
+                strings::wchar_t_from_strict(std::forward<T1>(title)), 
+                strings::wchar_t_from_strict(std::forward<T2>(message)), 
+                strings::wchar_t_from_strict(std::forward<T3>(message_body)), 
+                TD_INFORMATION_ICON
+            );
+        }
     }
 }

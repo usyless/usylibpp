@@ -38,6 +38,11 @@ namespace usylibpp::strings {
         strings::is_string<std::remove_cvref_t<T>>::value ||
         strings::is_filesystem_path<std::remove_cvref_t<T>>::value;
 
+    template <typename T>
+    concept wchar_t_strict =
+        strings::is_wchar_ptr<std::remove_cvref_t<T>>::value ||
+        strings::is_wstring<std::remove_cvref_t<T>>::value;
+
     template<wchar_t_compatible T>
     constexpr bool is_wchar_ptr_v = is_wchar_ptr<std::remove_cvref_t<T>>::value;
 
@@ -49,6 +54,17 @@ namespace usylibpp::strings {
 
     template<wchar_t_compatible T>
     constexpr bool is_filesystem_path_v = is_filesystem_path<std::remove_cvref_t<T>>::value;
+
+    template<strings::wchar_t_strict T>
+    inline constexpr const wchar_t* wchar_t_from_strict(T&& str) {
+        using U = std::remove_cvref_t<T>;
+
+        if constexpr (strings::is_wchar_ptr_v<U>) {
+            return str;
+        } else if constexpr (strings::is_wstring_v<U>) {
+            return str.c_str();
+        }
+    }
 
     inline constexpr size_t total_string_size() noexcept { 
         return 0; 
