@@ -145,4 +145,53 @@ namespace usylibpp::windows {
 
         return buffer;
     }
+
+    namespace task_dialog {
+        inline int create(PCWSTR title, PCWSTR message, PCWSTR mainContent, PCWSTR icon, TASKDIALOG_BUTTON* buttons, UINT buttons_size) {
+            TASKDIALOGCONFIG td_config{};
+            td_config.cbSize = sizeof(td_config);
+            td_config.hwndParent = NULL;
+            td_config.pszWindowTitle = title;
+            td_config.pszMainInstruction = message;
+            td_config.pszContent = mainContent;
+            td_config.pszMainIcon = icon;
+            td_config.dwFlags = TDF_ALLOW_DIALOG_CANCELLATION;
+
+            td_config.pButtons = buttons;
+            td_config.cButtons = buttons_size;
+
+            int buttonPressed = 0;
+            TaskDialogIndirect(&td_config, &buttonPressed, NULL, NULL);
+            return buttonPressed;
+        }
+
+        inline void ok(PCWSTR title, PCWSTR message, PCWSTR mainContent, PCWSTR icon) {
+            TASKDIALOG_BUTTON buttons[] = { { IDOK, L"Ok" } };
+            create(title, message, mainContent, icon, buttons, ARRAYSIZE(buttons));
+        }
+
+        inline bool confirmation(PCWSTR title, PCWSTR message, PCWSTR mainContent, PCWSTR icon) {
+            TASKDIALOG_BUTTON buttons[] = { 
+                { IDOK, L"Confirm" },
+                { IDCANCEL, L"Cancel" } 
+            };
+            return create(title, message, mainContent, icon, buttons, ARRAYSIZE(buttons)) == IDOK;
+        }
+    }
+    
+    inline void error_message(const std::wstring& title, const std::wstring& message, const std::wstring& message_body) noexcept {
+        task_dialog::ok(title.c_str(), message.c_str(), message_body.c_str(), TD_ERROR_ICON);
+    }
+
+    inline void warning_message(const std::wstring& title, const std::wstring& message, const std::wstring& message_body) noexcept {
+        task_dialog::ok(title.c_str(), message.c_str(), message_body.c_str(), TD_WARNING_ICON);
+    }
+
+    inline void info_message(const std::wstring& title, const std::wstring& message, const std::wstring& message_body) noexcept {
+        task_dialog::ok(title.c_str(), message.c_str(), message_body.c_str(), TD_INFORMATION_ICON);
+    }
+
+    inline bool confirmation_message(const std::wstring& title, const std::wstring& message, const std::wstring& message_body) noexcept {
+        return task_dialog::confirmation(title.c_str(), message.c_str(), message_body.c_str(), TD_INFORMATION_ICON);
+    }
 }
