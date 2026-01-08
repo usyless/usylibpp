@@ -149,6 +149,12 @@ namespace usylibpp::strings {
         split_by_for_each(input, '\n', f);
     }
 
+    inline constexpr size_t count_of(const std::string_view str, const char c) noexcept {
+        size_t count = 0;
+        for (const auto a : str) if (a == c) ++count;
+        return count;
+    }
+
     inline std::string url_encode(const std::string& url) {
         std::ostringstream escaped;
         escaped << std::hex << std::uppercase << std::setfill('0');
