@@ -7,6 +7,8 @@
 #include <shlguid.h>
 #include <wrl/client.h>
 #include <shellapi.h>
+#include <knownfolders.h>
+#include <shlobj.h>
 #include "strings.hpp"
 
 namespace usylibpp::windows {
@@ -155,8 +157,55 @@ namespace usylibpp::windows {
             exe_path.resize(pos);
             if (SetCurrentDirectoryW(exe_path.c_str())) return true;
         }
-        
+
         return false;
+    }
+
+    // Downloads folder by default
+    // Pass in any FOLDERID_XXXXXX
+    inline std::optional<std::filesystem::path> get_known_folder(const GUID& folder = FOLDERID_Downloads) {
+        PWSTR path = nullptr;
+
+        HRESULT hr = SHGetKnownFolderPath(folder, 0, NULL, &path);
+
+        if (FAILED(hr)) return std::nullopt;
+
+        std::filesystem::path folder_path{path};
+        CoTaskMemFree(path);
+        return folder_path;
+    }
+
+    inline std::optional<std::filesystem::path> get_folder_picker() {
+        using Microsoft::WRL::ComPtr;
+
+        COMWrapper COM{};
+        auto hr = COM.status();
+        if (FAILED(hr)) return std::nullopt;
+
+        ComPtr<IFileDialog> pfd;
+        hr = CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pfd));
+        if (FAILED(hr)) return std::nullopt;
+
+        DWORD dwOptions{};
+        pfd->GetOptions(&dwOptions);
+        pfd->SetOptions(dwOptions | FOS_PICKFOLDERS);
+
+        hr = pfd->Show(NULL);
+        if (FAILED(hr)) return std::nullopt;
+
+        ComPtr<IShellItem> psi;
+        hr = pfd->GetResult(&psi);
+        if (FAILED(hr)) return std::nullopt;
+
+        PWSTR path = nullptr;
+        hr = psi->GetDisplayName(SIGDN_FILESYSPATH, &path);
+
+        if (FAILED(hr) or (not path)) return std::nullopt;
+
+        std::filesystem::path selected_path{path};
+        CoTaskMemFree(path);
+
+        return selected_path;
     }
 
     namespace task_dialog {
