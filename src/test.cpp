@@ -17,6 +17,10 @@ int main() {
         auto lol = "THis IS moSTLY upperCASE";
         print::println("strings::to_lowercase before: {}, after: {}", lol, strings::to_lowercase(lol));
     }
+    {
+        auto lol = "this has THIS STrING and once again THIS STrING";
+        print::println("strings::replace_all before: {}, after: {}", lol, strings::replace_all(lol, "THIS STrING", "not that string"));
+    }
 
     #ifdef WIN32
     #endif

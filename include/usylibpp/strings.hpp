@@ -101,7 +101,7 @@ namespace usylibpp::strings {
     inline constexpr std::string replace_all(std::string str, const std::string_view from, const std::string_view to) {
         std::string ret{str};
         replace_all_inplace(ret, from, to);
-        return str;
+        return ret;
     }
 
     /**
