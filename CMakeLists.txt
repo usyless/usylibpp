@@ -54,24 +54,26 @@ if (PROJECT_IS_TOP_LEVEL)
         usylibpp
     )
 
-    target_compile_options(usylibpp_test PRIVATE
-        /EHsc
-        /W4
-        /GR
-        /Zc:preprocessor
-        /GL
-        /await:strict
+    if (MSVC)
+        target_compile_options(usylibpp_test PRIVATE
+            /EHsc
+            /W4
+            /GR
+            /Zc:preprocessor
+            /GL
+            /await:strict
 
-        # /Zi
-        # /DEBUG
-        $<$<CONFIG:Debug>:/RTC1>
-        $<$<CONFIG:Debug>:/Zi>
-        $<$<CONFIG:Debug>:/Od>
+            # /Zi
+            # /DEBUG
+            $<$<CONFIG:Debug>:/RTC1>
+            $<$<CONFIG:Debug>:/Zi>
+            $<$<CONFIG:Debug>:/Od>
 
-        $<$<CONFIG:Release>:/O2>
-        $<$<CONFIG:Release>:/Ob2>
-        $<$<CONFIG:Release>:/Oi>
-        $<$<CONFIG:Release>:/Oy>
-        $<$<CONFIG:Release>:/Gy>
-    )
+            $<$<CONFIG:Release>:/O2>
+            $<$<CONFIG:Release>:/Ob2>
+            $<$<CONFIG:Release>:/Oi>
+            $<$<CONFIG:Release>:/Oy>
+            $<$<CONFIG:Release>:/Gy>
+        )
+    endif()
 endif()
