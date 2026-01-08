@@ -4,7 +4,7 @@
 #include <string>
 #include <string_view>
 #include <cstring>
-#include <filesystem>
+#include "types.hpp"
 
 #ifdef WIN32
 namespace usylibpp::windows {
@@ -13,52 +13,11 @@ namespace usylibpp::windows {
 #endif
 
 namespace usylibpp::strings {
-    template<typename T, typename Char>
-    concept StringLike = requires(T a) {
-        { std::basic_string_view<Char>(a) };
-    };
-
-    template <typename T>
-    struct is_wchar_ptr : std::is_same<std::remove_cv_t<std::decay_t<T>>, wchar_t*> {};
-
-    template <typename T>
-    struct is_wstring : std::is_same<std::remove_cv_t<T>, std::wstring> {};
-
-    template <typename T>
-    struct is_string : std::is_same<std::remove_cv_t<T>, std::string> {};
-
-    template <typename T>
-    struct is_filesystem_path: std::is_same<std::remove_cv_t<T>, std::filesystem::path> {};
-
-    template <typename T>
-    concept wchar_t_compatible =
-        strings::is_wchar_ptr<std::remove_cvref_t<T>>::value ||
-        strings::is_wstring<std::remove_cvref_t<T>>::value ||
-        strings::is_string<std::remove_cvref_t<T>>::value ||
-        strings::is_filesystem_path<std::remove_cvref_t<T>>::value;
-
-    template <typename T>
-    concept wchar_t_strict =
-        strings::is_wchar_ptr<std::remove_cvref_t<T>>::value ||
-        strings::is_wstring<std::remove_cvref_t<T>>::value;
-
-    template<wchar_t_compatible T>
-    constexpr bool is_wchar_ptr_v = is_wchar_ptr<std::remove_cvref_t<T>>::value;
-
-    template<wchar_t_compatible T>
-    constexpr bool is_wstring_v = is_wstring<std::remove_cvref_t<T>>::value;
-
-    template<wchar_t_compatible T>
-    constexpr bool is_string_v = is_string<std::remove_cvref_t<T>>::value;
-
-    template<wchar_t_compatible T>
-    constexpr bool is_filesystem_path_v = is_filesystem_path<std::remove_cvref_t<T>>::value;
-
-    template<strings::wchar_t_strict T>
+    template<types::wchar_t_strict T>
     inline constexpr const wchar_t* wchar_t_from_strict(T&& str) {
-        if constexpr (strings::is_wchar_ptr_v<T>) {
+        if constexpr (types::is_wchar_ptr_v<T>) {
             return str;
-        } else if constexpr (strings::is_wstring_v<T>) {
+        } else if constexpr (types::is_wstring_v<T>) {
             return str.c_str();
         } else {
             static_assert(!std::is_same_v<T, T>, "Unsupported type passed to usylibpp::strings::wchar_t_from_strict, must have forgotten a branch");
@@ -69,18 +28,18 @@ namespace usylibpp::strings {
     /**
      * If its a string type this pointer will only survive to the next call on the thread
      */
-    template<strings::wchar_t_compatible T>
+    template<types::wchar_t_compatible T>
     inline const wchar_t* wchar_t_from_compatible(T&& str) {
-        if constexpr (strings::is_wchar_ptr_v<T>) {
+        if constexpr (types::is_wchar_ptr_v<T>) {
             return str;
-        } else if constexpr (strings::is_wstring_v<T>) {
+        } else if constexpr (types::is_wstring_v<T>) {
             return str.c_str();
-        } else if constexpr (strings::is_string_v<T>) {
+        } else if constexpr (types::is_string_v<T>) {
             static thread_local std::optional<std::wstring> buffer;
             buffer = to_wstr(str);
             if (!buffer) return L"";
             return buffer->c_str();
-        } else if constexpr (strings::is_filesystem_path_v<T>) {
+        } else if constexpr (types::is_filesystem_path_v<T>) {
             return str.native().c_str();
         } else {
             static_assert(!std::is_same_v<T, T>, "Unsupported type passed to usylibpp::strings::wchar_t_from_compatible, must have forgotten a branch");

@@ -10,6 +10,7 @@
 #include <knownfolders.h>
 #include <shlobj.h>
 #include "strings.hpp"
+#include "types.hpp"
 
 namespace usylibpp::windows {
     /**
@@ -36,7 +37,7 @@ namespace usylibpp::windows {
      * Convert any compatible wide string into a std::string
      * Returns std::nullopt if the string is empty or on error
      */
-    template <strings::wchar_t_compatible T>
+    template <types::wchar_t_compatible T>
     inline std::optional<std::string> to_utf8(T&& _wstr) {
         const auto wstr = strings::wchar_t_from_compatible(std::forward<T>(_wstr));
 
@@ -76,7 +77,7 @@ namespace usylibpp::windows {
     /**
      * Pass true into ComInitialised to not re-initialise COM
      */
-    template <bool ComInitialised = false, strings::wchar_t_compatible T>
+    template <bool ComInitialised = false, types::wchar_t_compatible T>
     inline bool recycle_file(T&& wstr) {
         using Microsoft::WRL::ComPtr;
 
@@ -105,7 +106,7 @@ namespace usylibpp::windows {
         return !anyFailed;
     }
 
-    template <strings::wchar_t_compatible T>
+    template <types::wchar_t_compatible T>
     inline bool open_file_in_default_app(T&& file_path) {
         HINSTANCE result = ShellExecuteW(
             nullptr,
@@ -122,7 +123,7 @@ namespace usylibpp::windows {
     /**
      * Pass true into ComInitialised to not re-initialise COM
      */
-    template <bool ComInitialised = false, strings::wchar_t_compatible T>
+    template <bool ComInitialised = false, types::wchar_t_compatible T>
     inline bool show_file_in_exporer(T&& file_path) {
         COMWrapper<ComInitialised> COM{};
         auto hr = COM.status();
@@ -356,7 +357,7 @@ namespace usylibpp::windows {
             }
         }
 
-        template <strings::wchar_t_strict T1, strings::wchar_t_strict T2, strings::wchar_t_strict T3>
+        template <types::wchar_t_strict T1, types::wchar_t_strict T2, types::wchar_t_strict T3>
         inline void error(T1&& title, T2&& message, T3&& message_body) noexcept {
             internal::ok(
                 strings::wchar_t_from_strict(std::forward<T1>(title)), 
@@ -366,7 +367,7 @@ namespace usylibpp::windows {
             );
         }
 
-        template <strings::wchar_t_strict T1, strings::wchar_t_strict T2, strings::wchar_t_strict T3>
+        template <types::wchar_t_strict T1, types::wchar_t_strict T2, types::wchar_t_strict T3>
         inline void warning(T1&& title, T2&& message, T3&& message_body) noexcept {
             internal::ok(
                 strings::wchar_t_from_strict(std::forward<T1>(title)), 
@@ -376,7 +377,7 @@ namespace usylibpp::windows {
             );
         }
 
-        template <strings::wchar_t_strict T1, strings::wchar_t_strict T2, strings::wchar_t_strict T3>
+        template <types::wchar_t_strict T1, types::wchar_t_strict T2, types::wchar_t_strict T3>
         inline void info(T1&& title, T2&& message, T3&& message_body) noexcept {
             internal::ok(
                 strings::wchar_t_from_strict(std::forward<T1>(title)), 
@@ -386,7 +387,7 @@ namespace usylibpp::windows {
             );
         }
 
-        template <strings::wchar_t_strict T1, strings::wchar_t_strict T2, strings::wchar_t_strict T3>
+        template <types::wchar_t_strict T1, types::wchar_t_strict T2, types::wchar_t_strict T3>
         inline bool confirmation(T1&& title, T2&& message, T3&& message_body) noexcept {
             return internal::confirmation(
                 strings::wchar_t_from_strict(std::forward<T1>(title)), 
