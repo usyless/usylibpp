@@ -1,5 +1,5 @@
 #pragma once
 
 namespace usylibpp::info {
-    inline constexpr auto version ="@usylibpp_VERSION@";
+    inline constexpr auto version = "@usylibpp_VERSION@";
 }
