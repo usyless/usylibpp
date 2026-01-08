@@ -16,6 +16,11 @@ if (PROJECT_IS_TOP_LEVEL)
   set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 endif()
 
+configure_file(
+    ${PROJECT_SOURCE_DIR}/cmake/usylibppconfig.hpp.in
+    ${CMAKE_CURRENT_BINARY_DIR}/usylibppconfig.hpp
+)
+
 add_library(usylibpp_usylibpp INTERFACE)
 add_library(usylibpp::usylibpp ALIAS usylibpp_usylibpp)
 
@@ -25,6 +30,7 @@ target_compile_features(usylibpp_usylibpp INTERFACE
 
 target_include_directories(usylibpp_usylibpp INTERFACE
     ${PROJECT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_BINARY_DIR}
 )
 
 if (WIN32)
