@@ -31,21 +31,19 @@ namespace usylibpp::windows {
     // If its a string type this pointer will only survive to the next call on the thread
     template<strings::wchar_t_compatible T>
     inline const wchar_t* wchar_t_from_compatible(T&& str) {
-        using U = std::remove_cvref_t<T>;
-
-        if constexpr (strings::is_wchar_ptr_v<U>) {
+        if constexpr (strings::is_wchar_ptr_v<T>) {
             return str;
-        }
-        else if constexpr (strings::is_wstring_v<U>) {
+        } else if constexpr (strings::is_wstring_v<T>) {
             return str.c_str();
-        }
-        else if constexpr (strings::is_string_v<U>) {
+        } else if constexpr (strings::is_string_v<T>) {
             static thread_local std::optional<std::wstring> buffer;
             buffer = to_wstr(str);
             if (!buffer) return L"";
             return buffer->c_str();
-        } else if constexpr (strings::is_filesystem_path_v<U>) {
+        } else if constexpr (strings::is_filesystem_path_v<T>) {
             return str.native().c_str();
+        } else {
+            static_assert(!std::is_same_v<T, T>, "Unsupported type passed to wchar_t_from_compatible, must have forgotten a branch");
         }
     }
 
