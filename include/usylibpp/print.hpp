@@ -4,6 +4,10 @@
 #include <format>
 
 namespace usylibpp::print {
+    /**
+     * Will fail silently on mismatched paranthesis and args
+     * Prints to cout or wcout depending on the args passed in
+     */
     template<typename Fmt = const char*, typename... Ts>
     inline void println(Fmt&& fmt = "", Ts&&... args) {
         // using Char = typename std::basic_string_view<std::remove_cvref_t<decltype(fmt[0])>>::value_type;

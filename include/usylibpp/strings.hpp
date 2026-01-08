@@ -65,15 +65,6 @@ namespace usylibpp::strings {
         }
     }
 
-    // inline constexpr size_t total_string_size() noexcept { 
-    //     return 0; 
-    // }
-
-    // template<typename Char, StringLike<Char> T, StringLike<Char>... Ts>
-    // inline constexpr size_t total_string_size(T&& first, Ts&&... rest) noexcept {
-    //     return std::basic_string_view<Char>(std::forward<T>(first)).size() + total_string_size(std::forward<Ts>(rest)...);
-    // }
-
     template<typename... Ts>
     inline constexpr auto concat_strings(Ts&&... parts) {
         using First = decltype(([](auto&& first, auto&&...) -> auto&& { return first; })(parts...));
@@ -113,7 +104,9 @@ namespace usylibpp::strings {
         return str;
     }
 
-    // Does not work for negative numbers or floats
+    /**
+     * Does not work for negative numbers or floats
+     */
     template <typename N>
     inline constexpr std::optional<N> to_number_positive(const std::string_view str) noexcept {
         N num;
@@ -121,8 +114,10 @@ namespace usylibpp::strings {
         return std::nullopt;
     }
 
-    // Does not work for negative numbers or floats
-    // String view only survives to next function call on this thread, make copy into std::string to keep alive
+    /**
+     * Does not work for negative numbers or floats
+     * String view only survives to next function call on this thread, make copy into std::string to keep alive
+     */
     template <typename T>
     inline std::optional<std::string_view> number_to_string_view_positive(T val) noexcept {
         constexpr auto TO_STRING_BUFFER_LENGTH = 21;

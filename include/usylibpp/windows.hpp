@@ -28,7 +28,9 @@ namespace usylibpp::windows {
         return to_wstr(utf8.c_str());
     }
 
-    // If its a string type this pointer will only survive to the next call on the thread
+    /**
+     * If its a string type this pointer will only survive to the next call on the thread
+     */
     template<strings::wchar_t_compatible T>
     inline const wchar_t* wchar_t_from_compatible(T&& str) {
         if constexpr (strings::is_wchar_ptr_v<T>) {
@@ -63,7 +65,9 @@ namespace usylibpp::windows {
         return utf8_str;
     }
 
-    // If dummy = true then COM is not actually initialised again
+    /**
+     * If dummy = true then COM is not actually initialised again
+     */
     template <bool dummy = false>
     class COMWrapper {
     private:
@@ -82,7 +86,9 @@ namespace usylibpp::windows {
         }
     };
 
-    // Pass true into ComInitialised to not re-initialise COM
+    /**
+     * Pass true into ComInitialised to not re-initialise COM
+     */
     template <bool ComInitialised = false, strings::wchar_t_compatible T>
     inline bool recycle_file(T&& wstr) {
         using Microsoft::WRL::ComPtr;
@@ -126,7 +132,9 @@ namespace usylibpp::windows {
         return reinterpret_cast<INT_PTR>(result) > 32;
     }
 
-    // Pass true into ComInitialised to not re-initialise COM
+    /**
+     * Pass true into ComInitialised to not re-initialise COM
+     */
     template <bool ComInitialised = false, strings::wchar_t_compatible T>
     inline bool show_file_in_exporer(T&& file_path) {
         COMWrapper<ComInitialised> COM{};
@@ -145,7 +153,9 @@ namespace usylibpp::windows {
         return true;
     }
 
-    // Caches the result
+    /**
+     * Caches the result
+     */
     inline std::optional<std::reference_wrapper<const std::wstring>> current_executable_path() {
         static bool has_run = false;
         static std::wstring buffer;
@@ -194,8 +204,10 @@ namespace usylibpp::windows {
         return false;
     }
 
-    // Downloads folder by default
-    // Pass in any FOLDERID_XXXXXX
+    /**
+     * Downloads folder by default
+     * Pass in any FOLDERID_XXXXXX
+     */
     inline std::optional<std::filesystem::path> get_known_folder(const GUID& folder = FOLDERID_Downloads) {
         PWSTR path = nullptr;
 
@@ -208,7 +220,9 @@ namespace usylibpp::windows {
         return folder_path;
     }
 
-    // Pass true into ComInitialised to not re-initialise COM
+    /**
+     * Pass true into ComInitialised to not re-initialise COM
+     */
     template <bool ComInitialised = false>
     inline std::optional<std::filesystem::path> get_folder_picker() {
         using Microsoft::WRL::ComPtr;
@@ -243,7 +257,9 @@ namespace usylibpp::windows {
         return selected_path;
     }
 
-    // No stdin, just stdout and stderr
+    /**
+     * No stdin, just stdout and stderr
+     */
     inline void show_console_for_gui_app() {
         AllocConsole();
         FILE* fp_stdout;
@@ -253,8 +269,10 @@ namespace usylibpp::windows {
         freopen_s(&fp_stderr, "CONOUT$", "w", stderr);
     }
 
-    // Make sure to pass in just the name without the extension
-    // Checks both the current directory and the PATH
+    /**
+     * Make sure to pass in just the name without the extension
+     * Checks both the current directory and the PATH
+     */
     inline bool exe_exists(const std::wstring& exeName) {
         std::error_code ec;
         return std::filesystem::exists(exeName + L".exe", ec) || SearchPathW(NULL, exeName.c_str(), L".exe", 0, NULL, NULL) > 0;
@@ -284,7 +302,9 @@ namespace usylibpp::windows {
             return (is_admin = static_cast<bool>(isAdmin));
         }
 
-        // Exits the program on success
+        /**
+         * Exits the program on success
+         */
         inline bool relaunch_as_admin() {
             auto exe_path_option = current_executable_path();
 
