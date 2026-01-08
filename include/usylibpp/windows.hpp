@@ -224,6 +224,53 @@ namespace usylibpp::windows {
         return selected_path;
     }
 
+    namespace admin {
+        inline bool is_admin() {
+            static bool is_admin_assigned = false;
+            static bool is_admin = false;
+
+            if (is_admin_assigned) return is_admin;
+
+            BOOL isAdmin = FALSE;
+            PSID adminGroup;
+            SID_IDENTIFIER_AUTHORITY ntAuthority = SECURITY_NT_AUTHORITY;
+
+            if (AllocateAndInitializeSid(&ntAuthority, 2,
+                SECURITY_BUILTIN_DOMAIN_RID,
+                DOMAIN_ALIAS_RID_ADMINS,
+                0, 0, 0, 0, 0, 0,
+                &adminGroup)) {
+                CheckTokenMembership(NULL, adminGroup, &isAdmin);
+                FreeSid(adminGroup);
+            }
+
+            is_admin_assigned = true;
+            return (is_admin = static_cast<bool>(isAdmin));
+        }
+
+        // Exits the program on success
+        inline bool relaunch_as_admin() {
+            auto exe_path_option = current_executable_path();
+
+            if (!exe_path_option) return false;
+
+            auto& exe_path = exe_path_option.value();
+
+            SHELLEXECUTEINFOW sei = {};
+            
+            sei.cbSize = sizeof(sei);
+            sei.lpVerb = L"runas";
+            sei.lpFile = exe_path.c_str();
+            sei.hwnd = NULL;
+            sei.nShow = SW_NORMAL;
+
+            if (!ShellExecuteExW(&sei)) return false;
+
+            exit(0);
+            return true;
+        }
+    }
+
     namespace task_dialog {
         namespace internal {
             inline int create(PCWSTR title, PCWSTR message, PCWSTR mainContent, PCWSTR icon, TASKDIALOG_BUTTON* buttons, UINT buttons_size) {
