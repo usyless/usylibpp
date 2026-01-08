@@ -6,6 +6,12 @@
 #include <cstring>
 #include <filesystem>
 
+#ifdef WIN32
+namespace usylibpp::windows {
+    std::optional<std::wstring> to_wstr(const char* utf8);
+}
+#endif
+
 namespace usylibpp::strings {
     template<typename T, typename Char>
     concept StringLike = requires(T a) {
@@ -58,6 +64,29 @@ namespace usylibpp::strings {
             static_assert(!std::is_same_v<T, T>, "Unsupported type passed to usylibpp::strings::wchar_t_from_strict, must have forgotten a branch");
         }
     }
+
+    #ifdef WIN32
+    /**
+     * If its a string type this pointer will only survive to the next call on the thread
+     */
+    template<strings::wchar_t_compatible T>
+    inline const wchar_t* wchar_t_from_compatible(T&& str) {
+        if constexpr (strings::is_wchar_ptr_v<T>) {
+            return str;
+        } else if constexpr (strings::is_wstring_v<T>) {
+            return str.c_str();
+        } else if constexpr (strings::is_string_v<T>) {
+            static thread_local std::optional<std::wstring> buffer;
+            buffer = to_wstr(str);
+            if (!buffer) return L"";
+            return buffer->c_str();
+        } else if constexpr (strings::is_filesystem_path_v<T>) {
+            return str.native().c_str();
+        } else {
+            static_assert(!std::is_same_v<T, T>, "Unsupported type passed to usylibpp::strings::wchar_t_from_compatible, must have forgotten a branch");
+        }
+    }
+    #endif
 
     template<typename... Ts>
     inline constexpr auto concat_strings(Ts&&... parts) {

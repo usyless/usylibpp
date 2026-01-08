@@ -12,6 +12,10 @@
 #include "strings.hpp"
 
 namespace usylibpp::windows {
+    /**
+     * Convert a const char* into a std::wstring
+     * Returns std::nullopt if the string is empty or on error
+     */
     inline std::optional<std::wstring> to_wstr(const char* utf8) {
         const auto buffer_size = MultiByteToWideChar(CP_UTF8, 0, utf8, -1, nullptr, 0);
 
@@ -28,30 +32,13 @@ namespace usylibpp::windows {
         return to_wstr(utf8.c_str());
     }
 
-    /**
-     * If its a string type this pointer will only survive to the next call on the thread
+     /**
+     * Convert any compatible wide string into a std::string
+     * Returns std::nullopt if the string is empty or on error
      */
-    template<strings::wchar_t_compatible T>
-    inline const wchar_t* wchar_t_from_compatible(T&& str) {
-        if constexpr (strings::is_wchar_ptr_v<T>) {
-            return str;
-        } else if constexpr (strings::is_wstring_v<T>) {
-            return str.c_str();
-        } else if constexpr (strings::is_string_v<T>) {
-            static thread_local std::optional<std::wstring> buffer;
-            buffer = to_wstr(str);
-            if (!buffer) return L"";
-            return buffer->c_str();
-        } else if constexpr (strings::is_filesystem_path_v<T>) {
-            return str.native().c_str();
-        } else {
-            static_assert(!std::is_same_v<T, T>, "Unsupported type passed to usylibpp::windows::wchar_t_from_compatible, must have forgotten a branch");
-        }
-    }
-
     template <strings::wchar_t_compatible T>
     inline std::optional<std::string> to_utf8(T&& _wstr) {
-        const auto wstr = wchar_t_from_compatible(std::forward<T>(_wstr));
+        const auto wstr = strings::wchar_t_from_compatible(std::forward<T>(_wstr));
 
         const auto buffer_size = WideCharToMultiByte(CP_UTF8, 0, wstr, -1, nullptr, 0, nullptr, nullptr);
 
@@ -101,7 +88,7 @@ namespace usylibpp::windows {
         if (FAILED(hr)) return false;
 
         ComPtr<IShellItem> item;
-        hr = SHCreateItemFromParsingName(wchar_t_from_compatible(std::forward<T>(wstr)), nullptr, IID_PPV_ARGS(item.GetAddressOf()));
+        hr = SHCreateItemFromParsingName(strings::wchar_t_from_compatible(std::forward<T>(wstr)), nullptr, IID_PPV_ARGS(item.GetAddressOf()));
         if (FAILED(hr)) return false;
 
         fileOp->SetOperationFlags(FOFX_RECYCLEONDELETE);
@@ -123,7 +110,7 @@ namespace usylibpp::windows {
         HINSTANCE result = ShellExecuteW(
             nullptr,
             L"open",
-            wchar_t_from_compatible(std::forward<T>(file_path)),
+            strings::wchar_t_from_compatible(std::forward<T>(file_path)),
             nullptr,
             nullptr,
             SW_SHOWNORMAL
@@ -143,7 +130,7 @@ namespace usylibpp::windows {
         
         PIDLIST_ABSOLUTE pidlFolder = nullptr;
 
-        hr = SHParseDisplayName(wchar_t_from_compatible(std::forward<T>(file_path)), nullptr, &pidlFolder, 0, nullptr);
+        hr = SHParseDisplayName(strings::wchar_t_from_compatible(std::forward<T>(file_path)), nullptr, &pidlFolder, 0, nullptr);
         if (FAILED(hr) || !pidlFolder) return false;
 
         hr = SHOpenFolderAndSelectItems(pidlFolder, 0, nullptr, 0);
