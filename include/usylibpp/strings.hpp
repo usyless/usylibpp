@@ -87,7 +87,7 @@ namespace usylibpp::strings {
     }
 
     inline constexpr void to_lowercase_inplace(std::string& str) {
-        std::transform(str.begin(), str.end(), str.begin(), [](unsigned char c) -> char { return std::tolower(c); });
+        std::transform(str.begin(), str.end(), str.begin(), [](unsigned char c) -> char { return static_cast<char>(std::tolower(c)); });
     }
 
     inline constexpr std::string to_lowercase(const std::string_view str) {
