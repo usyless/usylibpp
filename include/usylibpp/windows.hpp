@@ -325,6 +325,16 @@ namespace usylibpp::windows {
         }
     }
 
+    #ifdef USYLIBPP_ENABLE_TASK_DIALOG
+    // Embed the manifest to enable task dialogs
+    #pragma comment(linker, \
+    "\"/manifestdependency:type='win32' " \
+    "name='Microsoft.Windows.Common-Controls' " \
+    "version='6.0.0.0' " \
+    "processorArchitecture='*' " \
+    "publicKeyToken='6595b64144ccf1df' " \
+    "language='*'\"")
+
     namespace task_dialog {
         namespace internal {
             inline int create(PCWSTR title, PCWSTR message, PCWSTR mainContent, PCWSTR icon, TASKDIALOG_BUTTON* buttons, UINT buttons_size) {
@@ -399,4 +409,5 @@ namespace usylibpp::windows {
             );
         }
     }
+    #endif
 }

@@ -41,9 +41,15 @@ if (WIN32)
         "NOMINMAX"
     )
 
-    target_link_libraries(usylibpp_usylibpp INTERFACE 
-        Comctl32
-    )
+    option(USYLIBPP_ENABLE_TASK_DIALOG "Enable Task Dialogs (Inject Common Controls v6 Manifest)" ON)
+    if(USYLIBPP_ENABLE_TASK_DIALOG)
+        target_compile_definitions(usylibpp_usylibpp INTERFACE 
+            "USYLIBPP_ENABLE_TASK_DIALOG"
+        )
+        target_link_libraries(usylibpp_usylibpp INTERFACE 
+            Comctl32
+        )
+    endif()
 endif()
 
 
