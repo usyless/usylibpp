@@ -1,0 +1,17 @@
+# Editor directories and files
+.idea
+
+open-vscode.bat
+
+/lib
+/build
+compile_flags.txt
+compile_commands.json
+
+/.cache
+/libdebug
+/builddebug
+
+*.7z
+
+3rdparty
