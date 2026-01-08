@@ -26,16 +26,14 @@ target_include_directories(usylibpp INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-target_compile_definitions(usylibpp INTERFACE
-    "WIN32_LEAN_AND_MEAN"
-    "_UNICODE"
-    "UNICODE"
-    "NOSERVICE"
-    "NOMCX"
-    "NOIME"
-    "NOMINMAX"
-)
-
+if (WIN32)
+    target_compile_definitions(usylibpp INTERFACE
+        "WIN32_LEAN_AND_MEAN"
+        "_UNICODE"
+        "UNICODE"
+        "NOMINMAX"
+    )
+endif()
 
 
 if (PROJECT_IS_TOP_LEVEL)
