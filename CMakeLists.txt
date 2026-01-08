@@ -41,7 +41,15 @@ if (WIN32)
         "NOMINMAX"
     )
 
-    option(USYLIBPP_ENABLE_TASK_DIALOG "Enable Task Dialogs (Inject Common Controls v6 Manifest)" ON)
+    set(USYLIBPP_ENABLE_TASK_DIALOG
+        ON
+        CACHE BOOL
+        "Enable Windows Task Dialog support.
+
+When enabled, the library injects a Common Controls v6 manifest into the final executable,
+and links against Comctl32"
+    )
+
     if(USYLIBPP_ENABLE_TASK_DIALOG)
         target_compile_definitions(usylibpp_usylibpp INTERFACE 
             "USYLIBPP_ENABLE_TASK_DIALOG"
