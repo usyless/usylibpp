@@ -4,8 +4,8 @@
 #include <format>
 
 namespace usylibpp::print {
-    template<typename Fmt, typename... Ts>
-    inline void println(Fmt&& fmt, Ts&&... args) {
+    template<typename Fmt = const char*, typename... Ts>
+    inline void println(Fmt&& fmt = "", Ts&&... args) {
         using Char = std::remove_cv_t<std::remove_reference_t<decltype(fmt[0])>>;
 
         []() -> std::basic_ostream<Char>& { 
