@@ -5,7 +5,13 @@
 #include <fstream>
 #include <optional>
 
+/**
+ * Helper methods to do with file operations
+ */
 namespace usylibpp::files {
+    /**
+     * Read a file as bytes into a std::string
+     */
     inline std::optional<std::string> read_as_bytes(const std::filesystem::path& path) {
         std::ifstream file(path, std::ios::binary);
         if (!file) return std::nullopt;
