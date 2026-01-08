@@ -7,8 +7,7 @@
 
 namespace usylibpp::time {
     // Thread safe
-    inline tm current_tm_safe() {
-        auto now_time = std::time(nullptr);
+    inline tm current_tm_safe(time_t now_time) {
         tm cur_tm{};
         #ifdef WIN32
         localtime_s(&cur_tm, &now_time);
@@ -16,6 +15,11 @@ namespace usylibpp::time {
         localtime_r(&now_time, &cur_tm);
         #endif
         return cur_tm;
+    }
+
+    // Thread safe
+    inline tm current_tm_safe() {
+        return current_tm_safe(std::time(nullptr));
     }
 
     inline std::string current_datetime() {
