@@ -86,10 +86,28 @@ namespace usylibpp::strings {
         return result;
     }
 
-    inline constexpr void to_lower_case(std::string& str) {
-        std::transform(str.begin(), str.end(), str.begin(), [](unsigned char c) -> char {
-            return static_cast<char>(std::tolower(c));
-        });
+    inline constexpr void to_lowercase_inplace(std::string& str) {
+        std::transform(str.begin(), str.end(), str.begin(), [](unsigned char c) -> char { return std::tolower(c); });
+    }
+
+    inline constexpr std::string to_lowercase(const std::string_view str) {
+        std::string ret{str};
+        to_lowercase_inplace(ret);
+        return ret;
+    }
+
+    inline void replace_all_inplace(std::string& str, const std::string_view from, const std::string_view to) {
+        size_t start_pos = 0;
+        while ((start_pos = str.find(from, start_pos)) != std::string::npos) {
+            str.replace(start_pos, from.length(), to);
+            start_pos += to.length();
+        }
+    }
+
+    inline std::string replace_all(std::string str, const std::string_view from, const std::string_view to) {
+        std::string ret{str};
+        replace_all_inplace(ret, from, to);
+        return str;
     }
 
     inline std::string url_encode(const std::string& url) {
