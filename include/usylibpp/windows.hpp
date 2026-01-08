@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <optional>
 #include <windows.h>
 #include <shobjidl.h>
 #include <shlguid.h>
@@ -9,11 +10,11 @@
 #include "strings.hpp"
 
 namespace usylibpp::windows {
-    inline std::wstring to_wstr(const char* utf8) {
-        int buffer_size = MultiByteToWideChar(CP_UTF8, 0, utf8, -1, nullptr, 0);
+    inline std::optional<std::wstring> to_wstr(const char* utf8) {
+        const auto buffer_size = MultiByteToWideChar(CP_UTF8, 0, utf8, -1, nullptr, 0);
 
         if (buffer_size == 0) {
-            return L"";
+            return std::nullopt;
         }
 
         std::wstring wstr(buffer_size - 1, L'\0');
@@ -21,7 +22,7 @@ namespace usylibpp::windows {
         return wstr;
     }
 
-    inline std::wstring to_wstr(const std::string& utf8) {
+    inline std::optional<std::wstring> to_wstr(const std::string& utf8) {
         return to_wstr(utf8.c_str());
     }
 
@@ -37,22 +38,23 @@ namespace usylibpp::windows {
             return str.c_str();
         }
         else if constexpr (strings::is_string_v<U>) {
-            static thread_local std::wstring buffer;
+            static thread_local std::optional<std::wstring> buffer;
             buffer = to_wstr(str);
-            return buffer.c_str();
+            if (!buffer) return L"";
+            return buffer->c_str();
         } else if constexpr (strings::is_filesystem_path_v<U>) {
             return str.native().c_str();
         }
     }
 
     template <strings::wchar_t_compatible T>
-    inline std::string to_utf8(T&& _wstr) {
+    inline std::optional<std::string> to_utf8(T&& _wstr) {
         const auto wstr = wchar_t_from_compatible(std::forward<T>(_wstr));
 
-        const int buffer_size = WideCharToMultiByte(CP_UTF8, 0, wstr, -1, nullptr, 0, nullptr, nullptr);
+        const auto buffer_size = WideCharToMultiByte(CP_UTF8, 0, wstr, -1, nullptr, 0, nullptr, nullptr);
 
         if (buffer_size == 0) {
-            throw std::runtime_error("Failed to convert wide string to UTF-8.");
+            return std::nullopt;
         }
 
         std::string utf8_str(buffer_size - 1, '\0');
@@ -119,7 +121,7 @@ namespace usylibpp::windows {
         return reinterpret_cast<INT_PTR>(result) > 32;
     }
 
-    inline std::wstring current_executable_path() {
+    inline std::optional<std::wstring> current_executable_path() {
         DWORD size = 260;
         std::wstring buffer;
         DWORD copied = 0;
@@ -129,7 +131,7 @@ namespace usylibpp::windows {
             copied = GetModuleFileNameW(NULL, buffer.data(), size);
 
             if (copied == 0) {
-                return {};
+                return std::nullopt;
             }
 
             if (copied < size - 1) { 
