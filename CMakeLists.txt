@@ -77,13 +77,18 @@ if (PROJECT_IS_TOP_LEVEL)
         usylibpp::usylibpp
     )
 
+    if(CMAKE_BUILD_TYPE STREQUAL "Release")
+        set_property(TARGET usylibpp_test PROPERTY
+            INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE
+        )
+    endif()
+
     if (MSVC)
         target_compile_options(usylibpp_test PRIVATE
             /EHsc
             /W4
             /GR
             /Zc:preprocessor
-            /GL
             /await:strict
 
             # /Zi
