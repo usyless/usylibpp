@@ -155,6 +155,11 @@ namespace usylibpp::strings {
         return count;
     }
 
+    template<std::size_t N>
+    inline constexpr std::size_t constexpr_strlen(const char (&)[N]) {
+        return N;
+    }
+
     inline std::string url_encode(const std::string& url) {
         std::ostringstream escaped;
         escaped << std::hex << std::uppercase << std::setfill('0');
