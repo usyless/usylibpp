@@ -96,7 +96,7 @@ namespace usylibpp::strings {
         return ret;
     }
 
-    inline void replace_all_inplace(std::string& str, const std::string_view from, const std::string_view to) {
+    inline constexpr void replace_all_inplace(std::string& str, const std::string_view from, const std::string_view to) {
         size_t start_pos = 0;
         while ((start_pos = str.find(from, start_pos)) != std::string::npos) {
             str.replace(start_pos, from.length(), to);
@@ -104,10 +104,49 @@ namespace usylibpp::strings {
         }
     }
 
-    inline std::string replace_all(std::string str, const std::string_view from, const std::string_view to) {
+    inline constexpr std::string replace_all(std::string str, const std::string_view from, const std::string_view to) {
         std::string ret{str};
         replace_all_inplace(ret, from, to);
         return str;
+    }
+
+    // Does not work for negative numbers or floats
+    template <typename N>
+    inline constexpr std::optional<N> to_number_positive(const std::string_view str) noexcept {
+        N num;
+        if (std::from_chars(str.data(), str.data() + str.size(), num).ec == std::errc()) return num;
+        return std::nullopt;
+    }
+
+    // Does not work for negative numbers or floats
+    // String view only survives to next function call on this thread, make copy into std::string to keep alive
+    template <typename T>
+    inline std::optional<std::string_view> number_to_string_view_positive(T val) noexcept {
+        constexpr auto TO_STRING_BUFFER_LENGTH = 21;
+
+        static thread_local char buffer[TO_STRING_BUFFER_LENGTH];
+        auto [ptr, ec] = std::to_chars(buffer, buffer + TO_STRING_BUFFER_LENGTH, val);
+        if (ec != std::errc()) return std::nullopt;
+        return std::string_view{buffer, static_cast<size_t>(ptr - buffer)};
+    }
+
+    inline constexpr void split_by_for_each(const std::string_view input, const unsigned char split_by, const auto& f) noexcept {
+        size_t start = 0;
+        const auto size = input.size();
+        while (start < size) {
+            const auto end = input.find(split_by, start);
+            if (end == std::string_view::npos) {
+                f(input.substr(start));
+                break;
+            } else {
+                f(input.substr(start, end - start));
+                start = end + 1;
+            }
+        }
+    }
+
+    inline constexpr void for_each_line(const std::string_view input, const auto& f) noexcept {
+        split_by_for_each(input, '\n', f);
     }
 
     inline std::string url_encode(const std::string& url) {
