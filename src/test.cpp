@@ -41,5 +41,10 @@ int main() {
     //     print::println("windows::to_utf8 output: {}", *windows::to_utf8(str));
     // }
     print::println("windows::current_executable_path: {}", *windows::to_utf8(windows::current_executable_path()->get()));
+    print::println("windows::get_known_folder: {}", *windows::to_utf8(*windows::get_known_folder()));
+    print::println("windows::exe_exists(L\"usylibpp_test\"): {}", windows::exe_exists(L"usylibpp_test"));
+    print::println("windows::exe_exists(L\"usylibpp\"): {}", windows::exe_exists(L"usylibpp"));
+    print::println("windows::exe_exists(L\"ffmpeg\"): {}", windows::exe_exists(L"ffmpeg"));
+    print::println("windows::admin::is_admin: {}", windows::admin::is_admin());
     #endif
 }
