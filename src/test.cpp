@@ -11,8 +11,8 @@ int main() {
 
     print::println();
     print::println("String functions:");
-    print::println("strings::concat_strings<char>: {}", strings::concat_strings<char>("hello", " ", "there!"));
-    print::println(L"strings::concat_strings<wchar_t>: {}", strings::concat_strings<wchar_t>(L"hello", L" ", L"there!"));
+    print::println("strings::concat_strings (chars): {}", strings::concat_strings("hello", " ", "there!"));
+    print::println(L"strings::concat_strings (wide chars): {}", strings::concat_strings(L"hello", L" ", L"there!"));
 
     #ifdef WIN32
     #endif
