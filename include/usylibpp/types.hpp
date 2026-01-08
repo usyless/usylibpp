@@ -10,8 +10,8 @@ namespace usylibpp::types {
         { std::basic_string_view<Char>(a) };
     };
 
-    template<typename T>
-    concept wchar_ptr = std::is_same<std::decay_t<T>, wchar_t*>::value || std::is_same<std::decay_t<T>, const wchar_t*>::value;
+    template<class T>
+    inline constexpr bool wchar_ptr = std::is_pointer_v<std::decay_t<T>> && std::is_same_v<std::remove_cvref_t<std::remove_pointer_t<std::decay_t<T>>>, wchar_t>;
 
     template<typename T>
     concept wstring = std::is_same<std::decay_t<T>, std::wstring>::value;
