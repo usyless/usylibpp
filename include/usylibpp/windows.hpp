@@ -130,20 +130,33 @@ namespace usylibpp::windows {
             buffer.resize(size);
             copied = GetModuleFileNameW(NULL, buffer.data(), size);
 
-            if (copied == 0) {
-                return std::nullopt;
-            }
-
-            if (copied < size - 1) { 
-                break;
-            }
+            if (copied == 0) return std::nullopt;
+            if (copied < (size - 1)) break;
 
             size *= 2;
         };
 
         buffer.resize(copied);
 
+        if (buffer.empty()) return std::nullopt;
+
         return buffer;
+    }
+
+    inline bool set_current_cwd_to_executable_directory() {
+        auto exe_path_opt = current_executable_path();
+
+        if (!exe_path_opt) return false;
+
+        auto& exe_path = exe_path_opt.value();
+
+        const auto pos = exe_path.find_last_of(L'\\');
+        if (pos != std::wstring::npos) {
+            exe_path.resize(pos);
+            if (SetCurrentDirectoryW(exe_path.c_str())) return true;
+        }
+        
+        return false;
     }
 
     namespace task_dialog {
