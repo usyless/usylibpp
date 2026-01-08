@@ -63,26 +63,31 @@ namespace usylibpp::windows {
         return utf8_str;
     }
 
+    // If dummy = true then COM is not actually initialised again
+    template <bool dummy = false>
     class COMWrapper {
     private:
         HRESULT hr;
     public:
-        COMWrapper() : hr(CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE)) {}
+        COMWrapper() : hr(dummy ? 1 : (CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE))) {}
 
-        HRESULT status() {
+        constexpr HRESULT status() {
             return hr;
         }
 
         ~COMWrapper() {
-            if (SUCCEEDED(hr)) CoUninitialize();
+            if constexpr (!dummy) {
+                if (SUCCEEDED(hr)) CoUninitialize();
+            }
         }
     };
 
-    template <strings::wchar_t_compatible T>
+    // Pass true into ComInitialised to not re-initialise COM
+    template <bool ComInitialised = false, strings::wchar_t_compatible T>
     inline bool recycle_file(T&& wstr) {
         using Microsoft::WRL::ComPtr;
 
-        COMWrapper COM{};
+        COMWrapper<ComInitialised> COM{};
         if (FAILED(COM.status())) return false;
 
         ComPtr<IFileOperation> fileOp;
@@ -121,9 +126,10 @@ namespace usylibpp::windows {
         return reinterpret_cast<INT_PTR>(result) > 32;
     }
 
-    template <strings::wchar_t_compatible T>
+    // Pass true into ComInitialised to not re-initialise COM
+    template <bool ComInitialised = false, strings::wchar_t_compatible T>
     inline bool show_file_in_exporer(T&& file_path) {
-        COMWrapper COM{};
+        COMWrapper<ComInitialised> COM{};
         auto hr = COM.status();
         if (FAILED(hr)) return false;
         
@@ -202,10 +208,12 @@ namespace usylibpp::windows {
         return folder_path;
     }
 
+    // Pass true into ComInitialised to not re-initialise COM
+    template <bool ComInitialised = false>
     inline std::optional<std::filesystem::path> get_folder_picker() {
         using Microsoft::WRL::ComPtr;
 
-        COMWrapper COM{};
+        COMWrapper<ComInitialised> COM{};
         auto hr = COM.status();
         if (FAILED(hr)) return std::nullopt;
 
