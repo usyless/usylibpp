@@ -6,7 +6,7 @@
 namespace usylibpp::print {
     template<typename Fmt = const char*, typename... Ts>
     inline void println(Fmt&& fmt = "", Ts&&... args) {
-        using Char = std::remove_cv_t<std::remove_reference_t<decltype(fmt[0])>>;
+        using Char = std::remove_cvref_t<decltype(fmt[0])>;
 
         if constexpr (std::is_same_v<Char, char>) {
             std::cout << std::vformat(std::forward<Fmt>(fmt), std::make_format_args(args...)) <<'\n';

@@ -77,7 +77,7 @@ namespace usylibpp::strings {
     template<typename... Ts>
     inline constexpr auto concat_strings(Ts&&... parts) {
         using First = decltype(([](auto&& first, auto&&...) -> auto&& { return first; })(parts...));
-        using Char = std::remove_cv_t<std::remove_reference_t<decltype(std::declval<First>()[0])>>;
+        using Char = std::remove_cvref_t<decltype(std::declval<First>()[0])>;
 
         std::basic_string<Char> result;
         result.resize((std::basic_string_view<Char>(std::forward<Ts>(parts)).size() + ... + 0));
