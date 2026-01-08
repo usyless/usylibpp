@@ -15,9 +15,9 @@ namespace usylibpp::windows {
 namespace usylibpp::strings {
     template<types::wchar_t_strict T>
     inline constexpr const wchar_t* wchar_t_from_strict(T&& str) {
-        if constexpr (types::is_wchar_ptr<T>) {
+        if constexpr (types::wchar_ptr<T>) {
             return str;
-        } else if constexpr (types::is_wstring<T>) {
+        } else if constexpr (types::wstring<T>) {
             return str.c_str();
         } else {
             static_assert(!std::is_same_v<T, T>, "Unsupported type passed to usylibpp::strings::wchar_t_from_strict, must have forgotten a branch");
@@ -32,7 +32,7 @@ namespace usylibpp::strings {
     inline const wchar_t* wchar_t_from_compatible(T&& str) {
         if constexpr (types::wchar_t_strict<T>) {
             return wchar_t_from_strict(std::forward<T>(str));
-        } else if constexpr (types::is_string<T>) {
+        } else if constexpr (types::string<T>) {
             static thread_local std::optional<std::wstring> buffer;
             buffer = to_wstr(str);
             if (!buffer) return L"";
