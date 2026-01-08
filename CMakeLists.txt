@@ -40,6 +40,10 @@ if (WIN32)
         "UNICODE"
         "NOMINMAX"
     )
+
+    target_link_libraries(usylibpp_usylibpp INTERFACE 
+        Comctl32
+    )
 endif()
 
 

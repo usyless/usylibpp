@@ -13,13 +13,7 @@ namespace usylibpp::strings {
     };
 
     template <typename T>
-    struct is_wchar_ptr : std::false_type {};
-
-    template <>
-    struct is_wchar_ptr<const wchar_t*> : std::true_type {};
-
-    template <>
-    struct is_wchar_ptr<wchar_t*> : std::true_type {};
+    struct is_wchar_ptr : std::is_same<std::remove_cv_t<std::decay_t<T>>, wchar_t*> {};
 
     template <typename T>
     struct is_wstring : std::is_same<std::remove_cv_t<T>, std::wstring> {};
