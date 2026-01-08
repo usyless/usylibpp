@@ -6,6 +6,7 @@
 namespace usylibpp::print {
     template<typename Fmt = const char*, typename... Ts>
     inline void println(Fmt&& fmt = "", Ts&&... args) {
+        // using Char = typename std::basic_string_view<std::remove_cvref_t<decltype(fmt[0])>>::value_type;
         using Char = std::remove_cvref_t<decltype(fmt[0])>;
 
         if constexpr (std::is_same_v<Char, char>) {
