@@ -73,7 +73,7 @@ namespace usylibpp::windows {
     private:
         HRESULT hr;
     public:
-        COMWrapper() : hr(dummy ? 1 : (CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE))) {}
+        COMWrapper() : hr(dummy ? 1 : (CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE))) {}
 
         constexpr HRESULT status() {
             return hr;
@@ -171,7 +171,7 @@ namespace usylibpp::windows {
 
         while (true) {
             buffer.resize(size);
-            copied = GetModuleFileNameW(NULL, buffer.data(), size);
+            copied = GetModuleFileNameW(nullptr, buffer.data(), size);
 
             if (copied == 0) return std::nullopt;
             if (copied < (size - 1)) break;
@@ -211,7 +211,7 @@ namespace usylibpp::windows {
     inline std::optional<std::filesystem::path> get_known_folder(const GUID& folder = FOLDERID_Downloads) {
         PWSTR path = nullptr;
 
-        HRESULT hr = SHGetKnownFolderPath(folder, 0, NULL, &path);
+        HRESULT hr = SHGetKnownFolderPath(folder, 0, nullptr, &path);
 
         if (FAILED(hr)) return std::nullopt;
 
@@ -239,7 +239,7 @@ namespace usylibpp::windows {
         pfd->GetOptions(&dwOptions);
         pfd->SetOptions(dwOptions | FOS_PICKFOLDERS);
 
-        hr = pfd->Show(NULL);
+        hr = pfd->Show(nullptr);
         if (FAILED(hr)) return std::nullopt;
 
         ComPtr<IShellItem> psi;
@@ -275,7 +275,7 @@ namespace usylibpp::windows {
      */
     inline bool exe_exists(const std::wstring& exeName) {
         std::error_code ec;
-        return std::filesystem::exists(exeName + L".exe", ec) || SearchPathW(NULL, exeName.c_str(), L".exe", 0, NULL, NULL) > 0;
+        return std::filesystem::exists(exeName + L".exe", ec) || SearchPathW(nullptr, exeName.c_str(), L".exe", 0, nullptr, nullptr) > 0;
     }
 
     namespace admin {
@@ -295,7 +295,7 @@ namespace usylibpp::windows {
                 DOMAIN_ALIAS_RID_ADMINS,
                 0, 0, 0, 0, 0, 0,
                 &adminGroup)) {
-                CheckTokenMembership(NULL, adminGroup, &isAdmin);
+                CheckTokenMembership(nullptr, adminGroup, &isAdmin);
                 FreeSid(adminGroup);
             }
 
@@ -310,12 +310,12 @@ namespace usylibpp::windows {
 
             if (!exe_path_option) return false;
 
-            SHELLEXECUTEINFOW sei = {};
+            SHELLEXECUTEINFOW sei{};
             
             sei.cbSize = sizeof(sei);
             sei.lpVerb = L"runas";
             sei.lpFile = exe_path_option.value().get().c_str();
-            sei.hwnd = NULL;
+            sei.hwnd = nullptr;
             sei.nShow = SW_NORMAL;
 
             if (!ShellExecuteExW(&sei)) return false;
@@ -340,7 +340,7 @@ namespace usylibpp::windows {
             inline int create(PCWSTR title, PCWSTR message, PCWSTR mainContent, PCWSTR icon, TASKDIALOG_BUTTON* buttons, UINT buttons_size) {
                 TASKDIALOGCONFIG td_config{};
                 td_config.cbSize = sizeof(td_config);
-                td_config.hwndParent = NULL;
+                td_config.hwndParent = nullptr;
                 td_config.pszWindowTitle = title;
                 td_config.pszMainInstruction = message;
                 td_config.pszContent = mainContent;
@@ -351,7 +351,7 @@ namespace usylibpp::windows {
                 td_config.cButtons = buttons_size;
 
                 int buttonPressed = 0;
-                TaskDialogIndirect(&td_config, &buttonPressed, NULL, NULL);
+                TaskDialogIndirect(&td_config, &buttonPressed, nullptr, nullptr);
                 return buttonPressed;
             }
 
