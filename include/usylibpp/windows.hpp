@@ -139,9 +139,18 @@ namespace usylibpp::windows {
         return true;
     }
 
+    // Caches the result
     inline std::optional<std::wstring> current_executable_path() {
+        static bool has_run = false;
+        static std::wstring buffer;
+        if (has_run) {
+            if (buffer.empty()) return std::nullopt;
+            return buffer;
+        }
+
+        has_run = true;
+
         DWORD size = 260;
-        std::wstring buffer;
         DWORD copied = 0;
 
         while (true) {
@@ -226,10 +235,11 @@ namespace usylibpp::windows {
 
     namespace admin {
         inline bool is_admin() {
-            static bool is_admin_assigned = false;
+            static bool has_run = false;
             static bool is_admin = false;
 
-            if (is_admin_assigned) return is_admin;
+            if (has_run) return is_admin;
+            has_run = true;
 
             BOOL isAdmin = FALSE;
             PSID adminGroup;
@@ -244,7 +254,6 @@ namespace usylibpp::windows {
                 FreeSid(adminGroup);
             }
 
-            is_admin_assigned = true;
             return (is_admin = static_cast<bool>(isAdmin));
         }
 
