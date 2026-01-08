@@ -1,11 +1,12 @@
 #pragma once
 
 #include <string>
-#include <filesystem>
 #include <windows.h>
 #include <shobjidl.h>
 #include <shlguid.h>
 #include <wrl/client.h>
+#include <shellapi.h>
+#include "strings.hpp"
 
 namespace usylibpp::windows {
     inline std::wstring to_wstr(const char* utf8) {
@@ -24,7 +25,30 @@ namespace usylibpp::windows {
         return to_wstr(utf8.c_str());
     }
 
-    inline std::string to_utf8(const wchar_t* wstr) {
+    // If its a string type this pointer will only survive to the next call on the thread
+    template<strings::wchar_t_compatible T>
+    inline const wchar_t* wchar_t_from_compatible(T&& str) {
+        using U = std::remove_cvref_t<T>;
+
+        if constexpr (strings::is_wchar_ptr_v<U>) {
+            return str;
+        }
+        else if constexpr (strings::is_wstring_v<U>) {
+            return str.c_str();
+        }
+        else if constexpr (strings::is_string_v<U>) {
+            static thread_local std::wstring buffer;
+            buffer = to_wstr(str);
+            return buffer.c_str();
+        } else if constexpr (strings::is_filesystem_path_v<U>) {
+            return str.native().c_str();
+        }
+    }
+
+    template <strings::wchar_t_compatible T>
+    inline std::string to_utf8(T&& _wstr) {
+        const auto wstr = wchar_t_from_compatible(std::forward<T>(_wstr));
+
         const int buffer_size = WideCharToMultiByte(CP_UTF8, 0, wstr, -1, nullptr, 0, nullptr, nullptr);
 
         if (buffer_size == 0) {
@@ -35,14 +59,6 @@ namespace usylibpp::windows {
         WideCharToMultiByte(CP_UTF8, 0, wstr, -1, &utf8_str[0], buffer_size - 1, nullptr, nullptr);
 
         return utf8_str;
-    }
-
-    inline std::string to_utf8(const std::wstring& wstr) {
-        return to_utf8(wstr.c_str());
-    }
-
-    inline std::string to_utf8(const std::filesystem::path& p) {
-        return to_utf8(p.native().c_str());
     }
 
     class COMWrapper {
@@ -60,7 +76,8 @@ namespace usylibpp::windows {
         }
     };
 
-    inline bool recycle_file(const wchar_t* wstr) {
+    template <strings::wchar_t_compatible T>
+    inline bool recycle_file(T&& wstr) {
         using Microsoft::WRL::ComPtr;
 
         COMWrapper COM{};
@@ -71,7 +88,7 @@ namespace usylibpp::windows {
         if (FAILED(hr)) return false;
 
         ComPtr<IShellItem> item;
-        hr = SHCreateItemFromParsingName(wstr, nullptr, IID_PPV_ARGS(item.GetAddressOf()));
+        hr = SHCreateItemFromParsingName(wchar_t_from_compatible(std::forward<T>(wstr)), nullptr, IID_PPV_ARGS(item.GetAddressOf()));
         if (FAILED(hr)) return false;
 
         fileOp->SetOperationFlags(FOFX_RECYCLEONDELETE);
@@ -86,5 +103,19 @@ namespace usylibpp::windows {
         fileOp->GetAnyOperationsAborted(&anyFailed);
 
         return !anyFailed;
+    }
+
+    template <strings::wchar_t_compatible T>
+    inline bool open_file_in_default_app(T&& file_path) {
+        HINSTANCE result = ShellExecuteW(
+            nullptr,
+            L"open",
+            wchar_t_from_compatible(std::forward<T>(file_path)),
+            nullptr,
+            nullptr,
+            SW_SHOWNORMAL
+        );
+
+        return reinterpret_cast<INT_PTR>(result) > 32;
     }
 }
