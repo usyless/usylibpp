@@ -8,9 +8,9 @@
 #include <filesystem>
 
 namespace usylibpp::strings {
-    template<typename T>
+    template<typename T, typename Char>
     concept StringLike = requires(T a) {
-        { std::string_view(a) };
+        { std::basic_string_view<Char>(a) } -> std::same_as<std::basic_string_view<Char>>;
     };
 
     template <typename T>
@@ -70,19 +70,19 @@ namespace usylibpp::strings {
         return 0; 
     }
 
-    template<StringLike T, StringLike... Ts>
-    inline constexpr size_t total_string_size(const T& first, const Ts&... rest) noexcept {
-        return std::string_view(first).size() + total_string_size(rest...);
+    template<typename Char, StringLike<Char> T, StringLike<Char>... Ts>
+    inline constexpr size_t total_string_size(T&& first, Ts&&... rest) noexcept {
+        return std::basic_string_view<Char>(std::forward<T>(first)).size() + total_string_size(std::forward<Ts>(rest)...);
     }
 
-    template<StringLike... Ts>
-    inline constexpr std::string concat_strings(const Ts&... parts) {
-        std::string result;
-        result.resize(total_string_size(parts...));
+    template<typename Char, StringLike<Char>... Ts>
+    inline constexpr std::basic_string<Char> concat_strings(Ts&&... parts) {
+        std::basic_string<Char> result;
+        result.resize(total_string_size<Char>(std::forward<Ts>(parts)...));
 
         char* dest = result.data();
-        std::string_view sv;
-        ((sv = std::string_view(parts), std::memcpy(dest, sv.data(), sv.size()), dest += sv.size()), ...);
+        std::basic_string_view<Char> sv;
+        ((sv = std::basic_string_view<Char>(std::forward<Ts>(parts)), std::memcpy(dest, sv.data(), sv.size()), dest += sv.size()), ...);
 
         return result;
     }
