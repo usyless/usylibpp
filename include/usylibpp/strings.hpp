@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <string>
 #include <string_view>
-#include <cstddef>
 #include <cstring>
 #include <filesystem>
 
@@ -66,23 +65,23 @@ namespace usylibpp::strings {
         }
     }
 
-    inline constexpr size_t total_string_size() noexcept { 
-        return 0; 
-    }
+    // inline constexpr size_t total_string_size() noexcept { 
+    //     return 0; 
+    // }
 
-    template<typename Char, StringLike<Char> T, StringLike<Char>... Ts>
-    inline constexpr size_t total_string_size(T&& first, Ts&&... rest) noexcept {
-        return std::basic_string_view<Char>(std::forward<T>(first)).size() + total_string_size(std::forward<Ts>(rest)...);
-    }
+    // template<typename Char, StringLike<Char> T, StringLike<Char>... Ts>
+    // inline constexpr size_t total_string_size(T&& first, Ts&&... rest) noexcept {
+    //     return std::basic_string_view<Char>(std::forward<T>(first)).size() + total_string_size(std::forward<Ts>(rest)...);
+    // }
 
     template<typename Char, StringLike<Char>... Ts>
     inline constexpr std::basic_string<Char> concat_strings(Ts&&... parts) {
         std::basic_string<Char> result;
-        result.resize(total_string_size<Char>(std::forward<Ts>(parts)...));
+        result.resize((std::basic_string_view<Char>(std::forward<Ts>(parts)).size() + ... + 0));
 
-        char* dest = result.data();
+        Char* dest = result.data();
         std::basic_string_view<Char> sv;
-        ((sv = std::basic_string_view<Char>(std::forward<Ts>(parts)), std::memcpy(dest, sv.data(), sv.size()), dest += sv.size()), ...);
+        ((sv = std::basic_string_view<Char>(std::forward<Ts>(parts)), memcpy(dest, sv.data(), sv.size() * sizeof(Char)), dest += sv.size()), ...);
 
         return result;
     }
