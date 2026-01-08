@@ -91,4 +91,19 @@ namespace usylibpp::strings {
             return static_cast<char>(std::tolower(c));
         });
     }
+
+    inline std::string url_encode(const std::string& url) {
+        std::ostringstream escaped;
+        escaped << std::hex << std::uppercase << std::setfill('0');
+    
+        for (char c : url) {
+            if (std::isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') {
+                escaped << c;
+            } else {
+                escaped << '%' << std::setw(2) << static_cast<unsigned int>(static_cast<unsigned char>(c));
+            }
+        }
+    
+        return escaped.str();
+    }
 }
