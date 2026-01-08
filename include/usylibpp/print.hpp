@@ -11,6 +11,6 @@ namespace usylibpp::print {
         []() -> std::basic_ostream<Char>& { 
             if constexpr (std::is_same_v<Char, char>) return std::cout; 
             else return std::wcout; 
-        }() << std::vformat(std::forward<Fmt>(fmt), std::make_format_args(std::forward<Ts>(args)...)) << Char('\n');
+        }() << std::vformat(std::forward<Fmt>(fmt), std::make_format_args(args...)) << Char('\n');
     }
 }
