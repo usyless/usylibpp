@@ -235,6 +235,16 @@ namespace usylibpp::windows {
         return selected_path;
     }
 
+    // No stdin, just stdout and stderr
+    inline void show_console_for_gui_app() {
+        AllocConsole();
+        FILE* fp_stdout;
+        freopen_s(&fp_stdout, "CONOUT$", "w", stdout);
+
+        FILE* fp_stderr;
+        freopen_s(&fp_stderr, "CONOUT$", "w", stderr);
+    }
+
     namespace admin {
         inline bool is_admin() {
             static bool has_run = false;
