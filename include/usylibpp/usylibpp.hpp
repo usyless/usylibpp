@@ -12,3 +12,4 @@ namespace usylibpp::info {
 #include "files.hpp"
 #include "init.hpp"
 #include "time.hpp"
+#include "print.hpp"

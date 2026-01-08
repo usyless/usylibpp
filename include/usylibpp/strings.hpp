@@ -9,7 +9,7 @@
 namespace usylibpp::strings {
     template<typename T, typename Char>
     concept StringLike = requires(T a) {
-        { std::basic_string_view<Char>(a) } -> std::same_as<std::basic_string_view<Char>>;
+        { std::basic_string_view<Char>(a) };
     };
 
     template <typename T>
