@@ -121,6 +121,24 @@ namespace usylibpp::windows {
         return reinterpret_cast<INT_PTR>(result) > 32;
     }
 
+    template <strings::wchar_t_compatible T>
+    inline bool show_file_in_exporer(T&& file_path) {
+        COMWrapper COM{};
+        auto hr = COM.status();
+        if (FAILED(hr)) return false;
+        
+        PIDLIST_ABSOLUTE pidlFolder = nullptr;
+
+        hr = SHParseDisplayName(wchar_t_from_compatible(std::forward<T>(file_path)), nullptr, &pidlFolder, 0, nullptr);
+        if (FAILED(hr) || !pidlFolder) return false;
+
+        hr = SHOpenFolderAndSelectItems(pidlFolder, 0, nullptr, 0);
+        CoTaskMemFree(pidlFolder);
+        if (FAILED(hr)) return false;
+
+        return true;
+    }
+
     inline std::optional<std::wstring> current_executable_path() {
         DWORD size = 260;
         std::wstring buffer;
