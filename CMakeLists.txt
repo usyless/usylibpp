@@ -14,9 +14,6 @@ target_include_directories(usylibpp INTERFACE
 )
 
 target_compile_definitions(usylibpp INTERFACE
-    "WIN32"
-    "_WINDOWS"
-
     "WIN32_LEAN_AND_MEAN"
     "_UNICODE"
     "UNICODE"
