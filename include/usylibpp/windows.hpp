@@ -140,7 +140,7 @@ namespace usylibpp::windows {
     }
 
     // Caches the result
-    inline std::optional<std::wstring> current_executable_path() {
+    inline std::optional<std::reference_wrapper<const std::wstring>> current_executable_path() {
         static bool has_run = false;
         static std::wstring buffer;
         if (has_run) {
@@ -175,10 +175,12 @@ namespace usylibpp::windows {
 
         if (!exe_path_opt) return false;
 
-        auto& exe_path = exe_path_opt.value();
+        auto exe_path = exe_path_opt.value();
 
-        const auto pos = exe_path.find_last_of(L'\\');
+        const auto pos = exe_path.get().find_last_of(L'\\');
         if (pos != std::wstring::npos) {
+            // make a copy here
+            std::wstring exe_path{exe_path_opt.value()};
             exe_path.resize(pos);
             if (SetCurrentDirectoryW(exe_path.c_str())) return true;
         }
@@ -263,13 +265,11 @@ namespace usylibpp::windows {
 
             if (!exe_path_option) return false;
 
-            auto& exe_path = exe_path_option.value();
-
             SHELLEXECUTEINFOW sei = {};
             
             sei.cbSize = sizeof(sei);
             sei.lpVerb = L"runas";
-            sei.lpFile = exe_path.c_str();
+            sei.lpFile = exe_path_option.value().get().c_str();
             sei.hwnd = NULL;
             sei.nShow = SW_NORMAL;
 
