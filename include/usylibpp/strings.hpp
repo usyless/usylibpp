@@ -9,6 +9,7 @@
 #ifdef WIN32
 namespace usylibpp::windows {
     std::optional<std::wstring> to_wstr(const char* utf8);
+    std::optional<std::wstring> to_wstr(const std::string& utf8);
 }
 #endif
 
@@ -34,7 +35,7 @@ namespace usylibpp::strings {
             return wchar_t_from_strict(std::forward<T>(str));
         } else if constexpr (types::string<T>) {
             static thread_local std::optional<std::wstring> buffer;
-            buffer = to_wstr(str);
+            buffer = windows::to_wstr(str);
             if (!buffer) return L"";
             return buffer->c_str();
         } else if constexpr (types::filesystem_path<T>) {

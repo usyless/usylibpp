@@ -17,7 +17,7 @@ namespace usylibpp::types {
     concept wstring = std::is_same_v<std::decay_t<T>, std::wstring>;
 
     template<typename T>
-    concept string = std::is_same_v<std::decay_t<T>, std::string>;
+    concept string = std::is_same_v<std::decay_t<T>, std::string> || (std::is_pointer_v<std::decay_t<T>> && std::is_same_v<std::remove_cvref_t<std::remove_pointer_t<std::decay_t<T>>>, char>);
 
     template<typename T>
     concept filesystem_path = std::is_same_v<std::decay_t<T>, std::filesystem::path>;
