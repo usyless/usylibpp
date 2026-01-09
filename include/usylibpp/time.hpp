@@ -26,11 +26,14 @@ namespace usylibpp::time {
         return tm_safe(std::time(nullptr));
     }
 
+    inline auto current_datetime_stream() {
+        auto cur_tm = current_tm_safe();
+        return std::put_time(&cur_tm, "%Y-%m-%d %H:%M:%S");
+    }
+
     inline std::string current_datetime() {
         std::stringstream ss;
-        
-        auto cur_tm = current_tm_safe();
-        ss << std::put_time(&cur_tm, "%Y-%m-%d %H:%M:%S");
+        ss << current_datetime_stream();
         return ss.str();
     }
 }
