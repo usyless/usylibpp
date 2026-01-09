@@ -6,7 +6,7 @@ int main() {
     print::println("Hello! Welcome to my silly library\n");
 
     print::println("Time functions:");
-    print::println("time::current_datetime: {}", time::current_datetime());
+    print::println("time::datetime_string: {}", time::datetime_string());
     print::println();
 
     print::println("String functions:");
