@@ -143,6 +143,7 @@ namespace usylibpp::strings {
         return N;
     }
 
+    #ifndef __EMSCRIPTEN__
     [[nodiscard]] inline std::string url_encode(const std::string_view url) {
         std::ostringstream escaped;
         escaped << std::hex << std::uppercase << std::setfill('0');
@@ -157,4 +158,5 @@ namespace usylibpp::strings {
     
         return escaped.str();
     }
+    #endif
 }
