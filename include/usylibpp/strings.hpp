@@ -4,6 +4,7 @@
 #include <string>
 #include <string_view>
 #include <cstring>
+#include <charconv>
 #include "types.hpp"
 
 #ifdef WIN32
