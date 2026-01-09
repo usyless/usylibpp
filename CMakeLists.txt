@@ -96,15 +96,19 @@ if (PROJECT_IS_TOP_LEVEL)
 
             # /Zi
             # /DEBUG
-            $<$<CONFIG:Debug>:/RTC1>
-            $<$<CONFIG:Debug>:/Zi>
-            $<$<CONFIG:Debug>:/Od>
+            $<$<CONFIG:Debug>:
+                /RTC1
+                /Zi
+                /Od
+            >
 
-            $<$<CONFIG:Release>:/O2>
-            $<$<CONFIG:Release>:/Ob2>
-            $<$<CONFIG:Release>:/Oi>
-            $<$<CONFIG:Release>:/Oy>
-            $<$<CONFIG:Release>:/Gy>
+            $<$<CONFIG:Release>:
+                /O2
+                /Ob2
+                /Oi
+                /Oy
+                /Gy
+            >
         )
     endif()
 endif()
