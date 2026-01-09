@@ -174,7 +174,7 @@ namespace usylibpp::windows {
         return buffer;
     }
 
-    inline bool set_current_cwd_to_executable_directory() {
+    inline bool set_cwd_to_executable_directory() {
         auto exe_path_opt = current_executable_path();
 
         if (!exe_path_opt) return false;
