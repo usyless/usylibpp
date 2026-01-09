@@ -9,7 +9,8 @@
 
 # Usage
 Cmake:
-```include(FetchContent)
+```cmake
+include(FetchContent)
 
 FetchContent_Declare(
     usylibpp
@@ -20,4 +21,5 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(usylibpp)
 
-target_link_libraries(${PROJECT_NAME} PRIVATE usylibpp::usylibpp)```
+target_link_libraries(${PROJECT_NAME} PRIVATE usylibpp::usylibpp)
+```
