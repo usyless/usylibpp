@@ -17,7 +17,7 @@ namespace usylibpp::windows {
      * Convert a const char* into a std::wstring
      * Returns std::nullopt if the string is empty or on error
      */
-    inline std::optional<std::wstring> to_wstr(const char* utf8) {
+    [[nodiscard]] inline std::optional<std::wstring> to_wstr(const char* utf8) {
         const auto buffer_size = MultiByteToWideChar(CP_UTF8, 0, utf8, -1, nullptr, 0);
 
         if (buffer_size == 0) {
@@ -29,7 +29,7 @@ namespace usylibpp::windows {
         return wstr;
     }
 
-    inline std::optional<std::wstring> to_wstr(const std::string& utf8) {
+    [[nodiscard]] inline std::optional<std::wstring> to_wstr(const std::string& utf8) {
         return to_wstr(utf8.c_str());
     }
 
@@ -38,7 +38,7 @@ namespace usylibpp::windows {
      * Returns std::nullopt if the string is empty or on error
      */
     template <types::wchar_t_compatible T>
-    inline std::optional<std::string> to_utf8(T&& _wstr) {
+    [[nodiscard]] inline std::optional<std::string> to_utf8(T&& _wstr) {
         const auto wstr = strings::wchar_t_from_compatible(std::forward<T>(_wstr));
 
         const auto buffer_size = WideCharToMultiByte(CP_UTF8, 0, wstr, -1, nullptr, 0, nullptr, nullptr);
@@ -63,7 +63,7 @@ namespace usylibpp::windows {
     public:
         COMWrapper() : hr(dummy ? 1 : (CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE))) {}
 
-        constexpr HRESULT status() {
+        [[nodiscard]] constexpr HRESULT status() {
             return hr;
         }
 
@@ -78,7 +78,7 @@ namespace usylibpp::windows {
      * Pass true into ComInitialised to not re-initialise COM
      */
     template <bool ComInitialised = false, types::wchar_t_compatible T>
-    inline bool recycle_file(T&& wstr) {
+    [[nodiscard]] inline bool recycle_file(T&& wstr) {
         using Microsoft::WRL::ComPtr;
 
         COMWrapper<ComInitialised> COM{};
@@ -107,7 +107,7 @@ namespace usylibpp::windows {
     }
 
     template <types::wchar_t_compatible T>
-    inline bool open_file_in_default_app(T&& file_path) {
+    [[nodiscard]] inline bool open_file_in_default_app(T&& file_path) {
         HINSTANCE result = ShellExecuteW(
             nullptr,
             L"open",
@@ -124,7 +124,7 @@ namespace usylibpp::windows {
      * Pass true into ComInitialised to not re-initialise COM
      */
     template <bool ComInitialised = false, types::wchar_t_compatible T>
-    inline bool show_file_in_exporer(T&& file_path) {
+    [[nodiscard]] inline bool show_file_in_explorer(T&& file_path) {
         COMWrapper<ComInitialised> COM{};
         auto hr = COM.status();
         if (FAILED(hr)) return false;
@@ -144,7 +144,7 @@ namespace usylibpp::windows {
     /**
      * Caches the result
      */
-    inline std::optional<std::reference_wrapper<const std::wstring>> current_executable_path() {
+    [[nodiscard]] inline std::optional<std::reference_wrapper<const std::wstring>> current_executable_path() {
         static bool has_run = false;
         static std::wstring buffer;
         if (has_run) {
@@ -174,7 +174,7 @@ namespace usylibpp::windows {
         return buffer;
     }
 
-    inline bool set_cwd_to_executable_directory() {
+    [[nodiscard]] inline bool set_cwd_to_executable_directory() {
         auto exe_path_opt = current_executable_path();
 
         if (!exe_path_opt) return false;
@@ -196,7 +196,7 @@ namespace usylibpp::windows {
      * Downloads folder by default
      * Pass in any FOLDERID_XXXXXX
      */
-    inline std::optional<std::filesystem::path> get_known_folder(const GUID& folder = FOLDERID_Downloads) {
+    [[nodiscard]] inline std::optional<std::filesystem::path> get_known_folder(const GUID& folder = FOLDERID_Downloads) {
         PWSTR path = nullptr;
 
         HRESULT hr = SHGetKnownFolderPath(folder, 0, nullptr, &path);
@@ -212,7 +212,7 @@ namespace usylibpp::windows {
      * Pass true into ComInitialised to not re-initialise COM
      */
     template <bool ComInitialised = false>
-    inline std::optional<std::filesystem::path> get_folder_picker() {
+    [[nodiscard]] inline std::optional<std::filesystem::path> get_folder_picker() {
         using Microsoft::WRL::ComPtr;
 
         COMWrapper<ComInitialised> COM{};
@@ -261,13 +261,13 @@ namespace usylibpp::windows {
      * Make sure to pass in just the name without the extension
      * Checks both the current directory and the PATH
      */
-    inline bool exe_exists(const std::wstring& exeName) {
+    [[nodiscard]] inline bool exe_exists(const std::wstring& exeName) {
         std::error_code ec;
         return std::filesystem::exists(exeName + L".exe", ec) || SearchPathW(nullptr, exeName.c_str(), L".exe", 0, nullptr, nullptr) > 0;
     }
 
     namespace admin {
-        inline bool is_admin() {
+        [[nodiscard]] inline bool is_admin() {
             static bool has_run = false;
             static bool is_admin = false;
 
@@ -293,7 +293,7 @@ namespace usylibpp::windows {
         /**
          * Exits the program on success
          */
-        inline bool relaunch_as_admin() {
+        [[nodiscard]] inline bool relaunch_as_admin() {
             auto exe_path_option = current_executable_path();
 
             if (!exe_path_option) return false;
@@ -348,7 +348,7 @@ namespace usylibpp::windows {
                 create(title, message, mainContent, icon, buttons, ARRAYSIZE(buttons));
             }
 
-            inline bool confirmation(PCWSTR title, PCWSTR message, PCWSTR mainContent, PCWSTR icon) {
+            [[nodiscard]] inline bool confirmation(PCWSTR title, PCWSTR message, PCWSTR mainContent, PCWSTR icon) {
                 TASKDIALOG_BUTTON buttons[] = { 
                     { IDOK, L"Confirm" },
                     { IDCANCEL, L"Cancel" } 
@@ -388,7 +388,7 @@ namespace usylibpp::windows {
         }
 
         template <types::wchar_t_strict T1, types::wchar_t_strict T2, types::wchar_t_strict T3>
-        inline bool confirmation(T1&& title, T2&& message, T3&& message_body) noexcept {
+        [[nodiscard]] inline bool confirmation(T1&& title, T2&& message, T3&& message_body) noexcept {
             return internal::confirmation(
                 strings::wchar_t_from_strict(std::forward<T1>(title)), 
                 strings::wchar_t_from_strict(std::forward<T2>(message)), 

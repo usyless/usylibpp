@@ -15,7 +15,7 @@ namespace usylibpp::windows {
 
 namespace usylibpp::strings {
     template<types::wchar_t_strict T>
-    inline constexpr const wchar_t* wchar_t_from_strict(T&& str) {
+    [[nodiscard]] inline constexpr const wchar_t* wchar_t_from_strict(T&& str) {
         if constexpr (types::wchar_ptr<T>) {
             return str;
         } else if constexpr (types::wstring<T>) {
@@ -30,7 +30,7 @@ namespace usylibpp::strings {
      * If its a string type this pointer will only survive to the next call on the thread
      */
     template<types::wchar_t_compatible T>
-    inline const wchar_t* wchar_t_from_compatible(T&& str) {
+    [[nodiscard]] inline const wchar_t* wchar_t_from_compatible(T&& str) {
         if constexpr (types::wchar_t_strict<T>) {
             return wchar_t_from_strict(std::forward<T>(str));
         } else if constexpr (types::string<T>) {
@@ -47,7 +47,7 @@ namespace usylibpp::strings {
     #endif
 
     template<typename... Ts>
-    inline constexpr auto concat_strings(Ts&&... parts) {
+    [[nodiscard]] inline constexpr auto concat_strings(Ts&&... parts) {
         using First = decltype(([](auto&& first, auto&&...) -> auto&& { return first; })(parts...));
         using Char = std::remove_cvref_t<decltype(std::declval<First>()[0])>;
 
@@ -65,7 +65,7 @@ namespace usylibpp::strings {
         std::transform(str.begin(), str.end(), str.begin(), [](unsigned char c) -> char { return static_cast<char>(std::tolower(c)); });
     }
 
-    inline constexpr std::string to_lowercase(const std::string_view str) {
+    [[nodiscard]] inline constexpr std::string to_lowercase(const std::string_view str) {
         std::string ret{str};
         to_lowercase_inplace(ret);
         return ret;
@@ -79,7 +79,7 @@ namespace usylibpp::strings {
         }
     }
 
-    inline constexpr std::string replace_all(const std::string_view str, const std::string_view from, const std::string_view to) {
+    [[nodiscard]] inline constexpr std::string replace_all(const std::string_view str, const std::string_view from, const std::string_view to) {
         std::string ret{str};
         replace_all_inplace(ret, from, to);
         return ret;
@@ -89,7 +89,7 @@ namespace usylibpp::strings {
      * Does not work for negative numbers or floats
      */
     template <typename N>
-    inline constexpr std::optional<N> to_number_positive(const std::string_view str) noexcept {
+    [[nodiscard]] inline constexpr std::optional<N> to_number_positive(const std::string_view str) noexcept {
         N num;
         if (std::from_chars(str.data(), str.data() + str.size(), num).ec == std::errc()) return num;
         return std::nullopt;
@@ -100,7 +100,7 @@ namespace usylibpp::strings {
      * String view only survives to next function call on this thread, make copy into std::string to keep alive
      */
     template <typename T>
-    inline std::optional<std::string_view> number_to_string_view_positive(T val) noexcept {
+    [[nodiscard]] inline std::optional<std::string_view> number_to_string_view_positive(T val) noexcept {
         constexpr auto TO_STRING_BUFFER_LENGTH = 21;
 
         static thread_local char buffer[TO_STRING_BUFFER_LENGTH];
@@ -128,7 +128,7 @@ namespace usylibpp::strings {
         split_by_for_each(input, '\n', f);
     }
 
-    inline constexpr size_t count_of(const std::string_view str, const char c) noexcept {
+    [[nodiscard]] inline constexpr size_t count_of(const std::string_view str, const char c) noexcept {
         size_t count = 0;
         for (const auto a : str) if (a == c) ++count;
         return count;
@@ -138,11 +138,11 @@ namespace usylibpp::strings {
      * Includes the null terminator
      */
     template<std::size_t N>
-    inline constexpr std::size_t constexpr_strlen(const char (&)[N]) {
+    [[nodiscard]] inline constexpr std::size_t constexpr_strlen(const char (&)[N]) {
         return N;
     }
 
-    inline std::string url_encode(const std::string_view url) {
+    [[nodiscard]] inline std::string url_encode(const std::string_view url) {
         std::ostringstream escaped;
         escaped << std::hex << std::uppercase << std::setfill('0');
     
