@@ -9,31 +9,27 @@ namespace usylibpp::time {
     /**
      * Thread safe
      */
-    inline tm tm_safe(time_t now_time) {
+    inline tm tm_safe(time_t time = std::time(nullptr)) {
         tm cur_tm{};
         #ifdef WIN32
-        localtime_s(&cur_tm, &now_time);
+        localtime_s(&cur_tm, &time);
         #else
         localtime_r(&now_time, &cur_tm);
         #endif
         return cur_tm;
     }
 
-    /**
-     * Thread safe
-     */
-    inline tm current_tm_safe() {
-        return tm_safe(std::time(nullptr));
+    inline auto datetime_stream(const tm& tm) {
+        return std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
     }
 
-    inline auto current_datetime_stream() {
-        auto cur_tm = current_tm_safe();
-        return std::put_time(&cur_tm, "%Y-%m-%d %H:%M:%S");
+    inline auto datetime_stream(time_t time = std::time(nullptr)) {
+        return datetime_stream(tm_safe(time));
     }
 
-    inline std::string current_datetime() {
+    inline std::string datetime_string(time_t time = std::time(nullptr)) {
         std::stringstream ss;
-        ss << current_datetime_stream();
+        ss << datetime_stream(time);
         return ss.str();
     }
 }
