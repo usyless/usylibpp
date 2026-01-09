@@ -20,7 +20,8 @@ int main() {
         auto str = "this has THIS STrING and once again THIS STrING";
         print::println("strings::replace_all before: {}, after: {}", str, strings::replace_all(str, "THIS STrING", "not that string"));
     }
-    print::println("strings::to_number_positive<size_t> {}", *strings::to_number_positive<size_t>("1234567"));
+    print::println("strings::to_number<size_t> {}", *strings::to_number<size_t>("1234567"));
+    print::println("strings::to_string_view {}", *strings::to_string_view(12234ULL));
     {
         auto str = "?this_is_a_get=lol a space??&ts=!!!%";
         print::println("strings::url_encode before: {}, after: {}", str, strings::url_encode(str));

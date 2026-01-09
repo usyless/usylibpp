@@ -27,4 +27,15 @@ namespace usylibpp::types {
 
     template <typename T>
     concept wchar_t_compatible = wchar_t_strict<T> || string<T> || filesystem_path<T>;
+
+    /**
+     * Done like this to prevent something like 128 bit unsigned integers if they happen to exist
+     */
+    template <typename T>
+    concept UnsignedInteger =
+        std::same_as<std::remove_cvref_t<T>, unsigned char> || 
+        std::same_as<std::remove_cvref_t<T>, unsigned short> || 
+        std::same_as<std::remove_cvref_t<T>, unsigned int> || 
+        std::same_as<std::remove_cvref_t<T>, unsigned long> || 
+        std::same_as<std::remove_cvref_t<T>, unsigned long long>;
 }

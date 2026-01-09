@@ -86,22 +86,18 @@ namespace usylibpp::strings {
         return ret;
     }
 
-    /**
-     * Does not work for negative numbers or floats
-     */
-    template <typename N>
-    [[nodiscard]] inline constexpr std::optional<N> to_number_positive(const std::string_view str) noexcept {
+    template <types::UnsignedInteger N>
+    [[nodiscard]] inline constexpr std::optional<N> to_number(const std::string_view str) noexcept {
         N num;
         if (std::from_chars(str.data(), str.data() + str.size(), num).ec == std::errc()) return num;
         return std::nullopt;
     }
 
     /**
-     * Does not work for negative numbers or floats
      * String view only survives to next function call on this thread, make copy into std::string to keep alive
      */
-    template <typename T>
-    [[nodiscard]] inline std::optional<std::string_view> number_to_string_view_positive(T val) noexcept {
+    template <types::UnsignedInteger T>
+    [[nodiscard]] inline std::optional<std::string_view> to_string_view(T val) noexcept {
         constexpr auto TO_STRING_BUFFER_LENGTH = 21;
 
         static thread_local char buffer[TO_STRING_BUFFER_LENGTH];
