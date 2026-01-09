@@ -143,20 +143,25 @@ namespace usylibpp::strings {
         return N;
     }
 
-    #ifndef __EMSCRIPTEN__
-    [[nodiscard]] inline std::string url_encode(const std::string_view url) {
-        std::ostringstream escaped;
-        escaped << std::hex << std::uppercase << std::setfill('0');
-    
-        for (char c : url) {
-            if (std::isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') {
-                escaped << c;
+    [[nodiscard]] inline std::string url_encode(std::string_view url) {
+        static constexpr char hex[] = "0123456789ABCDEF";
+
+        std::string out;
+        out.reserve(url.size() * 3); // worst case
+
+        for (unsigned char c : url) {
+            if ((c >= 'A' && c <= 'Z') ||
+                (c >= 'a' && c <= 'z') ||
+                (c >= '0' && c <= '9') ||
+                c == '-' || c == '_' || c == '.' || c == '~') {
+                out.push_back(c);
             } else {
-                escaped << '%' << std::setw(2) << static_cast<unsigned int>(static_cast<unsigned char>(c));
+                out.push_back('%');
+                out.push_back(hex[c >> 4]);
+                out.push_back(hex[c & 0xF]);
             }
         }
-    
-        return escaped.str();
+
+        return out;
     }
-    #endif
 }
