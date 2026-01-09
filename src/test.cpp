@@ -2,7 +2,7 @@
 
 int main() {
     using namespace usylibpp;
-    
+
     print::println("Hello! Welcome to my silly library\n");
 
     print::println("Time functions:");
@@ -41,6 +41,7 @@ int main() {
     //     print::println("windows::to_utf8 output: {}", *windows::to_utf8(str));
     // }
     print::println("windows::current_executable_path: {}", *windows::to_utf8(windows::current_executable_path()->get()));
+    print::println("windows::set_cwd_to_executable_directory: {}", windows::set_cwd_to_executable_directory());
     print::println("windows::get_known_folder: {}", *windows::to_utf8(*windows::get_known_folder()));
     print::println("windows::exe_exists(L\"usylibpp_test\"): {}", windows::exe_exists(L"usylibpp_test"));
     print::println("windows::exe_exists(L\"usylibpp\"): {}", windows::exe_exists(L"usylibpp"));
