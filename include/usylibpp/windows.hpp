@@ -179,12 +179,12 @@ namespace usylibpp::windows {
 
         if (!exe_path_opt) return false;
 
-        auto exe_path = exe_path_opt.value();
+        auto& exe_path = exe_path_opt.value();
 
         const auto pos = exe_path.get().find_last_of(L'\\');
         if (pos != std::wstring::npos) {
             // make a copy here
-            std::wstring exe_path_copy{exe_path_opt.value()};
+            std::wstring exe_path_copy{exe_path};
             exe_path_copy.resize(pos);
             if (SetCurrentDirectoryW(exe_path_copy.c_str())) return true;
         }
