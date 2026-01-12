@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include <locale>
 
 /**
@@ -14,5 +15,15 @@ namespace usylibpp::init {
     inline void set_utf8_locale() {
         std::setlocale(LC_ALL, ".UTF8");
         std::locale::global(std::locale(".UTF8"));
+    }
+
+    /**
+     * Enable a faster cout and cin
+     * I forgot the implications but i think you shouldnt be using
+     * the C-style out and in stuff at the same time to prevent issues
+     */
+    inline void quicker_cin_cout() {
+        std::ios_base::sync_with_stdio(false);
+        std::cin.tie(NULL);
     }
 }
