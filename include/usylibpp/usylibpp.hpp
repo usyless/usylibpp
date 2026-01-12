@@ -1,5 +1,7 @@
 #pragma once
 
+#include "macros.hpp"
+
 #ifdef WIN32
 #include "windows.hpp"
 #endif

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "macros.hpp"
 #include <string>
 #include <filesystem>
 #include <fstream>
@@ -28,4 +29,6 @@ namespace usylibpp::files {
 
         return buffer;
     }
+    
+    USYLIBPP__MAKE_OR_DEFAULT(read_as_bytes)
 }

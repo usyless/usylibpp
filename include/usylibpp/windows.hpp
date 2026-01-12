@@ -1,5 +1,6 @@
 #pragma once
 
+#include "macros.hpp"
 #include <string>
 #include <optional>
 #include <windows.h>
@@ -33,6 +34,8 @@ namespace usylibpp::windows {
         return to_wstr(utf8.c_str());
     }
 
+    USYLIBPP__MAKE_OR_DEFAULT(to_wstr)
+
      /**
      * Convert any compatible wide string into a std::string
      * Returns std::nullopt if the string is empty or on error
@@ -52,6 +55,8 @@ namespace usylibpp::windows {
 
         return utf8_str;
     }
+
+    USYLIBPP__MAKE_OR_DEFAULT_TEMPLATE(to_utf8)
 
     /**
      * If dummy = true then COM is not actually initialised again
@@ -174,6 +179,8 @@ namespace usylibpp::windows {
         return buffer;
     }
 
+    USYLIBPP__MAKE_OR_DEFAULT(current_executable_path)
+
     [[nodiscard]] inline bool set_cwd_to_executable_directory() {
         auto exe_path_opt = current_executable_path();
 
@@ -207,6 +214,8 @@ namespace usylibpp::windows {
         CoTaskMemFree(path);
         return folder_path;
     }
+
+    USYLIBPP__MAKE_OR_DEFAULT(get_known_folder)
 
     /**
      * Pass true into ComInitialised to not re-initialise COM
@@ -244,6 +253,8 @@ namespace usylibpp::windows {
 
         return selected_path;
     }
+
+    USYLIBPP__MAKE_OR_DEFAULT_TEMPLATE_NOARGS(get_folder_picker)
 
     /**
      * No stdin, just stdout and stderr

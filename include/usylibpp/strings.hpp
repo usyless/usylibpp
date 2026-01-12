@@ -1,5 +1,6 @@
 #pragma once
 
+#include "macros.hpp"
 #include <algorithm>
 #include <string>
 #include <string_view>
@@ -92,6 +93,8 @@ namespace usylibpp::strings {
         if (std::from_chars(str.data(), str.data() + str.size(), num).ec == std::errc()) return num;
         return std::nullopt;
     }
+    
+    USYLIBPP__MAKE_OR_DEFAULT_TEMPLATE(to_number)
 
     /**
      * String view only survives to next function call on this thread, make copy into std::string to keep alive
@@ -105,6 +108,8 @@ namespace usylibpp::strings {
         if (ec != std::errc()) return std::nullopt;
         return std::string_view{buffer, static_cast<size_t>(ptr - buffer)};
     }
+
+    USYLIBPP__MAKE_OR_DEFAULT_TEMPLATE(to_string_view)
 
     inline constexpr void split_by_for_each(const std::string_view input, const unsigned char split_by, const auto& f) noexcept {
         size_t start = 0;
