@@ -48,7 +48,5 @@ int main() {
     print::println("windows::exe_exists(L\"usylibpp\"): {}", windows::exe_exists(L"usylibpp"));
     print::println("windows::exe_exists(L\"ffmpeg\"): {}", windows::exe_exists(L"ffmpeg"));
     print::println("windows::admin::is_admin: {}", windows::admin::is_admin());
-
-    auto lol = windows::get_folder_picker_or_default<true>();
     #endif
 }

@@ -254,7 +254,7 @@ namespace usylibpp::windows {
         return selected_path;
     }
 
-    USYLIBPP__MAKE_OR_DEFAULT_TEMPLATE_NOARGS(get_folder_picker)
+    USYLIBPP__MAKE_OR_DEFAULT_TEMPLATE_AUTO(get_folder_picker)
 
     /**
      * No stdin, just stdout and stderr
