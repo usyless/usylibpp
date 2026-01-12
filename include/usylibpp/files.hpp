@@ -30,5 +30,5 @@ namespace usylibpp::files {
         return buffer;
     }
     
-    USYLIBPP__MAKE_OR_DEFAULT(read_as_bytes)
+    USYLIBPP__MAKE_OR(read_as_bytes, std::string{})
 }

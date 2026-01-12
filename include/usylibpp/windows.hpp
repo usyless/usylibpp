@@ -34,7 +34,7 @@ namespace usylibpp::windows {
         return to_wstr(utf8.c_str());
     }
 
-    USYLIBPP__MAKE_OR_DEFAULT(to_wstr)
+    USYLIBPP__MAKE_OR(to_wstr, std::wstring{})
 
      /**
      * Convert any compatible wide string into a std::string
@@ -56,7 +56,7 @@ namespace usylibpp::windows {
         return utf8_str;
     }
 
-    USYLIBPP__MAKE_OR_DEFAULT_TEMPLATE(to_utf8)
+    USYLIBPP__MAKE_OR_TEMPLATE(to_utf8, std::string{})
 
     /**
      * If dummy = true then COM is not actually initialised again
@@ -149,18 +149,19 @@ namespace usylibpp::windows {
     /**
      * Caches the result
      */
-    [[nodiscard]] inline std::optional<std::reference_wrapper<const std::wstring>> current_executable_path() {
+    [[nodiscard]] inline std::optional<std::reference_wrapper<const std::filesystem::path>> current_executable_path() {
         static bool has_run = false;
-        static std::wstring buffer;
+        static std::filesystem::path path;
         if (has_run) {
-            if (buffer.empty()) return std::nullopt;
-            return buffer;
+            if (path.empty()) return std::nullopt;
+            return path;
         }
 
         has_run = true;
 
         DWORD size = 260;
         DWORD copied = 0;
+        std::wstring buffer;
 
         while (true) {
             buffer.resize(size);
@@ -176,10 +177,12 @@ namespace usylibpp::windows {
 
         if (buffer.empty()) return std::nullopt;
 
-        return buffer;
+        path = buffer;
+
+        return path;
     }
 
-    USYLIBPP__MAKE_OR_DEFAULT(current_executable_path)
+    USYLIBPP__MAKE_OR(current_executable_path, std::filesystem::path{})
 
     [[nodiscard]] inline bool set_cwd_to_executable_directory() {
         auto exe_path_opt = current_executable_path();
@@ -188,10 +191,10 @@ namespace usylibpp::windows {
 
         auto& exe_path = exe_path_opt.value();
 
-        const auto pos = exe_path.get().find_last_of(L'\\');
+        const auto pos = exe_path.get().native().find_last_of(L'\\');
         if (pos != std::wstring::npos) {
             // make a copy here
-            std::wstring exe_path_copy{exe_path};
+            std::wstring exe_path_copy{exe_path.get()};
             exe_path_copy.resize(pos);
             if (SetCurrentDirectoryW(exe_path_copy.c_str())) return true;
         }
@@ -215,7 +218,7 @@ namespace usylibpp::windows {
         return folder_path;
     }
 
-    USYLIBPP__MAKE_OR_DEFAULT(get_known_folder)
+    USYLIBPP__MAKE_OR(get_known_folder, std::filesystem::path{})
 
     /**
      * Pass true into ComInitialised to not re-initialise COM
@@ -254,7 +257,7 @@ namespace usylibpp::windows {
         return selected_path;
     }
 
-    USYLIBPP__MAKE_OR_DEFAULT_TEMPLATE_AUTO(get_folder_picker)
+    USYLIBPP__MAKE_OR_TEMPLATE_AUTO(get_folder_picker, std::filesystem::path{})
 
     /**
      * No stdin, just stdout and stderr
