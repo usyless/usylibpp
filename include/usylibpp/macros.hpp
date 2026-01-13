@@ -1,19 +1,20 @@
 #pragma once
 
-#define USYLIBPP__MAKE_OR_TEMPLATE(function, or) \
-template <typename... arg, typename... call> \
-[[nodiscard]] inline auto function##_or_default(call&&... args) { \
-    return function<arg...>(std::forward<call>(args)...).value_or(or); \
-}
-
-#define USYLIBPP__MAKE_OR_TEMPLATE_AUTO(function, or) \
-template <auto... arg, typename... call> \
-[[nodiscard]] inline auto function##_or_default(call&&... args) { \
-    return function<arg...>(std::forward<call>(args)...).value_or(or); \
-}
-
 #define USYLIBPP__MAKE_OR(function, or) \
-template <typename... call> \
-[[nodiscard]] inline auto function##_or_default(call&&... args) { \
-    return function(std::forward<call>(args)...).value_or(or); \
-}
+template <typename... TArgs, typename... Call> \
+requires (sizeof...(TArgs) > 0) \
+[[nodiscard]] inline auto function##_or_default(Call&&... args) { \
+    return function<TArgs...>(std::forward<Call>(args)...).value_or(or); \
+} \
+ \
+template <auto... NTArgs, typename... Call> \
+requires (sizeof...(NTArgs) > 0) \
+[[nodiscard]] inline auto function##_or_default(Call&&... args) { \
+    return function<NTArgs...>(std::forward<Call>(args)...).value_or(or); \
+} \
+ \
+template <typename... Call> \
+requires (true) \
+[[nodiscard]] inline auto function##_or_default(Call&&... args) { \
+    return function(std::forward<Call>(args)...).value_or(or); \
+} \

@@ -12,26 +12,33 @@
 #include <shlobj.h>
 #include "strings.hpp"
 #include "types.hpp"
+#include "opts.hpp"
 
 namespace usylibpp::windows {
     /**
      * Convert a const char* into a std::wstring
      * Returns std::nullopt if the string is empty or on error
      */
-    [[nodiscard]] inline std::optional<std::wstring> to_wstr(const char* utf8) {
-        const auto buffer_size = MultiByteToWideChar(CP_UTF8, 0, utf8, -1, nullptr, 0);
+    template <opts options = {}>
+    [[nodiscard]] inline auto to_wstr(const char* utf8) {
+        using STR = std::wstring;
 
+        const auto buffer_size = MultiByteToWideChar(CP_UTF8, 0, utf8, -1, nullptr, 0);
+        
         if (buffer_size == 0) {
-            return std::nullopt;
+            if constexpr (options.as_optional) return std::optional<STR>{std::nullopt};
+            else return STR{};
         }
 
-        std::wstring wstr(buffer_size - 1, L'\0');
+        STR wstr(buffer_size - 1, L'\0');
         MultiByteToWideChar(CP_UTF8, 0, utf8, -1, wstr.data(), buffer_size);
-        return wstr;
+        if constexpr (options.as_optional) return std::optional<STR>{std::move(wstr)};
+        else return wstr;
     }
 
-    [[nodiscard]] inline std::optional<std::wstring> to_wstr(const std::string& utf8) {
-        return to_wstr(utf8.c_str());
+    template <opts options = {}>
+    [[nodiscard]] inline auto to_wstr(const std::string& utf8) {
+        return to_wstr<options>(utf8.c_str());
     }
 
     USYLIBPP__MAKE_OR(to_wstr, std::wstring{})
@@ -40,23 +47,27 @@ namespace usylibpp::windows {
      * Convert any compatible wide string into a std::string
      * Returns std::nullopt if the string is empty or on error
      */
-    template <types::wchar_t_compatible T>
-    [[nodiscard]] inline std::optional<std::string> to_utf8(T&& _wstr) {
+    template <opts options = {}, types::wchar_t_compatible T>
+    [[nodiscard]] inline auto to_utf8(T&& _wstr) {
+        using STR = std::string;
+        
         const auto wstr = strings::wchar_t_from_compatible(std::forward<T>(_wstr));
 
         const auto buffer_size = WideCharToMultiByte(CP_UTF8, 0, wstr, -1, nullptr, 0, nullptr, nullptr);
 
         if (buffer_size == 0) {
-            return std::nullopt;
+            if constexpr (options.as_optional) return std::optional<STR>{std::nullopt};
+            else return STR{};
         }
 
-        std::string utf8_str(buffer_size - 1, '\0');
+        STR utf8_str(buffer_size - 1, '\0');
         WideCharToMultiByte(CP_UTF8, 0, wstr, -1, utf8_str.data(), buffer_size - 1, nullptr, nullptr);
 
-        return utf8_str;
+        if constexpr (options.as_optional) return std::optional<STR>{std::move(utf8_str)};
+        else return utf8_str;
     }
 
-    USYLIBPP__MAKE_OR_TEMPLATE(to_utf8, std::string{})
+    USYLIBPP__MAKE_OR(to_utf8, std::string{})
 
     /**
      * If dummy = true then COM is not actually initialised again
@@ -182,7 +193,11 @@ namespace usylibpp::windows {
         return path;
     }
 
-    USYLIBPP__MAKE_OR(current_executable_path, std::filesystem::path{})
+    namespace internal {
+        inline const std::filesystem::path empty_path{};
+    }
+
+    USYLIBPP__MAKE_OR(current_executable_path, internal::empty_path)
 
     [[nodiscard]] inline bool set_cwd_to_executable_directory() {
         auto exe_path_opt = current_executable_path();
@@ -257,7 +272,7 @@ namespace usylibpp::windows {
         return selected_path;
     }
 
-    USYLIBPP__MAKE_OR_TEMPLATE_AUTO(get_folder_picker, std::filesystem::path{})
+    USYLIBPP__MAKE_OR(get_folder_picker, std::filesystem::path{})
 
     /**
      * No stdin, just stdout and stderr

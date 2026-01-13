@@ -20,8 +20,8 @@ int main() {
         auto str = "this has THIS STrING and once again THIS STrING";
         print::println("strings::replace_all before: {}, after: {}", str, strings::replace_all(str, "THIS STrING", "not that string"));
     }
-    print::println("strings::to_number<size_t> {}", strings::to_number_or_default<size_t>("1234567"));
-    print::println("strings::to_string_view {}", strings::to_string_view_or_default(12234ULL));
+    print::println("strings::to_number_or_default<size_t> {}", strings::to_number_or_default<size_t>("1234567"));
+    print::println("strings::to_string_view_or_default {}", strings::to_string_view_or_default(12234ULL));
     {
         auto str = "?this_is_a_get=lol a space??&ts=!!!%";
         print::println("strings::url_encode before: {}, after: {}", str, strings::url_encode(str));
@@ -41,9 +41,9 @@ int main() {
     //     print::println(L"windows::to_utf8 input: {}", str);
     //     print::println("windows::to_utf8 output: {}", *windows::to_utf8(str));
     // }
-    print::println("windows::current_executable_path: {}", windows::to_utf8_or_default(windows::current_executable_path()->get()));
+    print::println("windows::current_executable_path_or_default: {}", windows::to_utf8_or_default(windows::current_executable_path_or_default().get()));
     print::println("windows::set_cwd_to_executable_directory: {}", windows::set_cwd_to_executable_directory());
-    print::println("windows::get_known_folder: {}", windows::to_utf8_or_default(windows::get_known_folder_or_default()));
+    print::println("windows::get_known_folder_or_default: {}", windows::to_utf8_or_default(windows::get_known_folder_or_default()));
     print::println("windows::exe_exists(L\"usylibpp_test\"): {}", windows::exe_exists(L"usylibpp_test"));
     print::println("windows::exe_exists(L\"usylibpp\"): {}", windows::exe_exists(L"usylibpp"));
     print::println("windows::exe_exists(L\"ffmpeg\"): {}", windows::exe_exists(L"ffmpeg"));
