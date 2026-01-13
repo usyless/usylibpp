@@ -20,7 +20,7 @@ namespace usylibpp::windows {
      * Returns std::nullopt if the string is empty or on error
      */
     template <opts options = {}>
-    [[nodiscard]] inline auto to_wstr(const char* utf8) -> std::conditional_t<options.as_optional, std::optional<std::wstring>, std::wstring> {
+    [[nodiscard]] inline auto to_wstr(const char* utf8) -> types::opts_return<options, std::wstring> {
         using STR = std::wstring;
 
         const auto buffer_size = MultiByteToWideChar(CP_UTF8, 0, utf8, -1, nullptr, 0);
@@ -37,7 +37,7 @@ namespace usylibpp::windows {
     }
 
     template <opts options = {}>
-    [[nodiscard]] inline auto to_wstr(const std::string& utf8) -> std::conditional_t<options.as_optional, std::optional<std::wstring>, std::wstring> {
+    [[nodiscard]] inline auto to_wstr(const std::string& utf8) -> types::opts_return<options, std::wstring> {
         return to_wstr<options>(utf8.c_str());
     }
 
@@ -48,7 +48,7 @@ namespace usylibpp::windows {
      * Returns std::nullopt if the string is empty or on error
      */
     template <opts options = {}, types::wchar_t_compatible T>
-    [[nodiscard]] inline auto to_utf8(T&& _wstr) -> std::conditional_t<options.as_optional, std::optional<std::string>, std::string> {
+    [[nodiscard]] inline auto to_utf8(T&& _wstr) -> types::opts_return<options, std::string> {
         using STR = std::string;
         
         const auto wstr = strings::wchar_t_from_compatible(std::forward<T>(_wstr));
