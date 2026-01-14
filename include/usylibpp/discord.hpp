@@ -34,9 +34,30 @@ namespace usylibpp::discord {
         return ret;
     }
 
+    /**
+     * Add https:// to link if it does not begin with that
+     * Escapes link and url encodes it
+     */
+    [[nodiscard]] inline constexpr std::string https_if_needed(const std::string_view link) {
+        std::string ret;
+        if (!link.starts_with("https://") || !link.starts_with("http://")) {
+            ret.resize(link.size() + 8);
+            ret.append("https://");
+            ret.append(link);
+        }
+        escape_chars_inline(ret);
+        return strings::url_encode(ret);
+    }
+
+    /**
+     * Appends https:// if link does not begin with http:// or https://
+     * Will url encode link
+     *
+     * Disabling escape also disables validity checks
+     */
     template <bool escape>
     [[nodiscard]] inline constexpr std::string remove_link_embed(const std::string_view link) {
-        constexpr auto MAKE_NO_EMBED = [](const std::string_view str) -> std::string {
+        constexpr auto REMOVE_EMBED = [](const std::string_view str) -> std::string {
             std::string ret;
             ret.reserve(str.size() + 2);
             ret.push_back('<');
@@ -45,13 +66,14 @@ namespace usylibpp::discord {
             return ret;
         };
 
-        if constexpr (escape) return MAKE_NO_EMBED(escape_chars(link));
-        else return MAKE_NO_EMBED(link);
+        if constexpr (escape) return REMOVE_EMBED(https_if_needed(link));
+        else return REMOVE_EMBED(strings::url_encode(link));
     }
 
     /**
      * Appends https:// if link does not begin with http:// or https://
      * Will url encode link
+     *
      * Disabling escape also disables validity checks
      */
     template <bool escape>
@@ -69,23 +91,8 @@ namespace usylibpp::discord {
             return ret;
         };
 
-        if constexpr (!escape) {
-            return MAKE_LINK(text, strings::url_encode(link));
-        } else {
-            std::string link_escaped;
-
-            if (!link.starts_with("https://") || !link.starts_with("http://")) {
-                link_escaped.resize(link.size() + 8);
-                link_escaped.append("https://");
-                link_escaped.append(link);
-            } else {
-                link_escaped = link;
-            }
-
-            escape_chars_inline(link_escaped);
-
-            return MAKE_LINK(escape_chars(text), strings::url_encode(link_escaped));
-        }
+        if constexpr (escape) return MAKE_LINK(escape_chars(text), https_if_needed(link));
+        else return MAKE_LINK(text, strings::url_encode(link));
     }
 
     [[nodiscard]] inline constexpr std::string mention_from_id(const std::string_view id) {
