@@ -31,7 +31,11 @@ int main() {
         print::println("strings::encode_full_url before: {}, after: {}", str, strings::encode_full_url(str));
     }
     {
-        auto str = "https://example.com/what lol/true/?this_is_a_get=lol a space??&ts=!!!%#fragment";
+        auto str = "https://example.com/what lol/true?this_is_a_get=lol a space??&ts=!!!%#fragment";
+        print::println("strings::encode_full_url before: {}, after: {}", str, strings::encode_full_url(str));
+    }
+    {
+        auto str = "https://example.com/what lol/true/#fragment";
         print::println("strings::encode_full_url before: {}, after: {}", str, strings::encode_full_url(str));
     }
     print::println();
