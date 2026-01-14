@@ -21,7 +21,7 @@ endif()
 
 configure_file(
     ${PROJECT_SOURCE_DIR}/cmake/usylibppconfig.hpp.in
-    ${CMAKE_CURRENT_BINARY_DIR}/usylibppconfig.hpp
+    ${CMAKE_CURRENT_BINARY_DIR}/usylibpp_config/usylibppconfig.hpp
 )
 
 add_library(usylibpp_usylibpp INTERFACE)
@@ -33,7 +33,7 @@ target_compile_features(usylibpp_usylibpp INTERFACE
 
 target_include_directories(usylibpp_usylibpp INTERFACE
     ${PROJECT_SOURCE_DIR}/include
-    ${CMAKE_CURRENT_BINARY_DIR}
+    ${CMAKE_CURRENT_BINARY_DIR}/usylibpp_config
 )
 
 if (WIN32)
