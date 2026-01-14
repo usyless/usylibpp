@@ -44,10 +44,10 @@ namespace usylibpp::discord {
             ret.reserve(link.size() + 8);
             ret.append("https://");
             ret.append(link);
-            return strings::url_encode(ret);
+            return strings::encode_full_url(ret);
         }
         
-        return strings::url_encode(link);
+        return strings::encode_full_url(link);
     }
 
     /**
@@ -68,7 +68,7 @@ namespace usylibpp::discord {
         };
 
         if constexpr (escape) return REMOVE_EMBED(https_if_needed(link));
-        else return REMOVE_EMBED(strings::url_encode(link));
+        else return REMOVE_EMBED(strings::encode_full_url(link));
     }
 
     /**
@@ -93,7 +93,7 @@ namespace usylibpp::discord {
         };
 
         if constexpr (escape) return MAKE_LINK(escape_chars(text), https_if_needed(link));
-        else return MAKE_LINK(text, strings::url_encode(link));
+        else return MAKE_LINK(text, strings::encode_full_url(link));
     }
 
     [[nodiscard]] inline constexpr std::string mention_from_id(const std::string_view id) {
