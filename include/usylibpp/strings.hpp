@@ -201,24 +201,20 @@ namespace usylibpp::strings {
             path = rest.substr(path_start);
         }
 
+        // separate path from query
+        const auto query_start = path.find('?');
+        std::string_view raw_path = path.substr(0, query_start);
+        std::string_view raw_query = (query_start != std::string_view::npos) ?
+                                        path.substr(query_start + 1) : "";
+
         // separate query from fragment
-        const auto fragment_start = path.find('#');
-        std::string_view raw_path = path.substr(0, fragment_start);
+        const auto fragment_start = raw_query.find('#');
         std::string_view raw_fragment{};
 
         if (fragment_start != std::string_view::npos) {
-            raw_fragment = path.substr(fragment_start + 1);
+            raw_fragment = raw_query.substr(fragment_start + 1);
+            raw_query = raw_query.substr(0, fragment_start);
         }
-
-        // separate path from query
-        const auto query_start = path.find('?');
-        std::string_view raw_query{};
-
-        if (query_start != std::string_view::npos) {
-            raw_query = raw_path.substr(query_start + 1);
-        }
-
-        raw_path = raw_path.substr(0, query_start);
 
         // encode path segments
         split_by_for_each(raw_path, '/', [&encoded_path](const std::string_view part) {
