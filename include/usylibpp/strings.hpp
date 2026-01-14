@@ -225,7 +225,20 @@ namespace usylibpp::strings {
 
         if (!raw_query.empty()) {
             encoded_path.push_back('?');
-            encoded_path += url_encode(raw_query);
+
+            split_by_for_each(raw_query, '&', [&encoded_path](const std::string_view part) {
+                const auto equals_start = part.find('=');
+                if (equals_start == std::string_view::npos) {
+                    encoded_path += url_encode(part);
+                } else {
+                    encoded_path += url_encode(part.substr(0, equals_start));
+                    encoded_path.push_back('=');
+                    encoded_path += url_encode(part.substr(equals_start + 1));
+                }
+                encoded_path.push_back('&');
+            });
+            
+            encoded_path.pop_back();
         }
 
         if (!raw_fragment.empty()) {
