@@ -70,7 +70,7 @@ namespace usylibpp::discord {
         };
 
         if constexpr (!escape) {
-            return MAKE_LINK(text, link);
+            return MAKE_LINK(text, strings::url_encode(link));
         } else {
             std::string link_escaped;
 
@@ -84,7 +84,7 @@ namespace usylibpp::discord {
 
             escape_chars_inline(link_escaped);
 
-            return MAKE_LINK(escape_chars(text), link_escaped);
+            return MAKE_LINK(escape_chars(text), strings::url_encode(link_escaped));
         }
     }
 
