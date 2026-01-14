@@ -144,6 +144,10 @@ namespace usylibpp::strings {
         return N;
     }
 
+    /**
+     * Straight up url encodes a string
+     * No url sensitivity, for that use encode_full_urls
+     */
     [[nodiscard]] inline 
     #if __cplusplus >= 202302L
     constexpr 
