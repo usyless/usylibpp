@@ -57,7 +57,7 @@ namespace usylibpp::discord {
         constexpr auto MAKE_LINK = [](const std::string_view text, const std::string_view link) -> std::string {
             std::string ret;
             ret.reserve(text.size() + link.size() + 4);
-            
+
             ret.push_back('[');
             ret.append(text);
             ret.push_back(']');
@@ -67,7 +67,7 @@ namespace usylibpp::discord {
             return ret;
         };
 
-        if constexpr (escape) {
+        if constexpr (!escape) {
             return MAKE_LINK(text, link);
         } else {
             std::string link_escaped;
@@ -84,5 +84,15 @@ namespace usylibpp::discord {
 
             return MAKE_LINK(escape_chars(text), link_escaped);
         }
+    }
+
+    [[nodiscard]] inline constexpr std::string mention_from_id(const std::string_view id) {
+        std::string out;
+        out.reserve(id.size() + 3);
+        out.push_back('<');
+        out.push_back('@');
+        out.append(id);
+        out.push_back('>');
+        return out;
     }
 }
