@@ -192,7 +192,7 @@ namespace usylibpp::strings {
 
         // separate host from path parts
         const auto path_start = rest.find('/');
-        std::string_view path{};
+        std::string_view path = rest;
 
         if (path_start == std::string_view::npos) {
             encoded_path += rest; // rest is host
@@ -203,20 +203,29 @@ namespace usylibpp::strings {
 
         // separate path from query
         const auto query_start = path.find('?');
-        std::string_view raw_path = path.substr(0, query_start);
         std::string_view raw_query = (query_start != std::string_view::npos) ?
                                         path.substr(query_start + 1) : "";
-
-        // separate query from fragment
-        const auto fragment_start = raw_query.find('#');
+        
+        size_t fragment_start{std::string_view::npos};
         std::string_view raw_fragment{};
+        if (raw_query.empty()) {
+            fragment_start = path.find('#');
 
-        if (fragment_start != std::string_view::npos) {
-            raw_fragment = raw_query.substr(fragment_start + 1);
-            raw_query = raw_query.substr(0, fragment_start);
+            if (fragment_start != std::string_view::npos) {
+                raw_fragment = path.substr(fragment_start + 1);
+                path = path.substr(0, fragment_start);
+            }
+        } else {
+            fragment_start = raw_query.find('#');
+
+            if (fragment_start != std::string_view::npos) {
+                raw_fragment = raw_query.substr(fragment_start + 1);
+                raw_query = raw_query.substr(0, fragment_start);
+            }
         }
 
         // encode path segments
+        std::string_view raw_path = path.substr(0, std::min(query_start, fragment_start));
         split_by_for_each(raw_path, '/', [&encoded_path](const std::string_view part) {
             encoded_path += url_encode(part);
             encoded_path.push_back('/');
