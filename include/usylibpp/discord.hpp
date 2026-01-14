@@ -36,7 +36,7 @@ namespace usylibpp::discord {
 
     /**
      * Add https:// to link if it does not begin with that
-     * Escapes link and url encodes it
+     * URL encodes link
      */
     [[nodiscard]] inline constexpr std::string https_if_needed(const std::string_view link) {
         std::string ret;
