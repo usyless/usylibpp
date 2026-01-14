@@ -36,7 +36,7 @@ namespace usylibpp::discord {
 
     /**
      * Add https:// to link if it does not begin with that
-     * URL encodes link
+     * URL encodes link with strings::encode_full_url
      */
     [[nodiscard]] inline constexpr std::string https_if_needed(const std::string_view link) {
         if (!(link.starts_with("https://") || link.starts_with("http://"))) {
@@ -51,54 +51,38 @@ namespace usylibpp::discord {
     }
 
     /**
-     * Appends https:// if link does not begin with http:// or https://
-     * Will url encode link
-     *
-     * Disabling escape also disables validity checks
+     * Make sure to escape the content being passed in if desired
      */
-    template <bool escape>
     [[nodiscard]] inline constexpr std::string remove_link_embed(const std::string_view link) {
-        constexpr auto REMOVE_EMBED = [](const std::string_view str) -> std::string {
-            std::string ret;
-            ret.reserve(str.size() + 2);
-            ret.push_back('<');
-            ret.append(str);
-            ret.push_back('>');
-            return ret;
-        };
+        std::string ret;
+        ret.reserve(link.size() + 2);
 
-        if constexpr (escape) return REMOVE_EMBED(https_if_needed(link));
-        else return REMOVE_EMBED(strings::encode_full_url(link));
+        ret.push_back('<');
+        ret.append(link);
+        ret.push_back('>');
+        return ret;
     }
 
     /**
-     * Appends https:// if link does not begin with http:// or https://
-     * Will url encode link
-     *
-     * Disabling escape also disables validity checks
+     * Make sure to escape the content being passed in if desired
      */
-    template <bool escape>
     [[nodiscard]] inline constexpr std::string as_hyperlink(const std::string_view text, const std::string_view link) {
-        constexpr auto MAKE_LINK = [](const std::string_view text, const std::string_view link) -> std::string {
-            std::string ret;
-            ret.reserve(text.size() + link.size() + 4);
+        std::string ret;
+        ret.reserve(text.size() + link.size() + 4);
 
-            ret.push_back('[');
-            ret.append(text);
-            ret.push_back(']');
-            ret.push_back('(');
-            ret.append(link);
-            ret.push_back(')');
-            return ret;
-        };
-
-        if constexpr (escape) return MAKE_LINK(escape_chars(text), https_if_needed(link));
-        else return MAKE_LINK(text, strings::encode_full_url(link));
+        ret.push_back('[');
+        ret.append(text);
+        ret.push_back(']');
+        ret.push_back('(');
+        ret.append(link);
+        ret.push_back(')');
+        return ret;
     }
 
     [[nodiscard]] inline constexpr std::string mention_from_id(const std::string_view id) {
         std::string out;
         out.reserve(id.size() + 3);
+
         out.push_back('<');
         out.push_back('@');
         out.append(id);
