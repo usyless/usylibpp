@@ -45,7 +45,6 @@ namespace usylibpp::discord {
             ret.append("https://");
             ret.append(link);
         }
-        escape_chars_inline(ret);
         return strings::url_encode(ret);
     }
 
