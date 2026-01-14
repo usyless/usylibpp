@@ -199,12 +199,10 @@ namespace usylibpp::strings {
 
         // separate path from query
         const auto query_start = path.find('?');
-        std::string_view raw_path{};
+        std::string_view raw_path = path.substr(0, query_start);
         std::string_view raw_query{};
 
-        if (query_start == std::string_view::npos) {
-            raw_path = path.substr(0, query_start);
-        } else {
+        if (query_start != std::string_view::npos) {
             raw_query = path.substr(query_start + 1);
         }
 
@@ -218,13 +216,11 @@ namespace usylibpp::strings {
         }
 
         // encode path segments
-        bool at_least_one_path_part = false;
-        split_by_for_each(raw_path, '/', [&encoded_path, &at_least_one_path_part](const std::string_view part) {
-            at_least_one_path_part = true;
+        split_by_for_each(raw_path, '/', [&encoded_path](const std::string_view part) {
             encoded_path += url_encode(part);
             encoded_path.push_back('/');
         });
-        if (at_least_one_path_part) encoded_path.pop_back(); // correctly finish path
+        if (!raw_path.ends_with('/')) encoded_path.pop_back();
 
         if (!raw_query.empty()) {
             encoded_path.push_back('?');
