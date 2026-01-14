@@ -3,7 +3,7 @@
 #include "macros.hpp"
 #include "opts.hpp"
 
-#ifdef WIN32
+#ifdef USYLIBPP_ENABLE_WINDOWS
 #include "windows.hpp"
 #endif
 

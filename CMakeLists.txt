@@ -44,22 +44,36 @@ if (WIN32)
         "NOMINMAX"
     )
 
-    set(USYLIBPP_ENABLE_TASK_DIALOG
+    set(USYLIBPP_ENABLE_WINDOWS
         ON
         CACHE BOOL
-        "Enable Windows Task Dialog support.
-
-When enabled, the library injects a Common Controls v6 manifest into the final executable,
-and links against Comctl32"
+        "Enable Windows Functions.
+        
+This includes windows.h along with various other headers, but enables all of the windows wrappers"
     )
 
-    if(USYLIBPP_ENABLE_TASK_DIALOG)
-        target_compile_definitions(usylibpp_usylibpp INTERFACE 
-            "USYLIBPP_ENABLE_TASK_DIALOG"
+    if (USYLIBPP_ENABLE_WINDOWS)
+        target_compile_definitions(usylibpp_usylibpp INTERFACE
+            "USYLIBPP_ENABLE_WINDOWS"
         )
-        target_link_libraries(usylibpp_usylibpp INTERFACE 
-            Comctl32
+
+        set(USYLIBPP_ENABLE_TASK_DIALOG
+            ON
+            CACHE BOOL
+            "Enable Windows Task Dialog support.
+
+    When enabled, the library injects a Common Controls v6 manifest into the final executable,
+    and links against Comctl32"
         )
+
+        if(USYLIBPP_ENABLE_TASK_DIALOG)
+            target_compile_definitions(usylibpp_usylibpp INTERFACE 
+                "USYLIBPP_ENABLE_TASK_DIALOG"
+            )
+            target_link_libraries(usylibpp_usylibpp INTERFACE 
+                Comctl32
+            )
+        endif()
     endif()
 endif()
 
