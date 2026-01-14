@@ -144,7 +144,11 @@ namespace usylibpp::strings {
         return N;
     }
 
-    [[nodiscard]] inline std::string url_encode(std::string_view url) {
+    [[nodiscard]] inline 
+    #if __cplusplus >= 202302L
+    constexpr 
+    #endif
+    std::string url_encode(const std::string_view url) {
         static constexpr char hex[] = "0123456789ABCDEF";
 
         std::string out;
@@ -165,4 +169,74 @@ namespace usylibpp::strings {
 
         return out;
     }
+
+    /**
+     * Won't work for name:host url's
+     * Probably has other bugs
+     */
+    [[nodiscard]] inline constexpr std::string encode_full_url(const std::string_view url) {
+        std::string encoded_path{};
+
+        const auto scheme_end = url.find("://");
+        std::string_view rest = url;
+        
+        // separate scheme
+        if (scheme_end != std::string_view::npos) {
+            encoded_path += url.substr(0, scheme_end + 3); // keep ://
+            rest = url.substr(scheme_end + 3);
+        }
+
+        // separate host from path parts
+        const auto path_start = rest.find('/');
+        std::string_view path{};
+
+        if (path_start == std::string_view::npos) {
+            encoded_path += rest; // rest is host
+        } else {
+            encoded_path += rest.substr(0, path_start); // host
+            path = rest.substr(path_start);
+        }
+
+        // separate path from query
+        const auto query_start = path.find('?');
+        std::string_view raw_path{};
+        std::string_view raw_query{};
+
+        if (query_start == std::string_view::npos) {
+            raw_path = path.substr(0, query_start);
+        } else {
+            raw_query = path.substr(query_start + 1);
+        }
+
+        // separate query from fragment
+        const auto fragment_start = raw_query.find('#');
+        std::string_view raw_fragment{};
+
+        if (fragment_start != std::string_view::npos) {
+            raw_fragment = raw_query.substr(fragment_start + 1);
+            raw_query = raw_query.substr(0, fragment_start);
+        }
+
+        // encode path segments
+        bool at_least_one_path_part = false;
+        split_by_for_each(raw_path, '/', [&encoded_path, &at_least_one_path_part](const std::string_view part) {
+            at_least_one_path_part = true;
+            encoded_path += url_encode(part);
+            encoded_path.push_back('/');
+        });
+        if (at_least_one_path_part) encoded_path.pop_back(); // correctly finish path
+
+        if (!raw_query.empty()) {
+            encoded_path.push_back('?');
+            encoded_path += url_encode(raw_query);
+        }
+
+        if (!raw_fragment.empty()) {
+            encoded_path.push_back('#');
+            encoded_path += url_encode(raw_fragment);
+        }
+
+        return encoded_path;
+    }
+
 }
