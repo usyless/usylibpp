@@ -39,13 +39,15 @@ namespace usylibpp::discord {
      * URL encodes link
      */
     [[nodiscard]] inline constexpr std::string https_if_needed(const std::string_view link) {
-        std::string ret;
-        if (!link.starts_with("https://") || !link.starts_with("http://")) {
-            ret.resize(link.size() + 8);
+        if (!(link.starts_with("https://") || link.starts_with("http://"))) {
+            std::string ret;
+            ret.reserve(link.size() + 8);
             ret.append("https://");
             ret.append(link);
+            return strings::url_encode(ret);
         }
-        return strings::url_encode(ret);
+        
+        return strings::url_encode(link);
     }
 
     /**
