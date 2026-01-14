@@ -35,16 +35,18 @@ namespace usylibpp::discord {
     }
 
     template <bool escape>
-    [[nodiscard]] inline constexpr std::string no_embed(const std::string_view str) {
-        std::string ret;
-        ret.reserve(str.size() + 2);
-        ret.push_back('<');
+    [[nodiscard]] inline constexpr std::string remove_link_embed(const std::string_view link) {
+        constexpr auto MAKE_NO_EMBED = [](const std::string_view str) -> std::string {
+            std::string ret;
+            ret.reserve(str.size() + 2);
+            ret.push_back('<');
+            ret.append(str);
+            ret.push_back('>');
+            return ret;
+        };
 
-        if constexpr (escape) ret.append(escape_chars(str));
-        else ret.append(str);
-
-        ret.push_back('>');
-        return ret;
+        if constexpr (escape) return MAKE_NO_EMBED(escape_chars(link));
+        else return MAKE_NO_EMBED(link);
     }
 
     /**
@@ -53,7 +55,7 @@ namespace usylibpp::discord {
      * Disabling escape also disables validity checks
      */
     template <bool escape>
-    [[nodiscard]] inline constexpr std::string as_link(const std::string_view text, const std::string_view link) {
+    [[nodiscard]] inline constexpr std::string as_hyperlink(const std::string_view text, const std::string_view link) {
         constexpr auto MAKE_LINK = [](const std::string_view text, const std::string_view link) -> std::string {
             std::string ret;
             ret.reserve(text.size() + link.size() + 4);
