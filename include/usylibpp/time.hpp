@@ -14,7 +14,7 @@ namespace usylibpp::time {
         #ifdef WIN32
         localtime_s(&cur_tm, &time);
         #else
-        localtime_r(&now_time, &cur_tm);
+        localtime_r(&time, &cur_tm);
         #endif
         return cur_tm;
     }
