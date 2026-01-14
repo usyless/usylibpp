@@ -7,6 +7,7 @@
 #include "windows.hpp"
 #endif
 
+#include "discord.hpp"
 #include "strings.hpp"
 #include "files.hpp"
 #include "init.hpp"
