@@ -11,7 +11,7 @@ int main() {
 
     print::println("String functions:");
     print::println("strings::concat_strings (chars): {}", strings::concat_strings("hello", " ", "there!"));
-    print::println(L"strings::concat_strings (wide chars): {}", strings::concat_strings(L"hello", L" ", L"there!"));
+    // print::println(L"strings::concat_strings (wide chars): {}", strings::concat_strings(L"hello", L" ", L"there!"));
     {
         auto str = "THis IS moSTLY upperCASE";
         print::println("strings::to_lowercase before: {}, after: {}", str, strings::to_lowercase(str));
@@ -36,6 +36,10 @@ int main() {
     }
     {
         auto str = "https://example.com/what lol/true/#fragment";
+        print::println("strings::encode_full_url before: {}, after: {}", str, strings::encode_full_url(str));
+    }
+    {
+        auto str = "https://example.com?hi#fragment";
         print::println("strings::encode_full_url before: {}, after: {}", str, strings::encode_full_url(str));
     }
     print::println();

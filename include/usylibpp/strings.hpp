@@ -191,8 +191,10 @@ namespace usylibpp::strings {
         }
 
         // separate host from path parts
-        const auto path_start = rest.find('/');
-        std::string_view path = rest;
+        auto path_start = rest.find('/');
+        if (path_start == std::string_view::npos) path_start = rest.find('?');
+        if (path_start == std::string_view::npos) path_start = rest.find('#');
+        std::string_view path{};
 
         if (path_start == std::string_view::npos) {
             encoded_path += rest; // rest is host
@@ -202,21 +204,20 @@ namespace usylibpp::strings {
         }
 
         // separate path from query
-        const auto query_start = path.find('?');
+        auto query_start = path.find('?');
         std::string_view raw_query = (query_start != std::string_view::npos) ?
                                         path.substr(query_start + 1) : "";
         
-        size_t fragment_start{std::string_view::npos};
         std::string_view raw_fragment{};
-        if (raw_query.empty()) {
-            fragment_start = path.find('#');
+        if(query_start == std::string_view::npos) {
+            query_start = path.find('#');
 
-            if (fragment_start != std::string_view::npos) {
-                raw_fragment = path.substr(fragment_start + 1);
-                path = path.substr(0, fragment_start);
+            if (query_start != std::string_view::npos) {
+                raw_fragment = path.substr(query_start + 1);
+                path = path.substr(0, query_start);
             }
         } else {
-            fragment_start = raw_query.find('#');
+            const auto fragment_start = raw_query.find('#');
 
             if (fragment_start != std::string_view::npos) {
                 raw_fragment = raw_query.substr(fragment_start + 1);
@@ -225,12 +226,14 @@ namespace usylibpp::strings {
         }
 
         // encode path segments
-        std::string_view raw_path = path.substr(0, std::min(query_start, fragment_start));
-        split_by_for_each(raw_path, '/', [&encoded_path](const std::string_view part) {
+        std::string_view raw_path = path.substr(0, query_start);
+        bool did_split = false;
+        split_by_for_each(raw_path, '/', [&encoded_path, &did_split](const std::string_view part) {
+            did_split = true;
             encoded_path += url_encode(part);
             encoded_path.push_back('/');
         });
-        if (!raw_path.ends_with('/')) encoded_path.pop_back();
+        if (did_split && !raw_path.ends_with('/')) encoded_path.pop_back();
 
         if (!raw_query.empty()) {
             encoded_path.push_back('?');
