@@ -8,43 +8,7 @@
 #include <charconv>
 #include "types.hpp"
 
-#ifdef USYLIBPP_ENABLE_WINDOWS
-#include "windows.hpp"
-#endif
-
 namespace usylibpp::strings {
-    #ifdef USYLIBPP_ENABLE_WINDOWS
-    template<types::wchar_t_strict T>
-    [[nodiscard]] inline constexpr const wchar_t* wchar_t_from_strict(T&& str) {
-        if constexpr (types::wchar_ptr<T>) {
-            return str;
-        } else if constexpr (types::wstring<T>) {
-            return str.c_str();
-        } else {
-            static_assert(!std::is_same_v<T, T>, "Unsupported type passed to usylibpp::strings::wchar_t_from_strict, must have forgotten a branch");
-        }
-    }
-
-    /**
-     * If its a string type this pointer will only survive to the next call on the thread
-     */
-    template<types::wchar_t_compatible T>
-    [[nodiscard]] inline const wchar_t* wchar_t_from_compatible(T&& str) {
-        if constexpr (types::wchar_t_strict<T>) {
-            return wchar_t_from_strict(std::forward<T>(str));
-        } else if constexpr (types::string<T>) {
-            static thread_local std::optional<std::wstring> buffer;
-            buffer = windows::to_wstr(str);
-            if (!buffer) return L"";
-            return buffer->c_str();
-        } else if constexpr (types::filesystem_path<T>) {
-            return str.native().c_str();
-        } else {
-            static_assert(!std::is_same_v<T, T>, "Unsupported type passed to usylibpp::strings::wchar_t_from_compatible, must have forgotten a branch");
-        }
-    }
-    #endif
-
     template<typename... Ts>
     [[nodiscard]] inline constexpr auto concat_strings(Ts&&... parts) {
         using First = decltype(([](auto&& first, auto&&...) -> auto&& { return first; })(parts...));

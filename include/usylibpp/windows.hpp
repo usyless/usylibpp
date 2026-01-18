@@ -10,7 +10,6 @@
 #include <shellapi.h>
 #include <knownfolders.h>
 #include <shlobj.h>
-#include "strings.hpp"
 #include "types.hpp"
 #include "opts.hpp"
 
@@ -43,6 +42,36 @@ namespace usylibpp::windows {
 
     USYLIBPP__MAKE_OR(to_wstr, std::wstring{})
 
+    template<types::wchar_t_strict T>
+    [[nodiscard]] inline constexpr const wchar_t* wchar_t_from_strict(T&& str) {
+        if constexpr (types::wchar_ptr<T>) {
+            return str;
+        } else if constexpr (types::wstring<T>) {
+            return str.c_str();
+        } else {
+            static_assert(!std::is_same_v<T, T>, "Unsupported type passed to usylibpp::wchar_t_from_strict, must have forgotten a branch");
+        }
+    }
+
+    /**
+     * If its a string type this pointer will only survive to the next call on the thread
+     */
+    template<types::wchar_t_compatible T>
+    [[nodiscard]] inline const wchar_t* wchar_t_from_compatible(T&& str) {
+        if constexpr (types::wchar_t_strict<T>) {
+            return wchar_t_from_strict(std::forward<T>(str));
+        } else if constexpr (types::string<T>) {
+            static thread_local std::optional<std::wstring> buffer;
+            buffer = windows::to_wstr(str);
+            if (!buffer) return L"";
+            return buffer->c_str();
+        } else if constexpr (types::filesystem_path<T>) {
+            return str.native().c_str();
+        } else {
+            static_assert(!std::is_same_v<T, T>, "Unsupported type passed to usylibpp::wchar_t_from_compatible, must have forgotten a branch");
+        }
+    }
+
      /**
      * Convert any compatible wide string into a std::string
      * Returns std::nullopt if the string is empty or on error
@@ -51,7 +80,7 @@ namespace usylibpp::windows {
     [[nodiscard]] inline auto to_utf8(T&& _wstr) -> types::opts_return<options, std::string> {
         using STR = std::string;
         
-        const auto wstr = strings::wchar_t_from_compatible(std::forward<T>(_wstr));
+        const auto wstr = wchar_t_from_compatible(std::forward<T>(_wstr));
 
         const auto buffer_size = WideCharToMultiByte(CP_UTF8, 0, wstr, -1, nullptr, 0, nullptr, nullptr);
 
@@ -105,7 +134,7 @@ namespace usylibpp::windows {
         if (FAILED(hr)) return false;
 
         ComPtr<IShellItem> item;
-        hr = SHCreateItemFromParsingName(strings::wchar_t_from_compatible(std::forward<T>(wstr)), nullptr, IID_PPV_ARGS(item.GetAddressOf()));
+        hr = SHCreateItemFromParsingName(wchar_t_from_compatible(std::forward<T>(wstr)), nullptr, IID_PPV_ARGS(item.GetAddressOf()));
         if (FAILED(hr)) return false;
 
         fileOp->SetOperationFlags(FOFX_RECYCLEONDELETE);
@@ -127,7 +156,7 @@ namespace usylibpp::windows {
         HINSTANCE result = ShellExecuteW(
             nullptr,
             L"open",
-            strings::wchar_t_from_compatible(std::forward<T>(file_path)),
+            wchar_t_from_compatible(std::forward<T>(file_path)),
             nullptr,
             nullptr,
             SW_SHOWNORMAL
@@ -147,7 +176,7 @@ namespace usylibpp::windows {
         
         PIDLIST_ABSOLUTE pidlFolder = nullptr;
 
-        hr = SHParseDisplayName(strings::wchar_t_from_compatible(std::forward<T>(file_path)), nullptr, &pidlFolder, 0, nullptr);
+        hr = SHParseDisplayName(wchar_t_from_compatible(std::forward<T>(file_path)), nullptr, &pidlFolder, 0, nullptr);
         if (FAILED(hr) || !pidlFolder) return false;
 
         hr = SHOpenFolderAndSelectItems(pidlFolder, 0, nullptr, 0);
@@ -389,9 +418,9 @@ namespace usylibpp::windows {
         template <types::wchar_t_strict T1, types::wchar_t_strict T2, types::wchar_t_strict T3>
         inline void error(T1&& title, T2&& message, T3&& message_body) noexcept {
             internal::ok(
-                strings::wchar_t_from_strict(std::forward<T1>(title)), 
-                strings::wchar_t_from_strict(std::forward<T2>(message)), 
-                strings::wchar_t_from_strict(std::forward<T3>(message_body)), 
+                wchar_t_from_strict(std::forward<T1>(title)), 
+                wchar_t_from_strict(std::forward<T2>(message)), 
+                wchar_t_from_strict(std::forward<T3>(message_body)), 
                 TD_ERROR_ICON
             );
         }
@@ -399,9 +428,9 @@ namespace usylibpp::windows {
         template <types::wchar_t_strict T1, types::wchar_t_strict T2, types::wchar_t_strict T3>
         inline void warning(T1&& title, T2&& message, T3&& message_body) noexcept {
             internal::ok(
-                strings::wchar_t_from_strict(std::forward<T1>(title)), 
-                strings::wchar_t_from_strict(std::forward<T2>(message)), 
-                strings::wchar_t_from_strict(std::forward<T3>(message_body)), 
+                wchar_t_from_strict(std::forward<T1>(title)), 
+                wchar_t_from_strict(std::forward<T2>(message)), 
+                wchar_t_from_strict(std::forward<T3>(message_body)), 
                 TD_WARNING_ICON
             );
         }
@@ -409,9 +438,9 @@ namespace usylibpp::windows {
         template <types::wchar_t_strict T1, types::wchar_t_strict T2, types::wchar_t_strict T3>
         inline void info(T1&& title, T2&& message, T3&& message_body) noexcept {
             internal::ok(
-                strings::wchar_t_from_strict(std::forward<T1>(title)), 
-                strings::wchar_t_from_strict(std::forward<T2>(message)), 
-                strings::wchar_t_from_strict(std::forward<T3>(message_body)), 
+                wchar_t_from_strict(std::forward<T1>(title)), 
+                wchar_t_from_strict(std::forward<T2>(message)), 
+                wchar_t_from_strict(std::forward<T3>(message_body)), 
                 TD_INFORMATION_ICON
             );
         }
@@ -419,9 +448,9 @@ namespace usylibpp::windows {
         template <types::wchar_t_strict T1, types::wchar_t_strict T2, types::wchar_t_strict T3>
         [[nodiscard]] inline bool confirmation(T1&& title, T2&& message, T3&& message_body) noexcept {
             return internal::confirmation(
-                strings::wchar_t_from_strict(std::forward<T1>(title)), 
-                strings::wchar_t_from_strict(std::forward<T2>(message)), 
-                strings::wchar_t_from_strict(std::forward<T3>(message_body)), 
+                wchar_t_from_strict(std::forward<T1>(title)), 
+                wchar_t_from_strict(std::forward<T2>(message)), 
+                wchar_t_from_strict(std::forward<T3>(message_body)), 
                 TD_INFORMATION_ICON
             );
         }
