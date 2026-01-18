@@ -57,18 +57,18 @@ This includes windows.h along with various other headers, but enables all of the
             "USYLIBPP_ENABLE_WINDOWS"
         )
 
-        set(USYLIBPP_ENABLE_TASK_DIALOG
+        set(USYLIBPP_ENABLE_TASK_DIALOG_DARK_MODE
             ON
             CACHE BOOL
-            "Enable Windows Task Dialog support.
+            "Enable Windows Task Dialog, and win32 dark mode enabling support.
 
     When enabled, the library injects a Common Controls v6 manifest into the final executable,
     and links against Comctl32"
         )
 
-        if(USYLIBPP_ENABLE_TASK_DIALOG)
+        if(USYLIBPP_ENABLE_TASK_DIALOG_DARK_MODE)
             target_compile_definitions(usylibpp_usylibpp INTERFACE 
-                "USYLIBPP_ENABLE_TASK_DIALOG"
+                "USYLIBPP_ENABLE_TASK_DIALOG_DARK_MODE"
             )
             target_link_libraries(usylibpp_usylibpp INTERFACE 
                 Comctl32

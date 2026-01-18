@@ -342,7 +342,7 @@ namespace usylibpp::windows {
         }
     }
 
-    #ifdef USYLIBPP_ENABLE_TASK_DIALOG
+    #ifdef USYLIBPP_ENABLE_TASK_DIALOG_DARK_MODE
     // Embed the manifest to enable task dialogs
     #pragma comment(linker, \
     "\"/manifestdependency:type='win32' " \
