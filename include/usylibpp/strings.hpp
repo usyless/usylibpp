@@ -9,10 +9,7 @@
 #include "types.hpp"
 
 #ifdef USYLIBPP_ENABLE_WINDOWS
-namespace usylibpp::windows {
-    std::optional<std::wstring> to_wstr(const char* utf8);
-    std::optional<std::wstring> to_wstr(const std::string& utf8);
-}
+#include "windows.hpp"
 #endif
 
 namespace usylibpp::strings {
