@@ -62,7 +62,7 @@ namespace usylibpp::windows {
             return wchar_t_from_strict(std::forward<T>(str));
         } else if constexpr (types::string<T>) {
             static thread_local std::optional<std::wstring> buffer;
-            buffer = windows::to_wstr(str);
+            buffer = to_wstr(str);
             if (!buffer) return L"";
             return buffer->c_str();
         } else if constexpr (types::filesystem_path<T>) {
