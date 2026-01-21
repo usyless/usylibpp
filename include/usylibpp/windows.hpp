@@ -360,6 +360,38 @@ namespace usylibpp::windows {
         return text;
     }
 
+    /**
+     * Get a vector of wstrings for the drag query files in a hDrop
+     */
+    inline std::vector<std::wstring> get_drag_query_files(const HDROP hDrop) {
+        UINT file_count = DragQueryFileW(hDrop, 0xFFFFFFFF, NULL, 0);
+        if (file_count <= 0) {
+            return {};
+        }
+
+        std::vector<std::wstring> files;
+
+        for (std::size_t file_index{0}; file_index < file_count; ++file_index) {
+            UINT len = DragQueryFileW(hDrop, file_index, NULL, 0);
+
+            if (len == 0) continue;
+
+            ++len; // include null terminator
+
+            std::wstring& buffer = files.emplace_back(len, L'\0');
+            UINT copied = DragQueryFileW(hDrop, file_index, buffer.data(), len);
+
+            if (copied <= 0) {
+                files.pop_back();
+                continue;
+            }
+
+            buffer.resize(copied);
+        }
+
+        return files;
+    }
+
     namespace admin {
         [[nodiscard]] inline bool is_admin() {
             static bool has_run = false;
