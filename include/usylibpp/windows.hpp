@@ -324,6 +324,42 @@ namespace usylibpp::windows {
         return std::filesystem::exists(exeName + L".exe", ec) || SearchPathW(nullptr, exeName.c_str(), L".exe", 0, nullptr, nullptr) > 0;
     }
 
+    /**
+     * Returns the text in the clipboard from a given hwnd
+     * Converts to wstring
+     * I don't think the clipboard stuff is thread safe
+     */
+    [[nodiscard]] inline std::wstring get_clipboard_text(const HWND hwnd) {
+        if (!OpenClipboard(hwnd)) return {};
+
+        std::wstring text;
+
+        if (IsClipboardFormatAvailable(CF_UNICODETEXT)) {
+            HANDLE hData = GetClipboardData(CF_UNICODETEXT);
+            if (hData) {
+                LPCWSTR pszText = static_cast<LPCWSTR>(GlobalLock(hData));
+                if (pszText) {
+                    text = pszText;
+                    GlobalUnlock(hData);
+                }
+            }
+        }
+        else if (IsClipboardFormatAvailable(CF_TEXT)) {
+            HANDLE hData = GetClipboardData(CF_TEXT);
+            if (hData) {
+                LPCSTR pszText = static_cast<LPCSTR>(GlobalLock(hData));
+                if (pszText) {
+                    text = to_wstr_or_default(pszText);
+                    GlobalUnlock(hData);
+                }
+            }
+        }
+
+        CloseClipboard();
+
+        return text;
+    }
+
     namespace admin {
         [[nodiscard]] inline bool is_admin() {
             static bool has_run = false;
