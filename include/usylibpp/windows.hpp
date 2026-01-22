@@ -412,6 +412,7 @@ namespace usylibpp::windows {
             if (FAILED(hr)) return;
 
             hr = CoCreateInstance(CLSID_TaskbarList, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pTaskbar));
+            if (FAILED(hr)) pTaskbar = nullptr;
         }
 
         [[nodiscard]] constexpr HRESULT status() {
