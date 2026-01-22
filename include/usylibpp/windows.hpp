@@ -1,8 +1,10 @@
 #pragma once
 
 #include "macros.hpp"
+#include <functional>
 #include <string>
 #include <optional>
+#include <thread>
 #include <windows.h>
 #include <shobjidl.h>
 #include <shlguid.h>
@@ -12,6 +14,10 @@
 #include <shlobj.h>
 #include "types.hpp"
 #include "opts.hpp"
+
+#ifdef USYLIBPP_ENABLE_WIL
+#include <wil/resource.h>
+#endif
 
 namespace usylibpp::windows {
     /**
@@ -363,7 +369,7 @@ namespace usylibpp::windows {
     /**
      * Get a vector of wstrings for the drag query files in a hDrop
      */
-    inline std::vector<std::wstring> get_drag_query_files(const HDROP hDrop) {
+    [[nodiscard]] inline std::vector<std::wstring> get_drag_query_files(const HDROP hDrop) {
         UINT file_count = DragQueryFileW(hDrop, 0xFFFFFFFF, NULL, 0);
         if (file_count <= 0) {
             return {};
@@ -371,7 +377,7 @@ namespace usylibpp::windows {
 
         std::vector<std::wstring> files;
 
-        for (std::size_t file_index{0}; file_index < file_count; ++file_index) {
+        for (UINT file_index{0}; file_index < file_count; ++file_index) {
             UINT len = DragQueryFileW(hDrop, file_index, NULL, 0);
 
             if (len == 0) continue;
@@ -391,6 +397,236 @@ namespace usylibpp::windows {
 
         return files;
     }
+
+    #ifdef USYLIBPP_ENABLE_WIL
+    namespace process {
+        namespace internal {
+            /**
+             * The callback is a function which takes one argument of std::string_view
+             */
+            template <bool with_output = true, typename Callback = std::nullptr_t>
+            inline auto read_from_pipe(HANDLE pipe, Callback&& on_line = nullptr) {
+                std::string output;
+                char buffer[4096];
+                DWORD bytesRead{0};
+
+                std::string partialLine;
+
+                while (ReadFile(pipe, buffer, sizeof(buffer), &bytesRead, NULL) && bytesRead > 0) {
+                    if constexpr (with_output) output.append(buffer, bytesRead);
+
+                    if constexpr (!std::is_same_v<Callback, std::nullptr_t>) {
+                        partialLine.append(buffer, bytesRead);
+
+                        std::size_t start_pos = 0;
+                        std::size_t new_line_pos = 0;
+                        while ((new_line_pos = partialLine.find('\n', new_line_pos)) != std::string::npos) {
+                            std::size_t line_end = new_line_pos;
+
+                            if (line_end > start_pos && partialLine[line_end - 1] == '\r') --line_end;
+
+                            std::string_view line{partialLine.data() + start_pos, line_end - start_pos};
+
+                            on_line(line);
+                            start_pos = ++new_line_pos;
+                        }
+
+                        partialLine.erase(0, start_pos);
+                    }
+                }
+
+                if constexpr (!std::is_same_v<Callback, std::nullptr_t>) {
+                    if (!partialLine.empty()) {
+                        on_line(partialLine);
+                    }
+                }
+
+                if constexpr(with_output) return output;
+            }
+        }
+
+        struct process_output {
+            int status = 0;
+            std::string stdout_{};
+            std::string stderr_{};
+        };
+
+        struct process_settings {
+            std::wstring commandline;
+            std::string_view input;
+            std::filesystem::path working_directory;
+
+            std::function<void(std::string_view)> on_stdout_line = nullptr;
+            std::function<void(std::string_view)> on_stderr_line = nullptr;
+        };
+
+        struct process_options {
+            bool allow_visible_windows = true;
+            bool capture_stdout = true;
+            bool capture_stderr = true;
+            bool set_lifetime_of_subprocess_to_this_process = true;
+        };
+
+        /**
+         * Run a process and either capture its output or dont
+         * Blocks until the process exits
+         */
+        template <process_options opts = {}>
+        process_output run_process(const process_settings& options) {
+            SECURITY_ATTRIBUTES saAttr{};
+            saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
+            saAttr.bInheritHandle = TRUE;
+            saAttr.lpSecurityDescriptor = NULL;
+
+            wil::unique_handle hStdOutRead = NULL, hStdOutWrite = NULL;
+            wil::unique_handle hStdErrRead = NULL, hStdErrWrite = NULL;
+            wil::unique_handle hStdInRead = NULL, hStdInWrite = NULL;
+
+            {
+            HANDLE hReadOut = NULL, hWriteOut = NULL;
+            HANDLE hReadErr = NULL, hWriteErr = NULL;
+            HANDLE hInRead = NULL, hInWrite = NULL;
+            
+            if (opts.capture_stdout || options.on_stdout_line) {
+                if (!CreatePipe(&hReadOut, &hWriteOut, &saAttr, 0)) {
+                    return { -1 };
+                }
+            }
+
+            hStdOutRead.reset(hReadOut);
+            hStdOutWrite.reset(hWriteOut);
+
+            if (opts.capture_stdout || options.on_stdout_line) {
+                if (!SetHandleInformation(hStdOutRead.get(), HANDLE_FLAG_INHERIT, 0)) {
+                    return { -1 };
+                }
+            }
+
+            if (opts.capture_stderr || options.on_stderr_line) {
+                if (!CreatePipe(&hReadErr, &hWriteErr, &saAttr, 0)) {
+                    return { -1 };
+                }
+            }
+
+            hStdErrRead.reset(hReadErr);
+            hStdErrWrite.reset(hWriteErr);
+
+            if (opts.capture_stderr || options.on_stderr_line) {
+                if (!SetHandleInformation(hStdErrRead.get(), HANDLE_FLAG_INHERIT, 0)) {
+                    return { -1 };
+                }
+            }
+
+            if (!options.input.empty()) {
+                if (!CreatePipe(&hInRead, &hInWrite, &saAttr, 0)) {
+                    return { -1 };
+                }
+                
+                hStdInRead.reset(hInRead);
+                hStdInWrite.reset(hInWrite);
+
+                if (!SetHandleInformation(hStdInWrite.get(), HANDLE_FLAG_INHERIT, 0)) {
+                    return { -1 };
+                }
+            }
+            }
+
+            STARTUPINFO si{};
+            si.cb = sizeof(STARTUPINFO);
+            si.dwFlags = STARTF_USESHOWWINDOW | STARTF_USESTDHANDLES;
+            si.wShowWindow = (opts.allow_visible_windows) ? SW_SHOW : SW_HIDE;
+            si.hStdOutput = hStdOutWrite.get();
+            si.hStdError = hStdErrWrite.get();
+            si.hStdInput = hStdInRead.get();
+
+            PROCESS_INFORMATION pi{};
+
+            std::wstring cmdline = options.commandline;
+            BOOL success = CreateProcessW(
+                NULL,
+                cmdline.data(),
+                NULL,
+                NULL,
+                TRUE,
+                (opts.allow_visible_windows) ? NULL : CREATE_NO_WINDOW,
+                NULL,
+                options.working_directory.c_str(),
+                &si,
+                &pi
+            );
+
+            hStdOutWrite.reset();
+            hStdErrWrite.reset();
+            hStdInRead.reset();
+
+            if (!success) {
+                return { -1 };
+            }
+
+            if (!options.input.empty() and hStdInWrite.is_valid()) {
+                DWORD written;
+                WriteFile(hStdInWrite.get(), options.input.data(), static_cast<DWORD>(options.input.size()), &written, NULL);
+                hStdInWrite.reset();
+            }
+
+            wil::unique_handle process{pi.hProcess};
+            wil::unique_handle thread{pi.hThread};
+
+            wil::unique_handle hJob;
+
+            if constexpr (opts.set_lifetime_of_subprocess_to_this_process) {
+                hJob.reset(CreateJobObjectW(NULL, NULL));
+                if (hJob.is_valid()) {
+                    JOBOBJECT_EXTENDED_LIMIT_INFORMATION jeli{};
+                    jeli.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+
+                    if (SetInformationJobObject(
+                            hJob.get(),
+                            JobObjectExtendedLimitInformation,
+                            &jeli,
+                            sizeof(jeli))) {
+                        AssignProcessToJobObject(hJob.get(), process.get());
+                    }
+                }
+            }
+
+            std::string stdoutOutput;
+            std::string stderrOutput;
+
+            std::thread stdoutThread;
+            if (options.on_stdout_line) {
+                auto& on_line = options.on_stdout_line;
+                stdoutThread = std::thread([&stdoutOutput, hStdOutRead = hStdOutRead.get(), &on_line] {
+                    if constexpr (opts.capture_stdout) stdoutOutput = internal::read_from_pipe<opts.capture_stdout>(hStdOutRead, on_line);
+                    else internal::read_from_pipe<opts.capture_stdout>(hStdOutRead, on_line);
+                });
+            } else if constexpr (opts.capture_stdout) {
+                stdoutThread = std::thread([&stdoutOutput, hStdOutRead = hStdOutRead.get()] { stdoutOutput = internal::read_from_pipe<opts.capture_stdout>(hStdOutRead); });
+            }
+
+            std::thread stderrThread;
+            if (options.on_stderr_line) {
+                auto& on_line = options.on_stderr_line;
+                stderrThread = std::thread([&stderrOutput, hStdErrRead = hStdErrRead.get(), &on_line] {
+                    if constexpr (opts.capture_stderr) stderrOutput = internal::read_from_pipe<opts.capture_stderr>(hStdErrRead, on_line);
+                    else internal::read_from_pipe<opts.capture_stderr>(hStdErrRead, on_line);
+                });
+            } else if constexpr (opts.capture_stderr) {
+                stderrThread = std::thread([&stderrOutput, hStdErrRead = hStdErrRead.get()] { stderrOutput = internal::read_from_pipe<opts.capture_stderr>(hStdErrRead); });
+            }
+
+            WaitForSingleObject(process.get(), INFINITE);
+
+            stdoutThread.join();
+            stderrThread.join();
+
+            DWORD exitCode = 0;
+            GetExitCodeProcess(process.get(), &exitCode);
+
+            return { static_cast<int>(exitCode), stdoutOutput, stderrOutput };
+        }
+    }
+    #endif
 
     namespace admin {
         [[nodiscard]] inline bool is_admin() {

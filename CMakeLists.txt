@@ -53,9 +53,7 @@ This includes windows.h along with various other headers, but enables all of the
     )
 
     if (USYLIBPP_ENABLE_WINDOWS)
-        target_compile_definitions(usylibpp_usylibpp INTERFACE
-            "USYLIBPP_ENABLE_WINDOWS"
-        )
+        target_compile_definitions(usylibpp_usylibpp INTERFACE "USYLIBPP_ENABLE_WINDOWS")
 
         set(USYLIBPP_ENABLE_TASK_DIALOG_DARK_MODE
             ON
@@ -67,12 +65,40 @@ This includes windows.h along with various other headers, but enables all of the
         )
 
         if(USYLIBPP_ENABLE_TASK_DIALOG_DARK_MODE)
-            target_compile_definitions(usylibpp_usylibpp INTERFACE 
-                "USYLIBPP_ENABLE_TASK_DIALOG_DARK_MODE"
+            target_compile_definitions(usylibpp_usylibpp INTERFACE "USYLIBPP_ENABLE_TASK_DIALOG_DARK_MODE")
+            target_link_libraries(usylibpp_usylibpp INTERFACE Comctl32)
+        endif()
+
+        set(USYLIBPP_ENABLE_WIL
+            ON
+            CACHE BOOL
+            "Download wil(windows implementation libraries) to enable stuff like the windows::process namespace"
+        )
+
+        if(USYLIBPP_ENABLE_WIL)
+            target_compile_definitions(usylibpp_usylibpp INTERFACE "USYLIBPP_ENABLE_WIL")
+
+            include(FetchContent)
+
+            FetchContent_Declare(
+                microsoft_wil
+                GIT_REPOSITORY https://github.com/microsoft/wil.git
+                GIT_TAG master
+                GIT_SHALLOW TRUE
             )
-            target_link_libraries(usylibpp_usylibpp INTERFACE 
-                Comctl32
-            )
+
+            FetchContent_GetProperties(microsoft_wil)
+            if(NOT microsoft_wil_POPULATED)
+                FetchContent_Populate(microsoft_wil)
+
+                add_library(microsoft_wil INTERFACE)
+
+                target_include_directories(microsoft_wil INTERFACE
+                    ${microsoft_wil_SOURCE_DIR}/include
+                )
+            endif()
+
+            target_link_libraries(usylibpp_usylibpp INTERFACE microsoft_wil)
         endif()
     endif()
 endif()
