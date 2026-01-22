@@ -112,7 +112,7 @@ namespace usylibpp::windows {
     private:
         HRESULT hr;
     public:
-        COMWrapper() : hr(dummy ? 1 : (CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE))) {}
+        COMWrapper(DWORD co_init_flags = COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE) : hr(dummy ? 1 : (CoInitializeEx(nullptr, co_init_flags))) {}
 
         [[nodiscard]] constexpr HRESULT status() {
             return hr;
@@ -397,6 +397,44 @@ namespace usylibpp::windows {
 
         return files;
     }
+
+    template <bool ComInitialised = false>
+    struct TaskbarProgress {
+        COMWrapper<ComInitialised> COM{COINIT_MULTITHREADED | COINIT_DISABLE_OLE1DDE};
+        ITaskbarList3* pTaskbar = nullptr;
+        HWND hwnd_ = nullptr;
+        HRESULT hr;
+
+        /**
+         * You must check the status before using any method
+         */
+        TaskbarProgress(HWND hwnd) : hr(COM.status()), hwnd_(hwnd) {
+            if (FAILED(hr)) return;
+
+            hr = CoCreateInstance(CLSID_TaskbarList, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pTaskbar));
+        }
+
+        [[nodiscard]] constexpr HRESULT status() {
+            return hr;
+        }
+
+        bool set_progress(int value, int max) {
+            if (!pTaskbar) return false;
+
+            hr = pTaskbar->SetProgressState(hwnd_, TBPF_NORMAL);
+            if (FAILED(hr)) return false;
+
+            hr = pTaskbar->SetProgressValue(hwnd_, std::clamp(value, 0, max), max);
+            return SUCCEEDED(hr);
+        }
+
+        ~TaskbarProgress() {
+            if (!pTaskbar) return;
+
+            pTaskbar->SetProgressState(hwnd_, TBPF_NOPROGRESS);
+            pTaskbar->Release();
+        }
+    };
 
     #ifdef USYLIBPP_ENABLE_WIL
     namespace process {
