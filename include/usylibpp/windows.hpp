@@ -428,11 +428,17 @@ namespace usylibpp::windows {
             return SUCCEEDED(hr);
         }
 
-        ~TaskbarProgress() {
+        void cancel() {
             if (!pTaskbar) return;
 
             pTaskbar->SetProgressState(hwnd_, TBPF_NOPROGRESS);
             pTaskbar->Release();
+
+            pTaskbar = nullptr;
+        }
+
+        ~TaskbarProgress() {
+            cancel();
         }
     };
 
