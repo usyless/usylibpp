@@ -405,7 +405,7 @@ namespace usylibpp::windows {
              * The callback is a function which takes one argument of std::string_view
              */
             template <bool with_output = true, typename Callback = std::nullptr_t>
-            inline auto read_from_pipe(HANDLE pipe, Callback&& on_line = nullptr) {
+            inline std::string read_from_pipe(HANDLE pipe, Callback&& on_line = nullptr) {
                 std::string output;
                 char buffer[4096];
                 DWORD bytesRead{0};
@@ -441,7 +441,7 @@ namespace usylibpp::windows {
                     }
                 }
 
-                if constexpr(with_output) return output;
+                return output;
             }
         }
 
@@ -472,7 +472,7 @@ namespace usylibpp::windows {
          * Blocks until the process exits
          */
         template <process_options opts = {}>
-        process_output run_process(const process_settings& options) {
+        inline process_output run_process(const process_settings& options) {
             SECURITY_ATTRIBUTES saAttr{};
             saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
             saAttr.bInheritHandle = TRUE;
@@ -593,32 +593,25 @@ namespace usylibpp::windows {
             std::string stdoutOutput;
             std::string stderrOutput;
 
-            std::thread stdoutThread;
-            if (options.on_stdout_line) {
-                auto& on_line = options.on_stdout_line;
-                stdoutThread = std::thread([&stdoutOutput, hStdOutRead = hStdOutRead.get(), &on_line] {
-                    if constexpr (opts.capture_stdout) stdoutOutput = internal::read_from_pipe<opts.capture_stdout>(hStdOutRead, on_line);
-                    else internal::read_from_pipe<opts.capture_stdout>(hStdOutRead, on_line);
+            {
+            std::jthread stdoutThread;
+            if (opts.capture_stdout || options.on_stdout_line) {
+                stdoutThread = std::jthread([&stdoutOutput, hStdOutRead = hStdOutRead.get(), &options]() {
+                    if (options.on_stdout_line) stdoutOutput = internal::read_from_pipe<opts.capture_stdout>(hStdOutRead, options.on_stdout_line);
+                    else stdoutOutput = internal::read_from_pipe<opts.capture_stdout>(hStdOutRead);
                 });
-            } else if constexpr (opts.capture_stdout) {
-                stdoutThread = std::thread([&stdoutOutput, hStdOutRead = hStdOutRead.get()] { stdoutOutput = internal::read_from_pipe<opts.capture_stdout>(hStdOutRead); });
             }
 
-            std::thread stderrThread;
-            if (options.on_stderr_line) {
-                auto& on_line = options.on_stderr_line;
-                stderrThread = std::thread([&stderrOutput, hStdErrRead = hStdErrRead.get(), &on_line] {
-                    if constexpr (opts.capture_stderr) stderrOutput = internal::read_from_pipe<opts.capture_stderr>(hStdErrRead, on_line);
-                    else internal::read_from_pipe<opts.capture_stderr>(hStdErrRead, on_line);
+            std::jthread stderrThread;
+            if (opts.capture_stderr || options.on_stderr_line) {
+                stderrThread = std::jthread([&stderrOutput, hStdErrRead = hStdErrRead.get(), &options]() {
+                    if (options.on_stderr_line) stderrOutput = internal::read_from_pipe<opts.capture_stderr>(hStdErrRead, options.on_stderr_line);
+                    else stderrOutput = internal::read_from_pipe<opts.capture_stderr>(hStdErrRead);
                 });
-            } else if constexpr (opts.capture_stderr) {
-                stderrThread = std::thread([&stderrOutput, hStdErrRead = hStdErrRead.get()] { stderrOutput = internal::read_from_pipe<opts.capture_stderr>(hStdErrRead); });
             }
 
             WaitForSingleObject(process.get(), INFINITE);
-
-            stdoutThread.join();
-            stderrThread.join();
+            }
 
             DWORD exitCode = 0;
             GetExitCodeProcess(process.get(), &exitCode);
