@@ -499,9 +499,9 @@ namespace usylibpp::windows {
         };
 
         struct process_settings {
-            std::wstring commandline;
+            std::wstring_view commandline;
             std::string_view input;
-            std::filesystem::path working_directory;
+            const std::filesystem::path& working_directory;
 
             std::function<void(std::string_view)> on_stdout_line = nullptr;
             std::function<void(std::string_view)> on_stderr_line = nullptr;
@@ -522,6 +522,10 @@ namespace usylibpp::windows {
          */
         template <process_options opts = {}>
         inline process_output run_process(const process_settings& options) {
+            if (options.commandline.empty()) {
+                return { -1 };
+            }
+            
             SECURITY_ATTRIBUTES saAttr{};
             saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
             saAttr.bInheritHandle = TRUE;
@@ -590,7 +594,7 @@ namespace usylibpp::windows {
 
             PROCESS_INFORMATION pi{};
 
-            std::wstring cmdline = options.commandline;
+            std::wstring cmdline{options.commandline};
             BOOL success = CreateProcessW(
                 NULL,
                 cmdline.data(),
@@ -599,7 +603,7 @@ namespace usylibpp::windows {
                 TRUE,
                 (opts.allow_visible_windows) ? NULL : CREATE_NO_WINDOW,
                 NULL,
-                options.working_directory.c_str(),
+                (options.working_directory.empty()) ? NULL : options.working_directory.c_str(),
                 &si,
                 &pi
             );
