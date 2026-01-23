@@ -48,7 +48,7 @@ namespace usylibpp::strings {
         return ret;
     }
 
-    template <types::UnsignedInteger N>
+    template <types::Numeric N>
     [[nodiscard]] inline constexpr std::optional<N> to_number(const std::string_view str) noexcept {
         N num;
         if (std::from_chars(str.data(), str.data() + str.size(), num).ec == std::errc()) return num;
@@ -60,13 +60,13 @@ namespace usylibpp::strings {
     /**
      * String view only survives to next function call on this thread, make copy into std::string to keep alive
      */
-    template <types::UnsignedInteger T>
+    template <types::Numeric T>
     [[nodiscard]] inline std::optional<std::string_view> to_string_view(T val) noexcept {
-        constexpr auto TO_STRING_BUFFER_LENGTH = 21;
+        static constexpr auto TO_STRING_BUFFER_LENGTH = 128;
 
         static thread_local char buffer[TO_STRING_BUFFER_LENGTH];
         auto [ptr, ec] = std::to_chars(buffer, buffer + TO_STRING_BUFFER_LENGTH, val);
-        if (ec != std::errc()) return std::nullopt;
+        if (ec != std::errc{}) return std::nullopt;
         return std::string_view{buffer, static_cast<size_t>(ptr - buffer)};
     }
 
