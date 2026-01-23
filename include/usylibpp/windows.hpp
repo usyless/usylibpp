@@ -669,10 +669,10 @@ namespace usylibpp::windows {
             if (result == WAIT_TIMEOUT) { 
                 TerminateProcess(process.get(), 1); 
                 WaitForSingleObject(process.get(), INFINITE);
-            }
 
-            stdoutThread.request_stop();
-            stderrThread.request_stop();
+                if (stdoutThread.joinable()) stdoutThread.request_stop();
+                if (stderrThread.joinable()) stderrThread.request_stop();
+            }
             }
 
             DWORD exitCode = 0;
