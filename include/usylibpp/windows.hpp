@@ -500,8 +500,8 @@ namespace usylibpp::windows {
 
         struct process_settings {
             std::wstring_view commandline;
-            std::string_view input;
-            const std::filesystem::path& working_directory;
+            std::string_view input = "";
+            std::filesystem::path* working_directory = nullptr;
 
             std::function<void(std::string_view)> on_stdout_line = nullptr;
             std::function<void(std::string_view)> on_stderr_line = nullptr;
@@ -603,7 +603,7 @@ namespace usylibpp::windows {
                 TRUE,
                 (opts.allow_visible_windows) ? NULL : CREATE_NO_WINDOW,
                 NULL,
-                (options.working_directory.empty()) ? NULL : options.working_directory.c_str(),
+                (options.working_directory && !options.working_directory->empty()) ? NULL : options.working_directory->c_str(),
                 &si,
                 &pi
             );
