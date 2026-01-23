@@ -678,6 +678,7 @@ namespace usylibpp::windows {
     #endif
 
     namespace admin {
+        #ifdef USYLIBPP_ENABLE_WIL
         [[nodiscard]] inline bool is_admin() {
             static bool has_run = false;
             static bool is_admin = false;
@@ -686,20 +687,20 @@ namespace usylibpp::windows {
             has_run = true;
 
             BOOL isAdmin = FALSE;
-            PSID adminGroup;
             SID_IDENTIFIER_AUTHORITY ntAuthority = SECURITY_NT_AUTHORITY;
 
+            wil::unique_sid adminGroup;
             if (AllocateAndInitializeSid(&ntAuthority, 2,
                 SECURITY_BUILTIN_DOMAIN_RID,
                 DOMAIN_ALIAS_RID_ADMINS,
                 0, 0, 0, 0, 0, 0,
                 &adminGroup)) {
-                CheckTokenMembership(nullptr, adminGroup, &isAdmin);
-                FreeSid(adminGroup);
+                CheckTokenMembership(nullptr, adminGroup.get(), &isAdmin);
             }
 
             return (is_admin = static_cast<bool>(isAdmin));
         }
+        #endif
 
         /**
          * Exits the program on success
