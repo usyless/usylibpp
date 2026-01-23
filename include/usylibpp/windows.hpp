@@ -295,15 +295,12 @@ namespace usylibpp::windows {
         hr = pfd->GetResult(&psi);
         if (FAILED(hr)) return std::nullopt;
 
-        PWSTR path = nullptr;
+        wil::unique_cotaskmem_string path = nullptr;
         hr = psi->GetDisplayName(SIGDN_FILESYSPATH, &path);
 
         if (FAILED(hr) or (not path)) return std::nullopt;
 
-        std::filesystem::path selected_path{path};
-        CoTaskMemFree(path);
-
-        return selected_path;
+        return path.get();
     }
 
     USYLIBPP__MAKE_OR(get_folder_picker, std::filesystem::path{})
