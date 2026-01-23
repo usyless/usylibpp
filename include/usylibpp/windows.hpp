@@ -452,8 +452,8 @@ namespace usylibpp::windows {
 
                 std::string partialLine;
 
-                std::stop_callback cb(stop, [&pipe] {
-                    CancelSynchronousIo(GetCurrentThread());
+                std::stop_callback cb(stop, [&pipe, thread = GetCurrentThread()]() {
+                    CancelSynchronousIo(thread);
                 });
 
                 while (ReadFile(pipe, buffer, sizeof(buffer), &bytesRead, NULL) && bytesRead > 0) {
@@ -602,7 +602,7 @@ namespace usylibpp::windows {
                 TRUE,
                 (opts.allow_visible_windows) ? NULL : CREATE_NO_WINDOW,
                 NULL,
-                (options.working_directory && !options.working_directory->empty()) ? NULL : options.working_directory->c_str(),
+                (options.working_directory && !options.working_directory->empty()) ? options.working_directory->c_str() : NULL,
                 &si,
                 &pi
             );
