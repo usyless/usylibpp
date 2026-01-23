@@ -17,6 +17,7 @@
 
 #ifdef USYLIBPP_ENABLE_WIL
 #include <wil/resource.h>
+#include <wil/com.h>
 #endif
 
 namespace usylibpp::windows {
@@ -398,10 +399,11 @@ namespace usylibpp::windows {
         return files;
     }
 
+    #ifdef USYLIBPP_ENABLE_WIL
     template <bool ComInitialised = false>
     struct TaskbarProgress {
         COMWrapper<ComInitialised> COM{COINIT_MULTITHREADED | COINIT_DISABLE_OLE1DDE};
-        ITaskbarList3* pTaskbar = nullptr;
+        wil::com_ptr<ITaskbarList3> taskbar = nullptr;
         HWND hwnd_ = nullptr;
         HRESULT hr;
 
@@ -411,8 +413,8 @@ namespace usylibpp::windows {
         TaskbarProgress(HWND hwnd) : hr(COM.status()), hwnd_(hwnd) {
             if (FAILED(hr)) return;
 
-            hr = CoCreateInstance(CLSID_TaskbarList, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pTaskbar));
-            if (FAILED(hr)) pTaskbar = nullptr;
+            hr = CoCreateInstance(CLSID_TaskbarList, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&taskbar));
+            if (FAILED(hr)) taskbar = nullptr;
         }
 
         [[nodiscard]] constexpr HRESULT status() {
@@ -420,28 +422,27 @@ namespace usylibpp::windows {
         }
 
         bool set_progress(int value, int max) {
-            if (!pTaskbar) return false;
+            if (!taskbar) return false;
 
-            hr = pTaskbar->SetProgressState(hwnd_, TBPF_NORMAL);
+            hr = taskbar->SetProgressState(hwnd_, TBPF_NORMAL);
             if (FAILED(hr)) return false;
 
-            hr = pTaskbar->SetProgressValue(hwnd_, std::clamp(value, 0, max), max);
+            hr = taskbar->SetProgressValue(hwnd_, std::clamp(value, 0, max), max);
             return SUCCEEDED(hr);
         }
 
         void cancel() {
-            if (!pTaskbar) return;
+            if (!taskbar) return;
 
-            pTaskbar->SetProgressState(hwnd_, TBPF_NOPROGRESS);
-            pTaskbar->Release();
-
-            pTaskbar = nullptr;
+            taskbar->SetProgressState(hwnd_, TBPF_NOPROGRESS);
+            taskbar.reset();
         }
 
         ~TaskbarProgress() {
             cancel();
         }
     };
+    #endif
 
     #ifdef USYLIBPP_ENABLE_WIL
     namespace process {
