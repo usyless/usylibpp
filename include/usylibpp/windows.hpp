@@ -257,15 +257,12 @@ namespace usylibpp::windows {
      * Pass in any FOLDERID_XXXXXX
      */
     [[nodiscard]] inline std::optional<std::filesystem::path> get_known_folder(const GUID& folder = FOLDERID_Downloads) {
-        PWSTR path = nullptr;
+        wil::unique_cotaskmem_string path = nullptr;
 
         HRESULT hr = SHGetKnownFolderPath(folder, 0, nullptr, &path);
-
         if (FAILED(hr)) return std::nullopt;
 
-        std::filesystem::path folder_path{path};
-        CoTaskMemFree(path);
-        return folder_path;
+        return path.get();
     }
 
     USYLIBPP__MAKE_OR(get_known_folder, std::filesystem::path{})
