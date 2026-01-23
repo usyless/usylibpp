@@ -21,6 +21,7 @@ int main() {
         print::println("strings::replace_all before: {}, after: {}", str, strings::replace_all(str, "THIS STrING", "not that string"));
     }
     print::println("strings::to_number_or_default<size_t> {}", strings::to_number_or_default<size_t>("1234567"));
+    print::println("strings::to_number_or_default<double> {}", strings::to_number_or_default<double>("-123.456"));
     print::println("strings::to_string_view_or_default {}", strings::to_string_view_or_default(12234ULL));
     {
         auto str = "?this_is_a_get=lol a space??&ts=!!!%";
