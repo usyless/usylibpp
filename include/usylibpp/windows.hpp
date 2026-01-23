@@ -8,7 +8,6 @@
 #include <windows.h>
 #include <shobjidl.h>
 #include <shlguid.h>
-#include <wrl/client.h>
 #include <shellapi.h>
 #include <knownfolders.h>
 #include <shlobj.h>
@@ -126,27 +125,26 @@ namespace usylibpp::windows {
         }
     };
 
+    #ifdef USYLIBPP_ENABLE_WIL
     /**
      * Pass true into ComInitialised to not re-initialise COM
      */
     template <bool ComInitialised = false, types::wchar_t_compatible T>
     [[nodiscard]] inline bool recycle_file(T&& wstr) {
-        using Microsoft::WRL::ComPtr;
-
         COMWrapper<ComInitialised> COM{};
         if (FAILED(COM.status())) return false;
 
-        ComPtr<IFileOperation> fileOp;
-        HRESULT hr = CoCreateInstance(CLSID_FileOperation, nullptr, CLSCTX_ALL, IID_PPV_ARGS(fileOp.GetAddressOf()));
+        wil::com_ptr<IFileOperation> fileOp;
+        HRESULT hr = CoCreateInstance(CLSID_FileOperation, nullptr, CLSCTX_ALL, IID_PPV_ARGS(&fileOp));
         if (FAILED(hr)) return false;
 
-        ComPtr<IShellItem> item;
-        hr = SHCreateItemFromParsingName(wchar_t_from_compatible(std::forward<T>(wstr)), nullptr, IID_PPV_ARGS(item.GetAddressOf()));
+        wil::com_ptr<IShellItem> item;
+        hr = SHCreateItemFromParsingName(wchar_t_from_compatible(std::forward<T>(wstr)), nullptr, IID_PPV_ARGS(&item));
         if (FAILED(hr)) return false;
 
         fileOp->SetOperationFlags(FOFX_RECYCLEONDELETE);
 
-        hr = fileOp->DeleteItem(item.Get(), nullptr);
+        hr = fileOp->DeleteItem(item.get(), nullptr);
         if (FAILED(hr)) return false;
         
         hr = fileOp->PerformOperations();
@@ -157,6 +155,7 @@ namespace usylibpp::windows {
 
         return !anyFailed;
     }
+    #endif
 
     template <types::wchar_t_compatible T>
     [[nodiscard]] inline bool open_file_in_default_app(T&& file_path) {
@@ -271,18 +270,17 @@ namespace usylibpp::windows {
 
     USYLIBPP__MAKE_OR(get_known_folder, std::filesystem::path{})
 
+    #ifdef USYLIBPP_ENABLE_WIL
     /**
      * Pass true into ComInitialised to not re-initialise COM
      */
     template <bool ComInitialised = false>
     [[nodiscard]] inline std::optional<std::filesystem::path> get_folder_picker() {
-        using Microsoft::WRL::ComPtr;
-
         COMWrapper<ComInitialised> COM{};
         auto hr = COM.status();
         if (FAILED(hr)) return std::nullopt;
 
-        ComPtr<IFileDialog> pfd;
+        wil::com_ptr<IFileDialog> pfd;
         hr = CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pfd));
         if (FAILED(hr)) return std::nullopt;
 
@@ -293,7 +291,7 @@ namespace usylibpp::windows {
         hr = pfd->Show(nullptr);
         if (FAILED(hr)) return std::nullopt;
 
-        ComPtr<IShellItem> psi;
+        wil::com_ptr<IShellItem> psi;
         hr = pfd->GetResult(&psi);
         if (FAILED(hr)) return std::nullopt;
 
@@ -309,6 +307,7 @@ namespace usylibpp::windows {
     }
 
     USYLIBPP__MAKE_OR(get_folder_picker, std::filesystem::path{})
+    #endif
 
     /**
      * No stdin, just stdout and stderr
