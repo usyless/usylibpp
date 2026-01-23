@@ -171,6 +171,7 @@ namespace usylibpp::windows {
         return reinterpret_cast<INT_PTR>(result) > 32;
     }
 
+    #ifdef USYLIBPP_ENABLE_WIL
     /**
      * Pass true into ComInitialised to not re-initialise COM
      */
@@ -180,17 +181,17 @@ namespace usylibpp::windows {
         auto hr = COM.status();
         if (FAILED(hr)) return false;
         
-        PIDLIST_ABSOLUTE pidlFolder = nullptr;
+        wil::unique_cotaskmem_ptr<ITEMIDLIST> pidlFolder = nullptr;
 
-        hr = SHParseDisplayName(wchar_t_from_compatible(std::forward<T>(file_path)), nullptr, &pidlFolder, 0, nullptr);
+        hr = SHParseDisplayName(wchar_t_from_compatible(std::forward<T>(file_path)), nullptr, wil::out_param(pidlFolder), 0, nullptr);
         if (FAILED(hr) || !pidlFolder) return false;
 
-        hr = SHOpenFolderAndSelectItems(pidlFolder, 0, nullptr, 0);
-        CoTaskMemFree(pidlFolder);
+        hr = SHOpenFolderAndSelectItems(pidlFolder.get(), 0, nullptr, 0);
         if (FAILED(hr)) return false;
 
         return true;
     }
+    #endif
 
     /**
      * Caches the result
