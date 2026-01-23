@@ -453,8 +453,7 @@ namespace usylibpp::windows {
                 std::string partialLine;
 
                 std::stop_callback cb(stop, [&pipe] {
-                    CancelSynchronousIo(GetCurrentThread()); 
-                    CloseHandle(pipe);
+                    CancelSynchronousIo(GetCurrentThread());
                 });
 
                 while (ReadFile(pipe, buffer, sizeof(buffer), &bytesRead, NULL) && bytesRead > 0) {
