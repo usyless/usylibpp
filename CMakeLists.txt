@@ -83,7 +83,7 @@ This includes windows.h along with various other headers, but enables all of the
             FetchContent_Declare(
                 microsoft_wil
                 GIT_REPOSITORY https://github.com/microsoft/wil.git
-                GIT_TAG master
+                GIT_TAG v1.0.250325.1
                 GIT_SHALLOW TRUE
             )
 
