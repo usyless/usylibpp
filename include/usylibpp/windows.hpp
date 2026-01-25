@@ -5,6 +5,7 @@
 #include <string>
 #include <optional>
 #include <thread>
+#include <variant>
 #include <windows.h>
 #include <shobjidl.h>
 #include <shlguid.h>
@@ -325,41 +326,66 @@ namespace usylibpp::windows {
         return std::filesystem::exists(exeName + L".exe", ec) || SearchPathW(nullptr, exeName.c_str(), L".exe", 0, nullptr, nullptr) > 0;
     }
 
+    #ifdef USYLIBPP_ENABLE_WIL
     /**
      * Returns the text in the clipboard from a given hwnd
      * Converts to wstring
      * I don't think the clipboard stuff is thread safe
      */
-    [[nodiscard]] inline std::wstring get_clipboard_text(const HWND hwnd) {
-        if (!OpenClipboard(hwnd)) return {};
-
-        std::wstring text;
+    [[nodiscard]] inline std::optional<std::variant<std::wstring, std::string>> get_clipboard_text(const HWND hwnd) {
+        auto clipboard = wil::open_clipboard(hwnd);
+        if (!clipboard) return std::nullopt;
 
         if (IsClipboardFormatAvailable(CF_UNICODETEXT)) {
             HANDLE hData = GetClipboardData(CF_UNICODETEXT);
-            if (hData) {
-                LPCWSTR pszText = static_cast<LPCWSTR>(GlobalLock(hData));
-                if (pszText) {
-                    text = pszText;
-                    GlobalUnlock(hData);
-                }
-            }
+            if (!hData) return std::nullopt;
+
+            wil::unique_hglobal_locked pszText{hData};
+            if (!pszText) return std::nullopt;
+
+            return std::wstring{static_cast<LPCWSTR>(pszText.get())};
         }
         else if (IsClipboardFormatAvailable(CF_TEXT)) {
             HANDLE hData = GetClipboardData(CF_TEXT);
-            if (hData) {
-                LPCSTR pszText = static_cast<LPCSTR>(GlobalLock(hData));
-                if (pszText) {
-                    text = to_wstr_or_default(pszText);
-                    GlobalUnlock(hData);
-                }
-            }
+            if (!hData) return std::nullopt;
+
+            wil::unique_hglobal_locked pszText{hData};
+            if (!pszText) return std::nullopt;
+
+            return std::string{static_cast<LPCSTR>(pszText.get())};
         }
 
-        CloseClipboard();
-
-        return text;
+        return std::nullopt;
     }
+
+    USYLIBPP__MAKE_OR(get_clipboard_text, std::wstring{})
+
+    [[nodiscard]] inline std::optional<std::wstring> get_clipboard_text_as_wstring(const HWND hwnd) {
+        auto res = get_clipboard_text(hwnd);
+        if (!res) return std::nullopt;
+
+        return std::visit([](auto&& s) -> std::optional<std::wstring> {
+            using T = std::decay_t<decltype(s)>;
+            if constexpr (std::is_same_v<T, std::wstring>) return s;
+            else return to_wstr(s);
+        }, res.value());
+    }
+
+    USYLIBPP__MAKE_OR(get_clipboard_text_as_wstring, std::wstring{})
+
+    [[nodiscard]] inline std::optional<std::string> get_clipboard_text_as_string(const HWND hwnd) {
+        auto res = get_clipboard_text(hwnd);
+        if (!res) return std::nullopt;
+
+        return std::visit([](auto&& s) -> std::optional<std::string> {
+            using T = std::decay_t<decltype(s)>;
+            if constexpr (std::is_same_v<T, std::string>) return s;
+            else return to_utf8(s);
+        }, res.value());
+    }
+
+    USYLIBPP__MAKE_OR(get_clipboard_text_as_string, std::string{})
+    #endif
 
     /**
      * Get a vector of wstrings for the drag query files in a hDrop
