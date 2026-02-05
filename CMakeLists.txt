@@ -110,31 +110,6 @@ This includes windows.h along with various other headers, but enables all of the
 
             target_link_libraries(usylibpp_usylibpp INTERFACE microsoft_wil)
         endif()
-
-        set(USYLIBPP_ENABLE_CPP_WINRT
-            OFF
-            CACHE BOOL
-            "Download C++/WinRT and enable it in the project (Not used for now)"
-        )
-
-        message(STATUS "C++/WinRT Support (USYLIBPP_ENABLE_CPP_WINRT): ${USYLIBPP_ENABLE_CPP_WINRT}")
-
-        if(USYLIBPP_ENABLE_CPP_WINRT)
-            target_compile_definitions(usylibpp_usylibpp INTERFACE "USYLIBPP_ENABLE_CPP_WINRT")
-
-            file(MAKE_DIRECTORY "${USYLIBPP_DEPS_DIR}")
-            file(DOWNLOAD
-                "https://github.com/microsoft/cppwinrt/releases/download/2.0.250303.1/Microsoft.Windows.CppWinRT.2.0.250303.1.nupkg"
-                "${USYLIBPP_DEPS_DIR}/winrt.zip"
-                SHOW_PROGRESS
-            )
-
-            file(ARCHIVE_EXTRACT 
-                INPUT "${USYLIBPP_DEPS_DIR}/winrt.zip"
-                DESTINATION "${USYLIBPP_DEPS_DIR}/winrt"
-            )
-
-        endif()
     endif()
 endif()
 
