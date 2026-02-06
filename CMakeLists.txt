@@ -108,13 +108,13 @@ This includes windows.h along with various other headers, but enables all of the
             FetchContent_GetProperties(microsoft_wil)
             if(NOT microsoft_wil_POPULATED)
                 FetchContent_Populate(microsoft_wil)
-
-                add_library(microsoft_wil INTERFACE)
-
-                target_include_directories(microsoft_wil INTERFACE
-                    ${microsoft_wil_SOURCE_DIR}/include
-                )
             endif()
+
+            add_library(microsoft_wil INTERFACE)
+
+            target_include_directories(microsoft_wil INTERFACE
+                ${microsoft_wil_SOURCE_DIR}/include
+            )
 
             target_link_libraries(usylibpp_usylibpp INTERFACE microsoft_wil)
         endif()
@@ -143,24 +143,24 @@ This includes windows.h along with various other headers, but enables all of the
             cmake_policy(SET CMP0169 OLD)
 
             FetchContent_Declare(
-                mohabouje_WinToast
+                mohabouje_wintoast
                 GIT_REPOSITORY https://github.com/mohabouje/WinToast.git
                 GIT_TAG ${USYLIBPP_WINTOAST_GIT_TAG}
                 GIT_SHALLOW TRUE
             )
 
-            FetchContent_GetProperties(mohabouje_WinToast)
-            if(NOT mohabouje_WinToast_POPULATED)
-                FetchContent_Populate(mohabouje_WinToast)
-
-                add_library(mohabouje_WinToast INTERFACE)
-
-                target_include_directories(mohabouje_WinToast INTERFACE
-                    ${mohabouje_WinToast_SOURCE_DIR}/include
-                )
+            FetchContent_GetProperties(mohabouje_wintoast)
+            if(NOT mohabouje_wintoast_POPULATED)
+                FetchContent_Populate(mohabouje_wintoast)
             endif()
 
-            target_link_libraries(usylibpp_usylibpp INTERFACE mohabouje_WinToast)
+            add_library(mohabouje_wintoast INTERFACE)
+
+            target_include_directories(mohabouje_wintoast INTERFACE
+                ${mohabouje_wintoast_SOURCE_DIR}/include
+            )
+
+            target_link_libraries(usylibpp_usylibpp INTERFACE mohabouje_wintoast)
         endif()
     endif()
 endif()
