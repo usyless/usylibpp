@@ -337,6 +337,10 @@ namespace usylibpp::windows {
         return std::filesystem::exists(exeName + L".exe", ec) || SearchPathW(nullptr, exeName.c_str(), L".exe", 0, nullptr, nullptr) > 0;
     }
 
+    [[nodiscard]] inline bool is_window_focused(HWND hwnd) {
+        return GetForegroundWindow() == hwnd;
+    }
+
     #ifdef USYLIBPP_ENABLE_WIL
     /**
      * Returns the text in the clipboard from a given hwnd
