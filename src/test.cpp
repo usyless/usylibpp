@@ -69,9 +69,8 @@ int main() {
     #endif
 
     #ifdef USYLIBPP_ENABLE_WINTOAST
-    print::println("WinToast stuff:");
-
     using namespace WinToastLib;
+    print::println("WinToast stuff:");
 
     if (!WinToast::isCompatible()) {
         print::println("System not supported by wintoast!");
@@ -80,14 +79,19 @@ int main() {
         const auto aumi = WinToast::configureAUMI(L"usy", L"usylibpp", L"usylibpp_test", L"20260206");
         WinToast::instance()->setAppUserModelId(aumi);
 
-        if (!WinToast::instance()->initialize()) {
-            print::println("Could not initialise wintoast!");
+        WinToast::WinToastError error;
+
+        if (!WinToast::instance()->initialize(&error)) {
+            int val = error;
+            print::println("Could not initialise wintoast! Error (WinToastError): {}", val);
         } else {
             WinToastTemplate templ(WinToastTemplate::Text02);
             templ.setTextField(L"Hello!", WinToastTemplate::FirstLine);
             templ.setTextField(L"This is a test toast.", WinToastTemplate::SecondLine);
 
-            const auto id = WinToast::instance()->showToast(templ, nullptr);
+            auto handler = std::make_unique<wintoast::PrintingWinToastHandler>();
+
+            const auto id = WinToast::instance()->showToast(templ, handler.get());
             if (id < 0) {
                 print::println("Toast failed");
             } else {

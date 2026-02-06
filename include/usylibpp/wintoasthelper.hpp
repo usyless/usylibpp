@@ -1,6 +1,7 @@
 #pragma once
 
 #include "windows.hpp"
+#include "print.hpp"
 #include <wintoastlib.h>
 
 namespace usylibpp::wintoast {
@@ -19,4 +20,36 @@ namespace usylibpp::wintoast {
 
         return true;
     }
+
+    class PrintingWinToastHandler : public WinToastLib::IWinToastHandler {
+    public:
+        PrintingWinToastHandler() {}
+
+        void toastActivated() const override {
+            print::println("Toast activated");
+        }
+        void toastActivated(int actionIndex) const override {
+            print::println("Button clicked: {}", actionIndex);
+        }
+        void toastActivated(std::wstring response) const override {
+            print::println("Toast activated: {}", windows::to_utf8_or_default(response));
+        }
+        void toastDismissed(WinToastDismissalReason state) const override {
+            int val = state;
+            print::println("Toast dismissed (WinToastDismissalReason): {}", val);
+        }
+        void toastFailed() const override {
+            print::println("Toast failed");
+        }
+    };
+
+    class EmptyWinToastHandler : public WinToastLib::IWinToastHandler {
+    public:
+        EmptyWinToastHandler() {}
+        void toastActivated() const override {}
+        void toastActivated(int) const override {}
+        void toastActivated(std::wstring) const override {}
+        void toastDismissed(WinToastDismissalReason) const override {}
+        void toastFailed() const override {}
+    };
 }
