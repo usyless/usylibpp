@@ -31,4 +31,15 @@ namespace usylibpp::files {
     }
     
     USYLIBPP__MAKE_OR(read_as_bytes, std::string{})
+
+    /**
+     * Write data to a file
+     */
+    [[nodiscard]] inline bool write(const std::filesystem::path& path, const std::string_view data) {
+        std::ofstream file(path, std::ios::binary);
+        if (!file) return false;
+
+        file.write(data.data(), static_cast<std::streamsize>(data.size()));
+        return file.good();
+    }
 }
