@@ -72,34 +72,22 @@ int main() {
     using namespace WinToastLib;
     print::println("WinToast stuff:");
 
-    if (!WinToast::isCompatible()) {
-        print::println("System not supported by wintoast!");
+    wintoast::AutoDeletingWinToastInit toast{L"usylibpp_test", L"usy", L"usylibpp", L"usylibpp_test", L"20260206"};
+    if (!toast.success()) {
+        print::println("Failed to setup wintoast!");
     } else {
-        WinToast::instance()->setAppName(L"usylibpp_test");
-        const auto aumi = WinToast::configureAUMI(L"usy", L"usylibpp", L"usylibpp_test", L"20260206");
-        WinToast::instance()->setAppUserModelId(aumi);
+        WinToastTemplate templ(WinToastTemplate::Text02);
+        templ.setTextField(L"Hello!", WinToastTemplate::FirstLine);
+        templ.setTextField(L"This is a test toast.", WinToastTemplate::SecondLine);
 
-        WinToast::WinToastError error;
+        auto handler = std::make_unique<wintoast::PrintingWinToastHandler>();
 
-        if (!WinToast::instance()->initialize(&error)) {
-            int val = error;
-            print::println("Could not initialise wintoast! Error (WinToastError): {}", val);
+        const auto id = WinToast::instance()->showToast(templ, handler.get());
+        if (id < 0) {
+            print::println("Toast failed");
         } else {
-            WinToastTemplate templ(WinToastTemplate::Text02);
-            templ.setTextField(L"Hello!", WinToastTemplate::FirstLine);
-            templ.setTextField(L"This is a test toast.", WinToastTemplate::SecondLine);
-
-            auto handler = std::make_unique<wintoast::PrintingWinToastHandler>();
-
-            const auto id = WinToast::instance()->showToast(templ, handler.get());
-            if (id < 0) {
-                print::println("Toast failed");
-            } else {
-                print::println("Toast shown, id = {} (sleeping for 5 seconds)", id);
-                Sleep(5000);
-            }
-
-            wintoast::delete_shortcut();
+            print::println("Toast shown, id = {} (sleeping for 5 seconds)", id);
+            Sleep(5000);
         }
     }
     #endif

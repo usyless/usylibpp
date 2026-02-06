@@ -12,7 +12,10 @@ namespace usylibpp::wintoast {
         auto programs_path = usylibpp::windows::get_known_folder(FOLDERID_Programs);
         if (!programs_path) return false;
 
-        auto shortcut_path = programs_path.value() / (WinToastLib::WinToast::instance()->appName() + L".lnk");
+        const auto& app_name = WinToastLib::WinToast::instance()->appName();
+        if (app_name.empty()) return true;
+
+        auto shortcut_path = programs_path.value() / (app_name + L".lnk");
 
         std::error_code ec;
         std::filesystem::remove(shortcut_path, ec);
@@ -51,5 +54,33 @@ namespace usylibpp::wintoast {
         void toastActivated(std::wstring) const override {}
         void toastDismissed(WinToastDismissalReason) const override {}
         void toastFailed() const override {}
+    };
+
+    struct AutoDeletingShortcut {
+        ~AutoDeletingShortcut() {
+            delete_shortcut();
+        }
+    };
+
+    struct AutoDeletingWinToastInit {
+        AutoDeletingWinToastInit(const std::wstring& app_name, const std::wstring& company_name, const std::wstring& product_name, const std::wstring& sub_product, const std::wstring& version_information) {
+            using namespace WinToastLib;
+
+            if (!WinToast::isCompatible()) return;
+
+            WinToast::instance()->setAppName(app_name);
+            WinToast::instance()->setAppUserModelId(WinToast::configureAUMI(company_name, product_name, sub_product, version_information));
+
+            if (!WinToast::instance()->initialize()) return;
+
+            _success = true;
+        }
+
+        bool success() const noexcept {
+            return _success;
+        }
+    private:
+        AutoDeletingShortcut _deleting;
+        bool _success = false;
     };
 }
