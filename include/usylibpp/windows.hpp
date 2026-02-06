@@ -36,12 +36,13 @@ namespace usylibpp::windows {
             else return STR{};
         }
 
-        STR wstr(buffer_size - 1, L'\0');
+        STR wstr(buffer_size, L'\0');
         const auto written = MultiByteToWideChar(CP_UTF8, 0, utf8, -1, wstr.data(), buffer_size);
         if (written == 0) {
             if constexpr (options.as_optional) return std::optional<STR>{std::nullopt};
             else return STR{};
         }
+        wstr.resize(written);
 
         if constexpr (options.as_optional) return std::optional<STR>{std::move(wstr)};
         else return wstr;
@@ -101,12 +102,13 @@ namespace usylibpp::windows {
             else return STR{};
         }
 
-        STR utf8_str(buffer_size - 1, '\0');
-        const auto written = WideCharToMultiByte(CP_UTF8, 0, wstr, -1, utf8_str.data(), buffer_size - 1, nullptr, nullptr);
+        STR utf8_str(buffer_size, '\0');
+        const auto written = WideCharToMultiByte(CP_UTF8, 0, wstr, -1, utf8_str.data(), buffer_size, nullptr, nullptr);
         if (written == 0) {
             if constexpr (options.as_optional) return std::optional<STR>{std::nullopt};
             else return STR{};
         }
+        utf8_str.resize(written);
 
         if constexpr (options.as_optional) return std::optional<STR>{std::move(utf8_str)};
         else return utf8_str;
