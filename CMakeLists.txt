@@ -86,6 +86,14 @@ This includes windows.h along with various other headers, but enables all of the
         if(USYLIBPP_ENABLE_WIL)
             target_compile_definitions(usylibpp_usylibpp INTERFACE "USYLIBPP_ENABLE_WIL")
 
+            set(USYLIBPP_WIL_GIT_TAG
+                "v1.0.260126.7"
+                CACHE STRING
+                "Git tag to use when checking out wil"
+            )
+
+            message(STATUS "WIL git tag (USYLIBPP_WIL_GIT_TAG): ${USYLIBPP_WIL_GIT_TAG}")
+
             include(FetchContent)
 
             cmake_policy(SET CMP0169 OLD)
@@ -93,7 +101,7 @@ This includes windows.h along with various other headers, but enables all of the
             FetchContent_Declare(
                 microsoft_wil
                 GIT_REPOSITORY https://github.com/microsoft/wil.git
-                GIT_TAG v1.0.260126.7
+                GIT_TAG ${USYLIBPP_WIL_GIT_TAG}
                 GIT_SHALLOW TRUE
             )
 
@@ -122,6 +130,14 @@ This includes windows.h along with various other headers, but enables all of the
         if(USYLIBPP_ENABLE_WINTOAST)
             target_compile_definitions(usylibpp_usylibpp INTERFACE "USYLIBPP_ENABLE_WINTOAST")
 
+            set(USYLIBPP_WINTOAST_GIT_TAG
+                "v1.3.2"
+                CACHE STRING
+                "Git tag to use when checking out WinToast"
+            )
+
+            message(STATUS "WinToast git tag (USYLIBPP_WINTOAST_GIT_TAG): ${USYLIBPP_WINTOAST_GIT_TAG}")
+
             include(FetchContent)
 
             cmake_policy(SET CMP0169 OLD)
@@ -129,7 +145,7 @@ This includes windows.h along with various other headers, but enables all of the
             FetchContent_Declare(
                 mohabouje_WinToast
                 GIT_REPOSITORY https://github.com/mohabouje/WinToast.git
-                GIT_TAG v1.3.2
+                GIT_TAG ${USYLIBPP_WINTOAST_GIT_TAG}
                 GIT_SHALLOW TRUE
             )
 
