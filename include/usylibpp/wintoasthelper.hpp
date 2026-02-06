@@ -8,11 +8,10 @@ namespace usylibpp::wintoast {
     /**
      * Returns true if succeeded
      */
-    inline bool delete_shortcut() {
+    inline bool delete_shortcut(const std::wstring& app_name) {
         auto programs_path = usylibpp::windows::get_known_folder(FOLDERID_Programs);
         if (!programs_path) return false;
 
-        const auto& app_name = WinToastLib::WinToast::instance()->appName();
         if (app_name.empty()) return true;
 
         auto shortcut_path = programs_path.value() / (app_name + L".lnk");
@@ -22,6 +21,13 @@ namespace usylibpp::wintoast {
         if (ec) return false;
 
         return true;
+    }
+
+    /**
+     * Only works if called on the same thread as the initial wintoast setup
+     */
+    inline bool delete_shortcut() {
+        return delete_shortcut(WinToastLib::WinToast::instance()->appName());
     }
 
     class PrintingWinToastHandler : public WinToastLib::IWinToastHandler {
@@ -56,14 +62,9 @@ namespace usylibpp::wintoast {
         void toastFailed() const override {}
     };
 
-    struct AutoDeletingShortcut {
-        ~AutoDeletingShortcut() {
-            delete_shortcut();
-        }
-    };
-
     struct AutoDeletingWinToastInit {
         AutoDeletingWinToastInit(const std::wstring& app_name, const std::wstring& company_name, const std::wstring& product_name, const std::wstring& sub_product, const std::wstring& version_information) {
+            appname = app_name;
             using namespace WinToastLib;
 
             if (!WinToast::isCompatible()) return;
@@ -79,8 +80,12 @@ namespace usylibpp::wintoast {
         bool success() const noexcept {
             return _success;
         }
+
+        ~AutoDeletingWinToastInit() {
+            delete_shortcut(appname);
+        }
     private:
-        AutoDeletingShortcut _deleting;
+        std::wstring appname;
         bool _success = false;
     };
 }
