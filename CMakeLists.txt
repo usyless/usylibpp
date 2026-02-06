@@ -159,7 +159,7 @@ This includes windows.h along with various other headers, but enables all of the
             )
 
             target_compile_features(mohabouje_wintoast PRIVATE 
-                cxx_std_11
+                cxx_std_20
             )
 
             target_include_directories(mohabouje_wintoast PUBLIC
