@@ -83,7 +83,11 @@ int main() {
         if (!WinToast::instance()->initialize()) {
             print::println("Could not initialise wintoast!");
         } else {
-            
+            WinToastTemplate templ(WinToastTemplate::Text02);
+            templ.setTextField(L"Hello!", WinToastTemplate::FirstLine);
+            templ.setTextField(L"This is a test toast.", WinToastTemplate::SecondLine);
+
+            WinToast::instance()->showToast(templ, nullptr);
         }
     }
     #endif
