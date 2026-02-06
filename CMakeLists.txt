@@ -110,6 +110,42 @@ This includes windows.h along with various other headers, but enables all of the
 
             target_link_libraries(usylibpp_usylibpp INTERFACE microsoft_wil)
         endif()
+
+        set(USYLIBPP_ENABLE_WINTOAST
+            OFF
+            CACHE BOOL
+            "Download WinToast (https://github.com/mohabouje/WinToast) to include in your projects conveniently"
+        )
+
+        message(STATUS "WinToast (USYLIBPP_ENABLE_WINTOAST): ${USYLIBPP_ENABLE_WINTOAST}")
+
+        if(USYLIBPP_ENABLE_WINTOAST)
+            target_compile_definitions(usylibpp_usylibpp INTERFACE "USYLIBPP_ENABLE_WINTOAST")
+
+            include(FetchContent)
+
+            cmake_policy(SET CMP0169 OLD)
+
+            FetchContent_Declare(
+                mohabouje_WinToast
+                GIT_REPOSITORY https://github.com/mohabouje/WinToast.git
+                GIT_TAG v1.3.2
+                GIT_SHALLOW TRUE
+            )
+
+            FetchContent_GetProperties(mohabouje_WinToast)
+            if(NOT mohabouje_WinToast_POPULATED)
+                FetchContent_Populate(mohabouje_WinToast)
+
+                add_library(mohabouje_WinToast INTERFACE)
+
+                target_include_directories(mohabouje_WinToast INTERFACE
+                    ${mohabouje_WinToast_SOURCE_DIR}/include
+                )
+            endif()
+
+            target_link_libraries(usylibpp_usylibpp INTERFACE mohabouje_WinToast)
+        endif()
     endif()
 endif()
 
