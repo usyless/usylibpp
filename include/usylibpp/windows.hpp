@@ -42,7 +42,7 @@ namespace usylibpp::windows {
             if constexpr (options.as_optional) return std::optional<STR>{std::nullopt};
             else return STR{};
         }
-        wstr.resize(written);
+        wstr.resize(written - 1); // written returns null terminator
 
         if constexpr (options.as_optional) return std::optional<STR>{std::move(wstr)};
         else return wstr;
@@ -108,7 +108,7 @@ namespace usylibpp::windows {
             if constexpr (options.as_optional) return std::optional<STR>{std::nullopt};
             else return STR{};
         }
-        utf8_str.resize(written);
+        utf8_str.resize(written - 1); // written returns null terminator
 
         if constexpr (options.as_optional) return std::optional<STR>{std::move(utf8_str)};
         else return utf8_str;

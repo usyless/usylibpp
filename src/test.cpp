@@ -58,13 +58,13 @@ int main() {
     //     print::println(L"windows::to_utf8 input: {}", str);
     //     print::println("windows::to_utf8 output: {}", *windows::to_utf8(str));
     // }
-    print::println("windows::to_utf8<{{.as_optional = false}}>: {}", windows::to_utf8<{.as_optional = false}>(L"This is a test wide string"));
-    print::println("windows::current_executable_path_or_default: {}", windows::to_utf8_or_default(windows::current_executable_path_or_default().get()));
-    print::println("windows::set_cwd_to_executable_directory: {}", windows::set_cwd_to_executable_directory());
-    print::println("windows::get_known_folder_or_default: {}", windows::to_utf8_or_default(windows::get_known_folder_or_default()));
-    print::println("windows::exe_exists(L\"usylibpp_test\"): {}", windows::exe_exists(L"usylibpp_test"));
-    print::println("windows::exe_exists(L\"usylibpp\"): {}", windows::exe_exists(L"usylibpp"));
-    print::println("windows::exe_exists(L\"ffmpeg\"): {}", windows::exe_exists(L"ffmpeg"));
-    print::println("windows::admin::is_admin: {}", windows::admin::is_admin());
+    print::println("windows::to_utf8<{{.as_optional = false}}>: {}", windows::to_utf8<{.as_optional = false}>(std::wstring(L"This is a test wide string")));
+    // print::println("windows::current_executable_path_or_default: {}", windows::to_utf8_or_default(windows::current_executable_path_or_default().get()));
+    // print::println("windows::set_cwd_to_executable_directory: {}", windows::set_cwd_to_executable_directory());
+    // print::println("windows::get_known_folder_or_default: {}", windows::to_utf8_or_default(windows::get_known_folder_or_default()));
+    // print::println("windows::exe_exists(L\"usylibpp_test\"): {}", windows::exe_exists(L"usylibpp_test"));
+    // print::println("windows::exe_exists(L\"usylibpp\"): {}", windows::exe_exists(L"usylibpp"));
+    // print::println("windows::exe_exists(L\"ffmpeg\"): {}", windows::exe_exists(L"ffmpeg"));
+    // print::println("windows::admin::is_admin: {}", windows::admin::is_admin());
     #endif
 }
