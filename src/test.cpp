@@ -87,8 +87,13 @@ int main() {
             templ.setTextField(L"Hello!", WinToastTemplate::FirstLine);
             templ.setTextField(L"This is a test toast.", WinToastTemplate::SecondLine);
 
-            WinToast::instance()->showToast(templ, nullptr);
-            print::println("Showing toast!");
+            const auto id = WinToast::instance()->showToast(templ, nullptr);
+            if (id < 0) {
+                print::println("Toast failed");
+            } else {
+                print::println("Toast shown, id = {} (sleeping for 5 seconds)", id);
+                Sleep(5000);
+            }
 
             wintoast::delete_shortcut();
         }
