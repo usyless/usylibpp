@@ -67,4 +67,24 @@ int main() {
     print::println("windows::exe_exists(L\"ffmpeg\"): {}", windows::exe_exists(L"ffmpeg"));
     print::println("windows::admin::is_admin: {}", windows::admin::is_admin());
     #endif
+
+    #ifdef USYLIBPP_ENABLE_WINTOAST
+    print::println("WinToast stuff:");
+
+    using namespace WinToastLib;
+
+    if (!WinToast::isCompatible()) {
+        print::println("System not supported by wintoast!");
+    } else {
+        WinToast::instance()->setAppName(L"usylibpp_test");
+        const auto aumi = WinToast::configureAUMI(L"usy", L"usylibpp", L"usylibpp_test", L"20260206");
+        WinToast::instance()->setAppUserModelId(aumi);
+
+        if (!WinToast::instance()->initialize()) {
+            print::println("Could not initialise wintoast!");
+        } else {
+            
+        }
+    }
+    #endif
 }

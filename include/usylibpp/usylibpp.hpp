@@ -14,3 +14,7 @@
 #include "time.hpp"
 #include "print.hpp"
 #include <usylibppconfig.hpp>
+
+#ifdef USYLIBPP_ENABLE_WINTOAST
+#include <wintoastlib.h>
+#endif

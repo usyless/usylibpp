@@ -154,10 +154,20 @@ This includes windows.h along with various other headers, but enables all of the
                 FetchContent_Populate(mohabouje_wintoast)
             endif()
 
-            add_library(mohabouje_wintoast INTERFACE)
+            add_library(mohabouje_wintoast STATIC
+                ${mohabouje_wintoast_SOURCE_DIR}/src/wintoastlib.cpp
+            )
 
-            target_include_directories(mohabouje_wintoast INTERFACE
+            target_compile_features(mohabouje_wintoast PRIVATE 
+                cxx_std_11
+            )
+
+            target_include_directories(mohabouje_wintoast PUBLIC
                 ${mohabouje_wintoast_SOURCE_DIR}/include
+            )
+
+            target_link_libraries(mohabouje_wintoast PUBLIC
+                psapi
             )
 
             target_link_libraries(usylibpp_usylibpp INTERFACE mohabouje_wintoast)
@@ -192,12 +202,9 @@ if (PROJECT_IS_TOP_LEVEL)
         target_compile_options(usylibpp_test PRIVATE
             /EHsc
             /W4
-            /GR
             /Zc:preprocessor
             /await:strict
 
-            # /Zi
-            # /DEBUG
             $<$<CONFIG:Debug>:
                 /RTC1
                 /Zi
@@ -210,6 +217,37 @@ if (PROJECT_IS_TOP_LEVEL)
                 /Oi
                 /Oy
                 /Gy
+                /GL
+            >
+        )
+
+        set_property(TARGET usylibpp_test PROPERTY
+            MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
+        )
+
+        target_compile_definitions(usylibpp_test PRIVATE
+            _WINDOWS
+            UNICODE
+            _UNICODE
+
+            $<$<CONFIG:Debug>:
+                _DEBUG
+            >
+            $<$<CONFIG:Release>:
+                NDEBUG
+            >
+        )
+
+        target_link_options(usylibpp_test PRIVATE
+            # /SUBSYSTEM:WINDOWS
+
+            $<$<CONFIG:Debug>:
+                "/DEBUG"
+            >
+            $<$<CONFIG:Release>:
+                "/OPT:ICF"
+                "/OPT:REF"
+                "/LTCG"
             >
         )
     endif()
