@@ -221,10 +221,6 @@ if (PROJECT_IS_TOP_LEVEL)
             >
         )
 
-        set_property(TARGET usylibpp_test PROPERTY
-            MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
-        )
-
         target_compile_definitions(usylibpp_test PRIVATE
             _WINDOWS
             UNICODE

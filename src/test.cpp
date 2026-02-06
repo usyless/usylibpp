@@ -88,6 +88,8 @@ int main() {
             templ.setTextField(L"This is a test toast.", WinToastTemplate::SecondLine);
 
             WinToast::instance()->showToast(templ, nullptr);
+            
+            wintoast::delete_shortcut();
         }
     }
     #endif

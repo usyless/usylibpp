@@ -17,4 +17,5 @@
 
 #ifdef USYLIBPP_ENABLE_WINTOAST
 #include <wintoastlib.h>
+#include "wintoasthelper.hpp"
 #endif
