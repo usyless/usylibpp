@@ -79,6 +79,7 @@ int main() {
         WinToastTemplate templ(WinToastTemplate::Text02);
         templ.setTextField(L"Hello!", WinToastTemplate::FirstLine);
         templ.setTextField(L"This is a test toast.", WinToastTemplate::SecondLine);
+        templ.setDuration(WinToastTemplate::Duration::Short);
 
         // new usage is fine here as it takes shared ownership after
         const auto id = toast.showToast(templ, new wintoast::PrintingWinToastHandler);
