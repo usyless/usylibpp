@@ -2,7 +2,11 @@
 
 #include "windows.hpp"
 #include "print.hpp"
+#include <future>
 #include <wintoastlib.h>
+#include <mutex>
+#include <thread>
+#include <queue>
 
 namespace usylibpp::wintoast {
     /**
@@ -62,13 +66,18 @@ namespace usylibpp::wintoast {
         void toastFailed() const override {}
     };
 
-    struct AutoDeletingWinToastInit {
-        AutoDeletingWinToastInit(const std::wstring& app_name, const std::wstring& company_name, const std::wstring& product_name, const std::wstring& sub_product, const std::wstring& version_information) {
-            appname = app_name;
+    template <bool delete_on_destruct>
+    struct WinToastInit {
+        WinToastInit(const std::wstring& app_name, const std::wstring& company_name, const std::wstring& product_name, const std::wstring& sub_product, const std::wstring& version_information, std::optional<WinToastLib::WinToast::ShortcutPolicy> shortcut_policy = std::nullopt) {
+            if constexpr (delete_on_destruct) {
+                appname = app_name;
+            }
+
             using namespace WinToastLib;
 
             if (!WinToast::isCompatible()) return;
 
+            if (shortcut_policy) WinToast::instance()->setShortcutPolicy(shortcut_policy.value());
             WinToast::instance()->setAppName(app_name);
             WinToast::instance()->setAppUserModelId(WinToast::configureAUMI(company_name, product_name, sub_product, version_information));
 
@@ -81,11 +90,126 @@ namespace usylibpp::wintoast {
             return _success;
         }
 
-        ~AutoDeletingWinToastInit() {
-            delete_shortcut(appname);
+        ~WinToastInit() {
+            if constexpr (delete_on_destruct) {
+                delete_shortcut(appname);
+            }
         }
     private:
         std::wstring appname;
         bool _success = false;
+    };
+
+    template <bool delete_on_destruct>
+    class ToastWorker {
+    private:
+        struct CallBase {
+            virtual ~CallBase() = default;
+            virtual void execute() = 0;
+        };
+
+        template<typename Fn, typename Ret>
+        struct Call : CallBase {
+            Fn fn;
+            std::promise<Ret> result;
+
+            Call(Fn&& f) : fn(std::move(f)) {}
+
+            void execute() override {
+                if constexpr (std::is_void_v<Ret>) {
+                    fn();
+                    result.set_value();
+                } else {
+                    result.set_value(fn());
+                }
+            }
+        };
+    public:
+        ToastWorker(const std::wstring& app_name, const std::wstring& company_name, const std::wstring& product_name, const std::wstring& sub_product, const std::wstring& version_information, std::optional<WinToastLib::WinToast::ShortcutPolicy> shortcut_policy = std::nullopt) {
+            worker = std::thread([=, this] { thread_main(app_name, company_name, product_name, sub_product, version_information, shortcut_policy); });
+        }
+
+        ~ToastWorker() {
+            running = false;
+            cv.notify_all();
+            if (worker.joinable()) worker.join();
+        }
+
+        bool isInitialized() {
+            return post<bool>([]{ return WinToastLib::WinToast::instance()->isInitialized(); });
+        }
+
+        bool hideToast(INT64 id) {
+            return post<bool>([id]{ return WinToastLib::WinToast::instance()->hideToast(id); });
+        }
+
+        INT64 showToast(WinToastLib::WinToastTemplate const& toast, WinToastLib::IWinToastHandler* eventHandler, WinToastLib::WinToast::WinToastError* error = nullptr) {
+            return post<INT64>([&toast, eventHandler, error]{ return WinToastLib::WinToast::instance()->showToast(toast, eventHandler, error); });
+        }
+
+        void clear() {
+            post<void>([]{ WinToastLib::WinToast::instance()->clear(); });
+        }
+
+        enum WinToastLib::WinToast::ShortcutResult createShortcut() {
+            return post<WinToastLib::WinToast::ShortcutResult>([]{ return WinToastLib::WinToast::instance()->createShortcut(); });
+        }
+
+        std::wstring appName() {
+            return post<std::wstring>([]{ return WinToastLib::WinToast::instance()->appName(); });
+        }
+
+        std::wstring appUserModelId() {
+            return post<std::wstring>([]{ return WinToastLib::WinToast::instance()->appUserModelId(); });
+        }
+
+    private:
+        std::unique_ptr<WinToastInit<delete_on_destruct>> toast;
+        std::thread worker;
+        std::mutex mtx;
+        std::condition_variable cv;
+        std::queue<std::unique_ptr<CallBase>> queue;
+        std::atomic<bool> running = true;
+
+        void thread_main(const std::wstring& app_name, const std::wstring& company_name, const std::wstring& product_name, const std::wstring& sub_product, const std::wstring& version_information, std::optional<WinToastLib::WinToast::ShortcutPolicy> shortcut_policy = std::nullopt) {
+            toast = std::make_unique<WinToastInit<delete_on_destruct>>(app_name, company_name, product_name, sub_product, version_information, shortcut_policy);
+
+            while (true) {
+                std::unique_ptr<CallBase> call;
+
+                {
+                    std::unique_lock lock{mtx};
+                    cv.wait(lock, [this]{ return !queue.empty() || !running; });
+                    if (!running) break;
+                    call = std::move(queue.front());
+                    queue.pop();
+                }
+
+                call->execute();
+            }
+        }
+
+        template<typename Ret, typename Fn>
+        Ret post(Fn&& fn) {
+            if (!running) {
+                if constexpr (std::is_void_v<Ret>) return;
+                else return Ret{};
+            }
+
+            auto call = std::make_unique<Call<Fn, Ret>>(std::forward<Fn>(fn));
+            auto fut = call->result.get_future();
+
+            {
+                std::lock_guard lock{mtx};
+                queue.push(std::move(call));
+            }
+            cv.notify_one();
+
+            if constexpr (std::is_void_v<Ret>) {
+                fut.get();
+            } else {
+                return fut.get();
+            }
+        }
     };
 }

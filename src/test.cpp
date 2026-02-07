@@ -72,7 +72,7 @@ int main() {
     using namespace WinToastLib;
     print::println("WinToast stuff:");
 
-    wintoast::AutoDeletingWinToastInit toast{L"usylibpp_test", L"usy", L"usylibpp", L"usylibpp_test", L"20260206"};
+    wintoast::WinToastInit<true> toast{L"usylibpp_test", L"usy", L"usylibpp", L"usylibpp_test", L"20260206"};
     if (!toast.success()) {
         print::println("Failed to setup wintoast!");
     } else {
