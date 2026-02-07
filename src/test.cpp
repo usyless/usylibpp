@@ -80,9 +80,8 @@ int main() {
         templ.setTextField(L"Hello!", WinToastTemplate::FirstLine);
         templ.setTextField(L"This is a test toast.", WinToastTemplate::SecondLine);
 
-        auto handler = std::make_unique<wintoast::PrintingWinToastHandler>();
-
-        const auto id = toast.showToast(templ, handler.get());
+        // new usage is fine here as it takes shared ownership after
+        const auto id = toast.showToast(templ, new wintoast::PrintingWinToastHandler);
         if (id < 0) {
             print::println("Toast failed");
         } else {
