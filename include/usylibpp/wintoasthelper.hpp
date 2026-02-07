@@ -100,6 +100,9 @@ namespace usylibpp::wintoast {
         bool _success = false;
     };
 
+    /**
+     * When using wait_for_completion = false, the return value will be garbage
+     */
     template <bool delete_on_destruct>
     class ToastWorker {
     private:
@@ -136,35 +139,38 @@ namespace usylibpp::wintoast {
         }
 
         bool success() {
-            return post<bool>([this]{ return _toast ? _toast->success() : false; });
+            return post<bool, true>([this]{ return _toast ? _toast->success() : false; });
         }
 
         bool isInitialized() {
-            return post<bool>([]{ return WinToastLib::WinToast::instance()->isInitialized(); });
+            return post<bool, true>([]{ return WinToastLib::WinToast::instance()->isInitialized(); });
         }
 
+        template <bool wait_for_completion = true>
         bool hideToast(INT64 id) {
-            return post<bool>([id]{ return WinToastLib::WinToast::instance()->hideToast(id); });
+            return post<bool, wait_for_completion>([id]{ return WinToastLib::WinToast::instance()->hideToast(id); });
         }
 
         INT64 showToast(WinToastLib::WinToastTemplate const& toast, WinToastLib::IWinToastHandler* eventHandler, WinToastLib::WinToast::WinToastError* error = nullptr) {
-            return post<INT64>([&toast, eventHandler, error]{ return WinToastLib::WinToast::instance()->showToast(toast, eventHandler, error); });
+            return post<INT64, true>([&toast, eventHandler, error]{ return WinToastLib::WinToast::instance()->showToast(toast, eventHandler, error); });
         }
 
+        template <bool wait_for_completion = true>
         void clear() {
-            post<void>([]{ WinToastLib::WinToast::instance()->clear(); });
+            post<void, wait_for_completion>([]{ WinToastLib::WinToast::instance()->clear(); });
         }
 
+        template <bool wait_for_completion = true>
         enum WinToastLib::WinToast::ShortcutResult createShortcut() {
-            return post<WinToastLib::WinToast::ShortcutResult>([]{ return WinToastLib::WinToast::instance()->createShortcut(); });
+            return post<WinToastLib::WinToast::ShortcutResult, wait_for_completion>([]{ return WinToastLib::WinToast::instance()->createShortcut(); });
         }
 
         std::wstring appName() {
-            return post<std::wstring>([]{ return WinToastLib::WinToast::instance()->appName(); });
+            return post<std::wstring, true>([]{ return WinToastLib::WinToast::instance()->appName(); });
         }
 
         std::wstring appUserModelId() {
-            return post<std::wstring>([]{ return WinToastLib::WinToast::instance()->appUserModelId(); });
+            return post<std::wstring, true>([]{ return WinToastLib::WinToast::instance()->appUserModelId(); });
         }
 
     private:
@@ -197,7 +203,7 @@ namespace usylibpp::wintoast {
             }
         }
 
-        template<typename Ret, typename Fn>
+        template<typename Ret, bool wait_for_completion, typename Fn>
         Ret post(Fn&& fn) {
             if (!running) {
                 if constexpr (std::is_void_v<Ret>) return;
@@ -205,7 +211,7 @@ namespace usylibpp::wintoast {
             }
 
             auto call = std::make_unique<Call<Fn, Ret>>(std::forward<Fn>(fn));
-            auto fut = call->result.get_future();
+            [[maybe_unused]] auto fut = call->result.get_future();
 
             {
                 std::lock_guard lock{mtx};
@@ -213,10 +219,12 @@ namespace usylibpp::wintoast {
             }
             cv.notify_one();
 
-            if constexpr (std::is_void_v<Ret>) {
-                fut.get();
+            if constexpr (wait_for_completion) {
+                if constexpr (std::is_void_v<Ret>) fut.get();
+                else return fut.get();
             } else {
-                return fut.get();
+                if constexpr (std::is_void_v<Ret>) return;
+                else return Ret{};
             }
         }
     };
