@@ -7,8 +7,10 @@
 
 ## Basically: Don't use this library it's just for my convenience
 
-# Usage
-Cmake:
+# Installation/Usage
+
+
+### Cmake:
 ```cmake
 include(FetchContent)
 
@@ -24,8 +26,12 @@ FetchContent_MakeAvailable(usylibpp)
 target_link_libraries(${PROJECT_NAME} PRIVATE usylibpp::usylibpp)
 ```
 
+### Everything else:
+Look at the cmake file and come up with whatever is needed... (it is header only afterall)
+
 ## Cmake variables
 
+These are printed when configuring, which will be more up to date probably
 
 ### WIN32 Specific
 - `USYLIBPP_ENABLE_WINDOWS` (BOOL, Default: ON) - Toggles all of the following
