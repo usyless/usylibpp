@@ -72,7 +72,7 @@ int main() {
     using namespace WinToastLib;
     print::println("WinToast stuff:");
 
-    wintoast::WinToastInit<true> toast{L"usylibpp_test", L"usy", L"usylibpp", L"usylibpp_test", L"20260206"};
+    wintoast::ToastWorker<true> toast{L"usylibpp_test", L"usy", L"usylibpp", L"usylibpp_test", L"20260206"};
     if (!toast.success()) {
         print::println("Failed to setup wintoast!");
     } else {
@@ -82,7 +82,7 @@ int main() {
 
         auto handler = std::make_unique<wintoast::PrintingWinToastHandler>();
 
-        const auto id = WinToast::instance()->showToast(templ, handler.get());
+        const auto id = toast.showToast(templ, handler.get());
         if (id < 0) {
             print::println("Toast failed");
         } else {
