@@ -39,13 +39,6 @@ target_include_directories(usylibpp_usylibpp INTERFACE
 )
 
 if (WIN32)
-    target_compile_definitions(usylibpp_usylibpp INTERFACE
-        "WIN32_LEAN_AND_MEAN"
-        "_UNICODE"
-        "UNICODE"
-        "NOMINMAX"
-    )
-
     set(USYLIBPP_ENABLE_WINDOWS
         ON
         CACHE BOOL
@@ -58,6 +51,23 @@ This includes windows.h along with various other headers, but enables all of the
 
     if (USYLIBPP_ENABLE_WINDOWS)
         target_compile_definitions(usylibpp_usylibpp INTERFACE "USYLIBPP_ENABLE_WINDOWS")
+
+        set(USYLIBPP_ENABLE_BASIC_WINDOWS_DEFINES
+            ON
+            CACHE BOOL
+            "Define lean and mean, unicode, and nominmax"
+        )
+
+        message(STATUS "Basic windows defines (USYLIBPP_ENABLE_BASIC_WINDOWS_DEFINES): ${USYLIBPP_ENABLE_BASIC_WINDOWS_DEFINES}")
+
+        if(USYLIBPP_ENABLE_BASIC_WINDOWS_DEFINES)
+            target_compile_definitions(usylibpp_usylibpp INTERFACE
+                "WIN32_LEAN_AND_MEAN"
+                "_UNICODE"
+                "UNICODE"
+                "NOMINMAX"
+            )
+        endif()
 
         set(USYLIBPP_ENABLE_TASK_DIALOG_DARK_MODE
             ON
