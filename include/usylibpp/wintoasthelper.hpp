@@ -136,7 +136,7 @@ namespace usylibpp::wintoast {
         }
 
         bool success() {
-            return toast->success();
+            return _toast->success();
         }
 
         bool isInitialized() {
@@ -168,7 +168,7 @@ namespace usylibpp::wintoast {
         }
 
     private:
-        std::unique_ptr<WinToastInit<delete_on_destruct>> toast;
+        std::unique_ptr<WinToastInit<delete_on_destruct>> _toast;
         std::thread worker;
         std::mutex mtx;
         std::condition_variable cv;
@@ -176,8 +176,8 @@ namespace usylibpp::wintoast {
         std::atomic<bool> running = true;
 
         void thread_main(const std::wstring& app_name, const std::wstring& company_name, const std::wstring& product_name, const std::wstring& sub_product, const std::wstring& version_information, std::optional<WinToastLib::WinToast::ShortcutPolicy> shortcut_policy = std::nullopt) {
-            toast = std::make_unique<WinToastInit<delete_on_destruct>>(app_name, company_name, product_name, sub_product, version_information, shortcut_policy);
-            if (!toast->success()) {
+            _toast = std::make_unique<WinToastInit<delete_on_destruct>>(app_name, company_name, product_name, sub_product, version_information, shortcut_policy);
+            if (!_toast->success()) {
                 running = false;
                 return;
             }
