@@ -136,7 +136,7 @@ namespace usylibpp::wintoast {
         }
 
         bool success() {
-            return post<bool>([this]{ return _toast->success(); });
+            return post<bool>([this]{ return _toast ? _toast->success() : false; });
         }
 
         bool isInitialized() {
