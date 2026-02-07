@@ -135,6 +135,10 @@ namespace usylibpp::wintoast {
             if (worker.joinable()) worker.join();
         }
 
+        bool success() {
+            return toast->success();
+        }
+
         bool isInitialized() {
             return post<bool>([]{ return WinToastLib::WinToast::instance()->isInitialized(); });
         }
@@ -173,6 +177,10 @@ namespace usylibpp::wintoast {
 
         void thread_main(const std::wstring& app_name, const std::wstring& company_name, const std::wstring& product_name, const std::wstring& sub_product, const std::wstring& version_information, std::optional<WinToastLib::WinToast::ShortcutPolicy> shortcut_policy = std::nullopt) {
             toast = std::make_unique<WinToastInit<delete_on_destruct>>(app_name, company_name, product_name, sub_product, version_information, shortcut_policy);
+            if (!toast->success()) {
+                running = false;
+                return;
+            }
 
             while (true) {
                 std::unique_ptr<CallBase> call;
