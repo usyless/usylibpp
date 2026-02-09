@@ -129,7 +129,12 @@ namespace usylibpp::wintoast {
         };
     public:
         ToastWorker(const std::wstring& app_name, const std::wstring& company_name, const std::wstring& product_name, const std::wstring& sub_product, const std::wstring& version_information, std::optional<WinToastLib::WinToast::ShortcutPolicy> shortcut_policy = std::nullopt) {
-            worker = std::thread([=, this] { thread_main(app_name, company_name, product_name, sub_product, version_information, shortcut_policy); });
+            worker = std::thread{[this] { thread_main(); }};
+            // ref is fine as it waits until completion
+            post<void, true>([&, this] { 
+                _toast = std::make_unique<WinToastInit<delete_on_destruct>>(app_name, company_name, product_name, sub_product, version_information, shortcut_policy);
+                if (!_toast->success()) running = false;
+            });
         }
 
         ~ToastWorker() {
@@ -139,7 +144,7 @@ namespace usylibpp::wintoast {
         }
 
         bool success() {
-            return post<bool, true>([this]{ return _toast ? _toast->success() : false; });
+            return post<bool, true>([this]{ return _toast->success(); });
         }
 
         bool isInitialized() {
@@ -179,15 +184,9 @@ namespace usylibpp::wintoast {
         std::mutex mtx;
         std::condition_variable cv;
         std::queue<std::unique_ptr<CallBase>> queue;
-        std::atomic<bool> running = true;
+        std::atomic_bool running{true};
 
-        void thread_main(const std::wstring& app_name, const std::wstring& company_name, const std::wstring& product_name, const std::wstring& sub_product, const std::wstring& version_information, std::optional<WinToastLib::WinToast::ShortcutPolicy> shortcut_policy = std::nullopt) {
-            _toast = std::make_unique<WinToastInit<delete_on_destruct>>(app_name, company_name, product_name, sub_product, version_information, shortcut_policy);
-            if (!_toast->success()) {
-                running = false;
-                return;
-            }
-
+        void thread_main() {
             while (true) {
                 std::unique_ptr<CallBase> call;
 

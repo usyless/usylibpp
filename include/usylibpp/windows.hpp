@@ -56,7 +56,7 @@ namespace usylibpp::windows {
     USYLIBPP__MAKE_OR(to_wstr, std::wstring{})
 
     template<types::wchar_t_strict T>
-    [[nodiscard]] inline constexpr const wchar_t* wchar_t_from_strict(T&& str) {
+    [[nodiscard]] inline constexpr const wchar_t* wchar_t_from_strict(T&& str) noexcept {
         if constexpr (types::wchar_ptr<T>) {
             return str;
         } else if constexpr (types::wstring<T>) {
@@ -126,7 +126,7 @@ namespace usylibpp::windows {
     public:
         COMWrapper(DWORD co_init_flags = COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE) : hr(dummy ? 1 : (CoInitializeEx(nullptr, co_init_flags))) {}
 
-        [[nodiscard]] constexpr HRESULT status() {
+        [[nodiscard]] constexpr HRESULT status() noexcept {
             return hr;
         }
 
