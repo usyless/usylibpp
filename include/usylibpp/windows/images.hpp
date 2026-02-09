@@ -106,6 +106,16 @@ namespace usylibpp::windows::images {
         return converter;
     }
 
+    template <DecodedImageType type>
+    inline std::optional<wil::com_ptr<IWICFormatConverter>> create_imaging_format_converter(IWICImagingFactory* factory, IWICBitmapFrameDecode* frame) {
+        return create_imaging_format_converter(factory, frame,
+            (type == DecodedImageType::Gray) ? GUID_WICPixelFormat8bppGray : (type == DecodedImageType::RGBA) ? GUID_WICPixelFormat32bppRGBA : GUID_WICPixelFormat24bppRGB,
+            WICBitmapDitherTypeNone,
+            nullptr, 0.0,
+            (type == DecodedImageType::Gray) ? WICBitmapPaletteTypeFixedGray256 : WICBitmapPaletteTypeCustom
+        );
+    }
+
     template <bool ComInitialised = false, DecodedImageType type>
     inline std::optional<DecodedImage<type>> decode_image(const std::wstring& path) {
         COMWrapper<ComInitialised> COM{COINIT_MULTITHREADED | COINIT_DISABLE_OLE1DDE};
@@ -124,12 +134,7 @@ namespace usylibpp::windows::images {
         auto hr = decoder->GetFrame(0, &frame);
         if (FAILED(hr) || !frame) return std::nullopt;
 
-        auto converter_opt = create_imaging_format_converter(factory.get(), frame.get(),
-            (type == DecodedImageType::Gray) ? GUID_WICPixelFormat8bppGray : (type == DecodedImageType::RGBA) ? GUID_WICPixelFormat32bppRGBA : GUID_WICPixelFormat24bppRGB,
-            WICBitmapDitherTypeNone,
-            nullptr, 0.0,
-            (type == DecodedImageType::Gray) ? WICBitmapPaletteTypeFixedGray256 : WICBitmapPaletteTypeCustom
-        );
+        auto converter_opt = create_imaging_format_converter<type>(factory.get(), frame.get());
         if (!converter_opt) return std::nullopt;
         auto& converter = converter_opt.value();
 
@@ -178,12 +183,7 @@ namespace usylibpp::windows::images {
         auto hr = decoder->GetFrame(0, &frame);
         if (FAILED(hr) || !frame) return std::nullopt;
 
-        auto converter_opt = create_imaging_format_converter(factory.get(), frame.get(),
-            (type == DecodedImageType::Gray) ? GUID_WICPixelFormat8bppGray : (type == DecodedImageType::RGBA) ? GUID_WICPixelFormat32bppRGBA : GUID_WICPixelFormat24bppRGB,
-            WICBitmapDitherTypeNone,
-            nullptr, 0.0,
-            (type == DecodedImageType::Gray) ? WICBitmapPaletteTypeFixedGray256 : WICBitmapPaletteTypeCustom
-        );
+        auto converter_opt = create_imaging_format_converter<type>(factory.get(), frame.get());
         if (!converter_opt) return std::nullopt;
         auto& converter = converter_opt.value();
 
