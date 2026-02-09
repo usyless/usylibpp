@@ -11,6 +11,7 @@ int main() {
 
     print::println("String functions:");
     print::println("strings::concat_strings (chars): {}", strings::concat_strings("hello", " ", "there!"));
+    print::println("strings::constexpr_strlen (\"hi!\"): {}", strings::constexpr_strlen("hi!"));
     // print::println(L"strings::concat_strings (wide chars): {}", strings::concat_strings(L"hello", L" ", L"there!"));
     {
         auto str = "THis IS moSTLY upperCASE";

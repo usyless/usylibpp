@@ -72,26 +72,31 @@ namespace usylibpp::strings {
 
     USYLIBPP__MAKE_OR(to_string_view, std::string_view{})
 
-    inline constexpr void split_by_for_each(const std::string_view input, const unsigned char split_by, const auto& f) noexcept(noexcept(f(input))) {
+    template <typename Char, typename F>
+    requires std::invocable<F, std::basic_string_view<Char>>
+    inline constexpr void split_by_for_each(const std::basic_string_view<Char> input, const Char split_by, F&& f) noexcept(noexcept(std::invoke(f, input))) {
         size_t start = 0;
         const auto size = input.size();
         while (start < size) {
             const auto end = input.find(split_by, start);
-            if (end == std::string_view::npos) {
-                f(input.substr(start));
+            if (end == std::basic_string_view<Char>::npos) {
+                std::invoke(f, input.substr(start));
                 break;
             } else {
-                f(input.substr(start, end - start));
+                std::invoke(f, input.substr(start, end - start));
                 start = end + 1;
             }
         }
     }
 
-    inline constexpr void for_each_line(const std::string_view input, const auto& f) noexcept(noexcept(split_by_for_each(input, '\n', f))) {
-        split_by_for_each(input, '\n', f);
+    template <typename Char, typename F>
+    requires std::invocable<F, std::basic_string_view<Char>>
+    inline constexpr void for_each_line(const std::basic_string_view<Char> input, F&& f) noexcept(noexcept(split_by_for_each(input, '\n', f))) {
+        split_by_for_each(input, '\n', std::forward<F>(f));
     }
 
-    [[nodiscard]] inline constexpr size_t count_of(const std::string_view str, const char c) noexcept {
+    template <typename Char>
+    [[nodiscard]] inline constexpr size_t count_of(const std::basic_string_view<Char> str, const Char c) noexcept {
         size_t count = 0;
         for (const auto a : str) if (a == c) ++count;
         return count;
@@ -100,8 +105,8 @@ namespace usylibpp::strings {
     /**
      * Includes the null terminator
      */
-    template<std::size_t N>
-    [[nodiscard]] inline consteval std::size_t constexpr_strlen(const char (&)[N]) noexcept {
+    template<typename Char, std::size_t N>
+    [[nodiscard]] inline consteval std::size_t constexpr_strlen(const Char (&)[N]) noexcept {
         return N;
     }
 
