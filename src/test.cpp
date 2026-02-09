@@ -100,6 +100,14 @@ int main() {
     #ifdef USYLIBPP_ENABLE_WINDOWS_IMAGING
     print::println("Windows imaging stuff:");
     {
+        auto supported_file_extensions = windows::images::get_all_supported_file_extensions();
+        print::print("WIC supported file extensions: ");
+        for (const auto& format : supported_file_extensions) {
+            print::print("{}, ", windows::to_utf8_or_default(format));
+        }
+        print::println("");
+    }
+    {
         auto wic_test_png_result = windows::images::decode_image<false, windows::images::DecodedImageType::Gray>(L"test.png");
         if (!wic_test_png_result) print::println("Failed to decode test.png! Ensure it exists");
         else {

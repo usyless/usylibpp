@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../windows.hpp"
+#include "../strings.hpp"
 #include <wincodec.h>
 #include <wincodecsdk.h>
 
@@ -217,5 +218,70 @@ namespace usylibpp::windows::images {
         ret.dimensions.height = height;
 
         return ret;
+    }
+
+    /**
+     * Does not include leading dot by default, change with template arg
+     */
+    template <bool ComInitialised = false, bool include_leading_dot = false>
+    inline std::vector<std::string> get_all_supported_file_extensions() {
+        COMWrapper<ComInitialised> COM{COINIT_MULTITHREADED | COINIT_DISABLE_OLE1DDE};
+
+        if (FAILED(COM.status())) return {};
+
+        auto factory_opt = create_imaging_factory();
+        if (!factory_opt) return {};
+        auto& factory = factory_opt.value();
+
+        wil::com_ptr<IEnumUnknown> enumDecoders;
+        auto hr = factory->CreateComponentEnumerator(
+            WICDecoder,
+            WICComponentEnumerateDefault,
+            &enumDecoders);
+        if (FAILED(hr) || !enumDecoders) return {};
+
+        std::vector<std::string> formats;
+
+        wil::com_ptr<IUnknown> unk;
+        while (enumDecoders->Next(1, &unk, nullptr) == S_OK) {
+            wil::com_ptr<IWICComponentInfo> compInfo;
+            hr = unk->QueryInterface(IID_PPV_ARGS(&compInfo));
+
+            if (FAILED(hr) || !compInfo) continue;
+
+
+            WICComponentType type;
+            hr = compInfo->GetComponentType(&type);
+            if (FAILED(hr)) continue;
+
+            if (type == WICDecoder) {
+                wil::com_ptr<IWICBitmapCodecInfo> codecInfo;
+                hr = compInfo->QueryInterface(IID_PPV_ARGS(&codecInfo));
+                if (FAILED(hr) || !codecInfo) continue;
+
+                UINT cch = 0;
+                hr = codecInfo->GetFileExtensions(0, nullptr, &cch);
+                if (FAILED(hr) || cch <= 0) continue;
+
+                std::wstring ext(cch, L'\0');
+                hr = codecInfo->GetFileExtensions(cch, ext.data(), &cch);
+                if (FAILED(hr)) continue;
+
+                auto ext_utf8 = windows::to_utf8(ext);
+                if (!ext_utf8) continue;
+
+                strings::split_by_for_each(ext_utf8.value(), ',', [&formats](const std::string_view extension) {
+                    if (extension.size() < 1) return;
+
+                    if constexpr (include_leading_dot) {
+                        formats.emplace_back(extension);
+                    } else {
+                        if (extension.starts_with('.')) formats.emplace_back(extension.substr(1));
+                        else formats.emplace_back(extension);
+                    }
+                });
+            }
+        }
+        return formats;
     }
 }
