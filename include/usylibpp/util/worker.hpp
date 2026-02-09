@@ -26,7 +26,7 @@ namespace usylibpp::util {
     private:
         struct CallBase {
             virtual ~CallBase() = default;
-            virtual void execute() = 0;
+            virtual void execute() noexcept = 0;
         };
 
         template<typename Fn, typename Ret>
@@ -36,7 +36,7 @@ namespace usylibpp::util {
 
             Call(Fn&& f) : fn(std::move(f)) {}
 
-            void execute() override final {
+            void execute() noexcept override final {
                 try {
                     if constexpr (std::is_void_v<Ret>) {
                         fn();
@@ -50,22 +50,7 @@ namespace usylibpp::util {
             }
         };
     public:
-        Worker() : worker {[this] {
-            while (true) {
-                std::unique_ptr<CallBase> call;
-
-                {
-                    std::unique_lock lock{mtx};
-                    cv.wait(lock, [this]{ return !queue.empty() || cancelled(); });
-                    if constexpr (!opts.drain_queue_on_cancel) { if (cancelled()) break; }
-                    else { if (cancelled() && queue.empty()) break; }
-                    call = std::move(queue.front());
-                    queue.pop();
-                }
-
-                call->execute();
-            }
-        }} {}
+        Worker() : worker {[this] { worker_loop(); }} {}
 
         ~Worker() {
             cancel();
@@ -82,7 +67,7 @@ namespace usylibpp::util {
          * If cancelled, either throws, or returns a default value/future
          */
         template<bool wait_for_completion, std::invocable Fn>
-        auto post(Fn&& fn) -> conditional_return<std::invoke_result_t<Fn&>, wait_for_completion> {
+        inline auto post(Fn&& fn) -> conditional_return<std::invoke_result_t<Fn&>, wait_for_completion> {
             using Ret = std::invoke_result_t<Fn&>;
 
             #define check_cancelled \
@@ -126,7 +111,7 @@ namespace usylibpp::util {
         /**
          * Draining the queue depends upon the template argument drain_queue_on_cancel
          */
-        void cancel() noexcept {
+        inline void cancel() noexcept {
             {
                 std::lock_guard lock{mtx};
                 running.store(false);
@@ -134,7 +119,7 @@ namespace usylibpp::util {
             cv.notify_all();
         }
 
-        constexpr bool cancelled() const noexcept {
+        inline constexpr bool cancelled() const noexcept {
             return !running;
         }
 
@@ -144,5 +129,22 @@ namespace usylibpp::util {
         std::atomic_bool running{true};
         std::queue<std::unique_ptr<CallBase>> queue;
         std::thread worker;
+
+        inline void worker_loop() {
+            while (true) {
+                std::unique_ptr<CallBase> call;
+
+                {
+                    std::unique_lock lock{mtx};
+                    cv.wait(lock, [this]{ return !queue.empty() || cancelled(); });
+                    if constexpr (!opts.drain_queue_on_cancel) { if (cancelled()) break; }
+                    else { if (cancelled() && queue.empty()) break; }
+                    call = std::move(queue.front());
+                    queue.pop();
+                }
+
+                call->execute();
+            }
+        }
     };
 }
