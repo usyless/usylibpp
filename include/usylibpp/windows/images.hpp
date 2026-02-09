@@ -7,38 +7,6 @@
 #pragma comment(lib, "Windowscodecs.lib")
 
 namespace usylibpp::windows::images {
-    template <uint8_t _channels>
-    struct DecodedImage {
-        static constexpr uint8_t channels = _channels;
-
-        std::vector<uint8_t> data;
-        union {
-            uint64_t full;
-            struct { // works on little endian, nothing uses big endian anyway
-                uint32_t height; // low 4 bits
-                uint32_t width; // high 4 bits
-            };
-        } dimensions;
-    };
-
-    template <uint8_t _channels>
-    struct DecodedImageView {
-        static constexpr uint8_t channels = _channels;
-
-        wil::com_ptr<IWICBitmap> bitmap;
-        wil::com_ptr<IWICBitmapLock> lock;
-
-        const uint8_t* data;
-        union {
-            uint64_t full;
-            struct { // works on little endian, nothing uses big endian anyway
-                uint32_t height; // low 4 bits
-                uint32_t width; // high 4 bits
-            };
-        } dimensions;
-        uint32_t buffer_size;
-    };
-
     enum class DecodedImageType {
         RGB,
         RGBA,
@@ -61,6 +29,38 @@ namespace usylibpp::windows::images {
     template <>
     struct DecodedImageChannels<DecodedImageType::RGBA> {
         static constexpr uint8_t value = 4;
+    };
+
+    template <DecodedImageType type>
+    struct DecodedImage {
+        static constexpr uint8_t channels = DecodedImageChannels<type>::value;
+
+        std::vector<uint8_t> data;
+        union {
+            uint64_t full;
+            struct { // works on little endian, nothing uses big endian anyway
+                uint32_t height; // low 4 bits
+                uint32_t width; // high 4 bits
+            };
+        } dimensions;
+    };
+
+    template <DecodedImageType type>
+    struct DecodedImageView {
+        static constexpr uint8_t channels = DecodedImageChannels<type>::value;
+
+        wil::com_ptr<IWICBitmap> bitmap;
+        wil::com_ptr<IWICBitmapLock> lock;
+
+        const uint8_t* data;
+        union {
+            uint64_t full;
+            struct { // works on little endian, nothing uses big endian anyway
+                uint32_t height; // low 4 bits
+                uint32_t width; // high 4 bits
+            };
+        } dimensions;
+        uint32_t buffer_size;
     };
 
     inline std::optional<wil::com_ptr<IWICImagingFactory>> create_imaging_factory() {
@@ -102,7 +102,7 @@ namespace usylibpp::windows::images {
     }
 
     template <bool ComInitialised = false, DecodedImageType type>
-    inline std::optional<DecodedImage<DecodedImageChannels<type>::value>> decode_image(const std::wstring& path) {
+    inline std::optional<DecodedImage<type>> decode_image(const std::wstring& path) {
         COMWrapper<ComInitialised> COM{COINIT_MULTITHREADED | COINIT_DISABLE_OLE1DDE};
 
         if (FAILED(COM.status())) return std::nullopt;
@@ -145,7 +145,7 @@ namespace usylibpp::windows::images {
         );
         if (FAILED(hr)) return std::nullopt;
 
-        DecodedImage<DecodedImageChannels<type>::value> ret {
+        DecodedImage<type> ret {
             std::move(buffer), {0}
         };
         ret.dimensions.width = width;
@@ -160,7 +160,7 @@ namespace usylibpp::windows::images {
      * Returned data depends on COM
      */
     template <DecodedImageType type>
-    inline std::optional<DecodedImageView<DecodedImageChannels<type>::value>> decode_image_threadlocal(const std::wstring& path) {
+    inline std::optional<DecodedImageView<type>> decode_image_threadlocal(const std::wstring& path) {
         thread_local auto factory_opt = create_imaging_factory();
         if (!factory_opt) return std::nullopt;
         auto& factory = factory_opt.value();
@@ -205,7 +205,7 @@ namespace usylibpp::windows::images {
         hr = lock->GetDataPointer(&bufferSize, &data);
         if (FAILED(hr)) return std::nullopt;
 
-        DecodedImageView<DecodedImageChannels<type>::value> ret {
+        DecodedImageView<type> ret {
             bitmap, lock, data, {0}, bufferSize
         };
         ret.dimensions.width = width;
