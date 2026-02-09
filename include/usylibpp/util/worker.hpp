@@ -102,12 +102,12 @@ namespace usylibpp::util {
         /**
          * Draining the queue depends upon the template argument drain_queue_on_cancel
          */
-        constexpr void cancel() noexcept {
+        void cancel() noexcept {
             running = false;
             cv.notify_all();
         }
 
-        constexpr bool cancelled() noexcept {
+        constexpr bool cancelled() const noexcept {
             return !running;
         }
 
