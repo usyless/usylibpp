@@ -2,11 +2,9 @@
 
 #include "windows.hpp"
 #include "print.hpp"
-#include <future>
 #include <wintoastlib.h>
-#include <mutex>
-#include <thread>
-#include <queue>
+
+#include "util/worker.hpp"
 
 namespace usylibpp::wintoast {
     /**
@@ -103,128 +101,54 @@ namespace usylibpp::wintoast {
     /**
      * When using wait_for_completion = false, the return value will be garbage
      */
-    template <bool delete_on_destruct>
+    template <bool delete_on_destruct, bool drain_queue_on_cancel, util::WorkerType worker_type = util::WorkerType::ReturnDefault>
     class ToastWorker {
-    private:
-        struct CallBase {
-            virtual ~CallBase() = default;
-            virtual void execute() = 0;
-        };
-
-        template<typename Fn, typename Ret>
-        struct Call : CallBase {
-            Fn fn;
-            std::promise<Ret> result;
-
-            Call(Fn&& f) : fn(std::move(f)) {}
-
-            void execute() override {
-                if constexpr (std::is_void_v<Ret>) {
-                    fn();
-                    result.set_value();
-                } else {
-                    result.set_value(fn());
-                }
-            }
-        };
     public:
         ToastWorker(const std::wstring& app_name, const std::wstring& company_name, const std::wstring& product_name, const std::wstring& sub_product, const std::wstring& version_information, std::optional<WinToastLib::WinToast::ShortcutPolicy> shortcut_policy = std::nullopt) {
-            worker = std::thread{[this] { thread_main(); }};
             // ref is fine as it waits until completion
-            post<void, true>([&, this] { 
+            worker.template post<void, true>([&, this] { 
                 _toast = std::make_unique<WinToastInit<delete_on_destruct>>(app_name, company_name, product_name, sub_product, version_information, shortcut_policy);
-                if (!_toast->success()) running = false;
+                if (!_toast->success()) worker.cancel();
             });
         }
 
-        ~ToastWorker() {
-            running = false;
-            cv.notify_all();
-            if (worker.joinable()) worker.join();
+        auto success() {
+            return worker.template post<bool, true>([this]{ return _toast->success(); });
         }
 
-        bool success() {
-            return post<bool, true>([this]{ return _toast->success(); });
-        }
-
-        bool isInitialized() {
-            return post<bool, true>([]{ return WinToastLib::WinToast::instance()->isInitialized(); });
+        auto isInitialized() {
+            return worker.template post<bool, true>([]{ return WinToastLib::WinToast::instance()->isInitialized(); });
         }
 
         template <bool wait_for_completion = true>
-        bool hideToast(INT64 id) {
-            return post<bool, wait_for_completion>([id]{ return WinToastLib::WinToast::instance()->hideToast(id); });
+        auto hideToast(INT64 id) {
+            return worker.template post<bool, wait_for_completion>([id]{ return WinToastLib::WinToast::instance()->hideToast(id); });
         }
 
-        INT64 showToast(WinToastLib::WinToastTemplate const& toast, WinToastLib::IWinToastHandler* eventHandler, WinToastLib::WinToast::WinToastError* error = nullptr) {
-            return post<INT64, true>([&toast, eventHandler, error]{ return WinToastLib::WinToast::instance()->showToast(toast, eventHandler, error); });
+        auto showToast(WinToastLib::WinToastTemplate const& toast, WinToastLib::IWinToastHandler* eventHandler, WinToastLib::WinToast::WinToastError* error = nullptr) {
+            return worker.template post<INT64, true>([&toast, eventHandler, error]{ return WinToastLib::WinToast::instance()->showToast(toast, eventHandler, error); });
         }
 
         template <bool wait_for_completion = true>
         void clear() {
-            post<void, wait_for_completion>([]{ WinToastLib::WinToast::instance()->clear(); });
+            worker.template post<void, wait_for_completion>([]{ WinToastLib::WinToast::instance()->clear(); });
         }
 
         template <bool wait_for_completion = true>
-        enum WinToastLib::WinToast::ShortcutResult createShortcut() {
-            return post<WinToastLib::WinToast::ShortcutResult, wait_for_completion>([]{ return WinToastLib::WinToast::instance()->createShortcut(); });
+        auto createShortcut() {
+            return worker.template post<WinToastLib::WinToast::ShortcutResult, wait_for_completion>([]{ return WinToastLib::WinToast::instance()->createShortcut(); });
         }
 
-        std::wstring appName() {
-            return post<std::wstring, true>([]{ return WinToastLib::WinToast::instance()->appName(); });
+        auto appName() {
+            return worker.template post<std::wstring, true>([]{ return WinToastLib::WinToast::instance()->appName(); });
         }
 
-        std::wstring appUserModelId() {
-            return post<std::wstring, true>([]{ return WinToastLib::WinToast::instance()->appUserModelId(); });
+        auto appUserModelId() {
+            return worker.template post<std::wstring, true>([]{ return WinToastLib::WinToast::instance()->appUserModelId(); });
         }
 
     private:
+        util::Worker<drain_queue_on_cancel, worker_type> worker{};
         std::unique_ptr<WinToastInit<delete_on_destruct>> _toast;
-        std::thread worker;
-        std::mutex mtx;
-        std::condition_variable cv;
-        std::queue<std::unique_ptr<CallBase>> queue;
-        std::atomic_bool running{true};
-
-        void thread_main() {
-            while (true) {
-                std::unique_ptr<CallBase> call;
-
-                {
-                    std::unique_lock lock{mtx};
-                    cv.wait(lock, [this]{ return !queue.empty() || !running; });
-                    if (!running) break;
-                    call = std::move(queue.front());
-                    queue.pop();
-                }
-
-                call->execute();
-            }
-        }
-
-        template<typename Ret, bool wait_for_completion, typename Fn>
-        Ret post(Fn&& fn) {
-            if (!running) {
-                if constexpr (std::is_void_v<Ret>) return;
-                else return Ret{};
-            }
-
-            auto call = std::make_unique<Call<Fn, Ret>>(std::forward<Fn>(fn));
-            [[maybe_unused]] auto fut = call->result.get_future();
-
-            {
-                std::lock_guard lock{mtx};
-                queue.push(std::move(call));
-            }
-            cv.notify_one();
-
-            if constexpr (wait_for_completion) {
-                if constexpr (std::is_void_v<Ret>) fut.get();
-                else return fut.get();
-            } else {
-                if constexpr (std::is_void_v<Ret>) return;
-                else return Ret{};
-            }
-        }
     };
 }
