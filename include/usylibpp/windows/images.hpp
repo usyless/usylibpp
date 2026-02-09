@@ -36,6 +36,7 @@ namespace usylibpp::windows::images {
                 uint32_t width; // high 4 bits
             };
         } dimensions;
+        uint32_t buffer_size;
     };
 
     enum class DecodedImageType {
@@ -205,7 +206,7 @@ namespace usylibpp::windows::images {
         if (FAILED(hr)) return std::nullopt;
 
         DecodedImageView<DecodedImageChannels<type>::value> ret {
-            bitmap, lock, data, {0}
+            bitmap, lock, data, {0}, bufferSize
         };
         ret.dimensions.width = width;
         ret.dimensions.height = height;
