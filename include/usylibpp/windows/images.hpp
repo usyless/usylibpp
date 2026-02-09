@@ -31,6 +31,9 @@ namespace usylibpp::windows::images {
         static constexpr uint8_t value = 4;
     };
 
+    #pragma warning(push)
+    #pragma warning(disable:4201)
+
     template <DecodedImageType type>
     struct DecodedImage {
         static constexpr uint8_t channels = DecodedImageChannels<type>::value;
@@ -62,6 +65,8 @@ namespace usylibpp::windows::images {
         } dimensions;
         uint32_t buffer_size;
     };
+
+    #pragma warning(pop)
 
     inline std::optional<wil::com_ptr<IWICImagingFactory>> create_imaging_factory() {
         wil::com_ptr<IWICImagingFactory> factory;
