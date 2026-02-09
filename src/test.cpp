@@ -97,4 +97,15 @@ int main() {
         }
     }
     #endif
+    #ifdef USYLIBPP_ENABLE_WINDOWS_IMAGING
+    print::println("Windows imaging stuff:");
+    {
+        auto wic_test_png_result = windows::images::decode_image<false, windows::images::DecodedImageType::Gray>(L"test.png");
+        if (!wic_test_png_result) print::println("Failed to decode test.png! Ensure it exists");
+        else {
+            auto& res = wic_test_png_result.value();
+            print::println("Decoded test.png, data size: {}, channels: {}, width: {}, height: {}", res.data.size(), res.channels, res.dimensions.width, res.dimensions.height);
+        }
+    }
+    #endif
 }
