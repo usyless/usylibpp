@@ -14,7 +14,6 @@ namespace usylibpp::util {
     };
     /**
      * Basic worker in its own thread
-     * Once cancelled returns std::nullopt
      */
     template <bool drain_queue_on_cancel, WorkerType type = WorkerType::ReturnDefault>
     class Worker {
@@ -73,7 +72,8 @@ namespace usylibpp::util {
         /**
          * First template is return type
          * Second template is whether to wait for the completion of the function
-         * If cancelled, return depends on template
+         * Returns a future if not waiting for completion
+         * If cancelled, either throws, or returns a default value/future
          */
         template<typename Ret, bool wait_for_completion, typename Fn>
         auto post(Fn&& fn) -> conditional_return<Ret, wait_for_completion> {

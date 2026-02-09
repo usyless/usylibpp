@@ -112,19 +112,21 @@ namespace usylibpp::wintoast {
             });
         }
 
+        template <bool wait_for_completion = true>
         auto success() {
-            return worker.template post<bool, true>([this]{ return _toast->success(); });
+            return worker.template post<bool, wait_for_completion>([this]{ return _toast->success(); });
         }
 
+        template <bool wait_for_completion = true>
         auto isInitialized() {
-            return worker.template post<bool, true>([]{ return WinToastLib::WinToast::instance()->isInitialized(); });
+            return worker.template post<bool, wait_for_completion>([]{ return WinToastLib::WinToast::instance()->isInitialized(); });
         }
 
         template <bool wait_for_completion = true>
         auto hideToast(INT64 id) {
             return worker.template post<bool, wait_for_completion>([id]{ return WinToastLib::WinToast::instance()->hideToast(id); });
         }
-
+        
         auto showToast(WinToastLib::WinToastTemplate const& toast, WinToastLib::IWinToastHandler* eventHandler, WinToastLib::WinToast::WinToastError* error = nullptr) {
             return worker.template post<INT64, true>([&toast, eventHandler, error]{ return WinToastLib::WinToast::instance()->showToast(toast, eventHandler, error); });
         }
@@ -139,12 +141,14 @@ namespace usylibpp::wintoast {
             return worker.template post<WinToastLib::WinToast::ShortcutResult, wait_for_completion>([]{ return WinToastLib::WinToast::instance()->createShortcut(); });
         }
 
+        template <bool wait_for_completion = true>
         auto appName() {
-            return worker.template post<std::wstring, true>([]{ return WinToastLib::WinToast::instance()->appName(); });
+            return worker.template post<std::wstring, wait_for_completion>([]{ return WinToastLib::WinToast::instance()->appName(); });
         }
 
+        template <bool wait_for_completion = true>
         auto appUserModelId() {
-            return worker.template post<std::wstring, true>([]{ return WinToastLib::WinToast::instance()->appUserModelId(); });
+            return worker.template post<std::wstring, wait_for_completion>([]{ return WinToastLib::WinToast::instance()->appUserModelId(); });
         }
 
     private:
