@@ -103,7 +103,7 @@ namespace usylibpp::wintoast {
     };
 
     /**
-     * When using wait_for_completion = false, the return value will be garbage
+     * If wintoast fails to intialise, the return types are dependent on cancel_return_type
      */
     template <bool delete_on_destruct, util::WorkerType cancel_return_type>
     class ToastWorker {
