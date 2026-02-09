@@ -76,18 +76,18 @@ namespace usylibpp::util {
                     if constexpr (wait_for_completion) throw std::runtime_error("Worker is cancelled"); \
                     else { \
                         std::promise<Ret> promise; \
-                        auto fut = promise.get_future(); \
+                        auto future = promise.get_future(); \
                         promise.set_exception(std::make_exception_ptr(std::runtime_error("Worker is cancelled"))); \
-                        return fut; \
+                        return future; \
                     } \
                 } else { \
                     if constexpr (wait_for_completion) return Ret{}; \
                     else { \
                         std::promise<Ret> promise; \
-                        auto fut = promise.get_future(); \
+                        auto future = promise.get_future(); \
                         if constexpr (std::is_void_v<Ret>) promise.set_value(); \
                         else promise.set_value(Ret{}); \
-                        return fut; \
+                        return future; \
                     } \
                 } \
             }
