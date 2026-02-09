@@ -78,16 +78,21 @@ namespace usylibpp::util {
         template<typename Ret, bool wait_for_completion, typename Fn>
         auto post(Fn&& fn) -> conditional_return<Ret, wait_for_completion> {
             if (cancelled()) {
-                if constexpr (type == WorkerType::ThrowError) throw std::runtime_error("Worker is cancelled");
-                else if constexpr (wait_for_completion) return Ret{};
-                else {
-                    std::promise<Ret> promise;
-                    auto fut = promise.get_future();
-                    if constexpr (std::is_void_v<Ret>) {
-                        promise.set_value();
-                        return fut;
-                    } else {
-                        promise.set_value(Ret{});
+                if constexpr (type == WorkerType::ThrowError) {
+                    if constexpr (wait_for_completion) throw std::runtime_error("Worker is cancelled");
+                    else {
+                        std::promise<Ret> promise;
+                        auto fut = promise.get_future();
+                        promise.set_exception(std::make_exception_ptr(std::runtime_error("Worker is cancelled")));
+                        return promise;
+                    }
+                } else {
+                    if constexpr (wait_for_completion) return Ret{};
+                    else {
+                        std::promise<Ret> promise;
+                        auto fut = promise.get_future();
+                        if constexpr (std::is_void_v<Ret>) promise.set_value();
+                        else promise.set_value(Ret{});
                         return fut;
                     }
                 }
