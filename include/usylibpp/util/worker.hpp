@@ -75,8 +75,10 @@ namespace usylibpp::util {
          * Returns a future if not waiting for completion
          * If cancelled, either throws, or returns a default value/future
          */
-        template<typename Ret, bool wait_for_completion, typename Fn>
-        auto post(Fn&& fn) -> conditional_return<Ret, wait_for_completion> {
+        template<bool wait_for_completion, std::invocable Fn>
+        auto post(Fn&& fn) -> conditional_return<std::invoke_result_t<Fn&>, wait_for_completion> {
+            using Ret = std::invoke_result_t<Fn&>;
+            
             if (cancelled()) {
                 if constexpr (type == WorkerType::ThrowError) {
                     if constexpr (wait_for_completion) throw std::runtime_error("Worker is cancelled");
