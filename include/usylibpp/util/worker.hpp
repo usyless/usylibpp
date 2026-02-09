@@ -34,11 +34,15 @@ namespace usylibpp::util {
             Call(Fn&& f) : fn(std::move(f)) {}
 
             void execute() override final {
-                if constexpr (std::is_void_v<Ret>) {
-                    fn();
-                    result.set_value();
-                } else {
-                    result.set_value(fn());
+                try {
+                    if constexpr (std::is_void_v<Ret>) {
+                        fn();
+                        result.set_value();
+                    } else {
+                        result.set_value(fn());
+                    }
+                } catch (...) {
+                    result.set_exception(std::current_exception());
                 }
             }
         };
