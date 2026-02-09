@@ -84,33 +84,37 @@ namespace usylibpp::util {
         template<bool wait_for_completion, std::invocable Fn>
         auto post(Fn&& fn) -> conditional_return<std::invoke_result_t<Fn&>, wait_for_completion> {
             using Ret = std::invoke_result_t<Fn&>;
-            
-            if (cancelled()) {
-                if constexpr (opts.type == WorkerType::ThrowError) {
-                    if constexpr (wait_for_completion) throw std::runtime_error("Worker is cancelled");
-                    else {
-                        std::promise<Ret> promise;
-                        auto fut = promise.get_future();
-                        promise.set_exception(std::make_exception_ptr(std::runtime_error("Worker is cancelled")));
-                        return promise;
-                    }
-                } else {
-                    if constexpr (wait_for_completion) return Ret{};
-                    else {
-                        std::promise<Ret> promise;
-                        auto fut = promise.get_future();
-                        if constexpr (std::is_void_v<Ret>) promise.set_value();
-                        else promise.set_value(Ret{});
-                        return fut;
-                    }
-                }
+
+            #define check_cancelled \
+            if (cancelled()) { \
+                if constexpr (opts.type == WorkerType::ThrowError) { \
+                    if constexpr (wait_for_completion) throw std::runtime_error("Worker is cancelled"); \
+                    else { \
+                        std::promise<Ret> promise; \
+                        auto fut = promise.get_future(); \
+                        promise.set_exception(std::make_exception_ptr(std::runtime_error("Worker is cancelled"))); \
+                        return promise; \
+                    } \
+                } else { \
+                    if constexpr (wait_for_completion) return Ret{}; \
+                    else { \
+                        std::promise<Ret> promise; \
+                        auto fut = promise.get_future(); \
+                        if constexpr (std::is_void_v<Ret>) promise.set_value(); \
+                        else promise.set_value(Ret{}); \
+                        return fut; \
+                    } \
+                } \
             }
+
+            check_cancelled
 
             auto call = std::make_unique<Call<Fn, Ret>>(std::forward<Fn>(fn));
             [[maybe_unused]] auto fut = call->result.get_future();
 
             {
                 std::lock_guard lock{mtx};
+                check_cancelled
                 queue.push(std::move(call));
             }
             cv.notify_one();
@@ -123,7 +127,10 @@ namespace usylibpp::util {
          * Draining the queue depends upon the template argument drain_queue_on_cancel
          */
         void cancel() noexcept {
-            running = false;
+            {
+                std::lock_guard lock{mtx};
+                running.store(false);
+            }
             cv.notify_all();
         }
 
