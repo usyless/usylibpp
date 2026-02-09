@@ -9,7 +9,7 @@ namespace usylibpp::time {
     /**
      * Thread safe
      */
-    [[nodiscard]] inline tm tm_safe(time_t time = std::time(nullptr)) {
+    [[nodiscard]] inline tm tm_safe(time_t time = std::time(nullptr)) noexcept {
         tm cur_tm{};
         #ifdef WIN32
         localtime_s(&cur_tm, &time);

@@ -24,8 +24,8 @@ namespace usylibpp::strings {
         return result;
     }
 
-    inline constexpr void to_lowercase_inplace(std::string& str) {
-        std::transform(str.begin(), str.end(), str.begin(), [](unsigned char c) -> char { return static_cast<char>(std::tolower(c)); });
+    inline constexpr void to_lowercase_inplace(std::string& str) noexcept {
+        std::transform(str.begin(), str.end(), str.begin(), [](unsigned char c) noexcept -> char { return static_cast<char>(std::tolower(c)); });
     }
 
     [[nodiscard]] inline constexpr std::string to_lowercase(const std::string_view str) {
@@ -51,7 +51,7 @@ namespace usylibpp::strings {
     template <types::Numeric N>
     [[nodiscard]] inline constexpr std::optional<N> to_number(const std::string_view str) noexcept {
         N num;
-        if (std::from_chars(str.data(), str.data() + str.size(), num).ec == std::errc()) return num;
+        if (std::from_chars(str.data(), str.data() + str.size(), num).ec == std::errc{}) return num;
         return std::nullopt;
     }
     
@@ -72,7 +72,7 @@ namespace usylibpp::strings {
 
     USYLIBPP__MAKE_OR(to_string_view, std::string_view{})
 
-    inline constexpr void split_by_for_each(const std::string_view input, const unsigned char split_by, const auto& f) noexcept {
+    inline constexpr void split_by_for_each(const std::string_view input, const unsigned char split_by, const auto& f) noexcept(noexcept(f(input))) {
         size_t start = 0;
         const auto size = input.size();
         while (start < size) {
@@ -87,7 +87,7 @@ namespace usylibpp::strings {
         }
     }
 
-    inline constexpr void for_each_line(const std::string_view input, const auto& f) noexcept {
+    inline constexpr void for_each_line(const std::string_view input, const auto& f) noexcept(noexcept(split_by_for_each(input, '\n', f))) {
         split_by_for_each(input, '\n', f);
     }
 
@@ -101,7 +101,7 @@ namespace usylibpp::strings {
      * Includes the null terminator
      */
     template<std::size_t N>
-    [[nodiscard]] inline constexpr std::size_t constexpr_strlen(const char (&)[N]) {
+    [[nodiscard]] inline consteval std::size_t constexpr_strlen(const char (&)[N]) noexcept {
         return N;
     }
 
