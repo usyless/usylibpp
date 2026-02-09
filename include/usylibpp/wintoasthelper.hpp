@@ -135,8 +135,13 @@ namespace usylibpp::wintoast {
             return worker.template post<wait_for_completion>([id]{ return WinToastLib::WinToast::instance()->hideToast(id); });
         }
         
+        template <bool wait_for_completion = true>
         auto showToast(WinToastLib::WinToastTemplate const& toast, WinToastLib::IWinToastHandler* eventHandler, WinToastLib::WinToast::WinToastError* error = nullptr) {
-            return worker.template post<true>([&toast, eventHandler, error]{ return WinToastLib::WinToast::instance()->showToast(toast, eventHandler, error); });
+            if constexpr (wait_for_completion) {
+                return worker.template post<true>([&toast, eventHandler, error]{ return WinToastLib::WinToast::instance()->showToast(toast, eventHandler, error); });
+            } else {
+                return worker.template post<true>([toast, eventHandler, error]{ return WinToastLib::WinToast::instance()->showToast(toast, eventHandler, error); });
+            }
         }
 
         template <bool wait_for_completion = true>
