@@ -19,6 +19,7 @@ namespace usylibpp::util {
     };
 
     /**
+     * Not intended to be inheritable (no virtual destructor)
      * Basic worker in its own thread
      */
     template <WorkerOpts opts>
