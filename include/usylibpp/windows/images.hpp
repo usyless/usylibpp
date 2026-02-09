@@ -270,7 +270,7 @@ namespace usylibpp::windows::images {
                 auto ext_utf8 = windows::to_utf8(ext);
                 if (!ext_utf8) continue;
 
-                strings::split_by_for_each(std::string_view{ext_utf8.value()}, ',', [&formats](const std::string_view extension) {
+                strings::split_by_for_each(ext_utf8.value(), ',', [&formats](const std::string_view extension) {
                     if (extension.size() < 1) return;
 
                     if constexpr (include_leading_dot) {

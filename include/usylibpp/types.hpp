@@ -30,4 +30,30 @@ namespace usylibpp::types {
     
     template <typename T>
     concept Numeric = std::is_arithmetic_v<T>;
+
+    template <typename S>
+    concept is_basic_string =
+        requires { typename std::remove_cvref_t<S>::value_type; } &&
+        std::same_as<std::remove_cvref_t<S>, std::basic_string<typename std::remove_cvref_t<S>::value_type>>;
+    
+    template <typename S>
+    struct string_view_char;
+
+    template <typename S>
+        requires std::is_convertible_v<S, std::basic_string_view<char>>
+    struct string_view_char<S> {
+        using type = char;
+    };
+
+    template <typename S>
+        requires std::is_convertible_v<S, std::basic_string_view<wchar_t>>
+    struct string_view_char<S> {
+        using type = wchar_t;
+    };
+
+    template <typename S>
+    using string_view_char_t = typename string_view_char<S>::type;
+
+    template <typename S>
+    concept is_basic_string_view = requires { typename string_view_char<S>::type; };
 }

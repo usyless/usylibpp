@@ -9,7 +9,7 @@
 #include "types.hpp"
 
 namespace usylibpp::strings {
-    template<typename... Ts>
+    template<types::is_basic_string_view... Ts>
     [[nodiscard]] inline constexpr auto concat_strings(Ts&&... parts) {
         using First = decltype(([](auto&& first, auto&&...) -> auto&& { return first; })(parts...));
         using Char = std::remove_cvref_t<decltype(std::declval<First>()[0])>;
@@ -34,16 +34,25 @@ namespace usylibpp::strings {
         return ret;
     }
 
-    inline constexpr void replace_all_inplace(std::string& str, const std::string_view from, const std::string_view to) {
+    template <types::is_basic_string S, types::is_basic_string_view SV>
+    inline constexpr void replace_all_inplace(S& str, const SV _from, const SV _to) {
+        using Char = S::value_type;
+
+        std::basic_string_view<Char> from{_from};
+        std::basic_string_view<Char> to{_to};
+
         size_t start_pos = 0;
-        while ((start_pos = str.find(from, start_pos)) != std::string::npos) {
+        while ((start_pos = str.find(from, start_pos)) != std::basic_string<Char>::npos) {
             str.replace(start_pos, from.length(), to);
             start_pos += to.length();
         }
     }
 
-    [[nodiscard]] inline constexpr std::string replace_all(const std::string_view str, const std::string_view from, const std::string_view to) {
-        std::string ret{str};
+    template <types::is_basic_string_view SV>
+    [[nodiscard]] inline constexpr auto replace_all(const SV str, const SV from, const SV to) {
+        using Char = types::string_view_char_t<SV>;
+
+        std::basic_string<Char> ret{str};
         replace_all_inplace(ret, from, to);
         return ret;
     }
@@ -72,9 +81,11 @@ namespace usylibpp::strings {
 
     USYLIBPP__MAKE_OR(to_string_view, std::string_view{})
 
-    template <typename Char, typename F>
-    requires std::invocable<F, std::basic_string_view<Char>>
-    inline constexpr void split_by_for_each(const std::basic_string_view<Char> input, const Char split_by, F&& f) noexcept(noexcept(std::invoke(f, input))) {
+    template <typename Char, typename F, types::is_basic_string_view S>
+    requires (std::invocable<F, std::basic_string_view<Char>>)
+    inline constexpr void split_by_for_each(S&& _input, const Char split_by, F&& f) noexcept(noexcept(std::invoke(f, _input))) {
+        std::basic_string_view<Char> input{_input};
+        
         size_t start = 0;
         const auto size = input.size();
         while (start < size) {
@@ -89,14 +100,15 @@ namespace usylibpp::strings {
         }
     }
 
-    template <typename Char, typename F>
-    requires std::invocable<F, std::basic_string_view<Char>>
-    inline constexpr void for_each_line(const std::basic_string_view<Char> input, F&& f) noexcept(noexcept(split_by_for_each(input, '\n', f))) {
-        split_by_for_each(input, '\n', std::forward<F>(f));
+    template <typename Char, typename F, types::is_basic_string_view S>
+    requires (std::invocable<F, std::basic_string_view<Char>>)
+    inline constexpr void for_each_line(S&& input, F&& f) noexcept(noexcept(split_by_for_each(input, '\n', f))) {
+        split_by_for_each(std::forward<F>(input), '\n', std::forward<F>(f));
     }
 
-    template <typename Char>
-    [[nodiscard]] inline constexpr size_t count_of(const std::basic_string_view<Char> str, const Char c) noexcept {
+    template <typename Char, types::is_basic_string_view S>
+    requires (std::convertible_to<S, std::basic_string_view<Char>>)
+    [[nodiscard]] inline constexpr size_t count_of(S&& str, const Char c) noexcept {
         size_t count = 0;
         for (const auto a : str) if (a == c) ++count;
         return count;
