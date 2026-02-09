@@ -132,8 +132,8 @@ namespace usylibpp::wintoast {
         }
 
         template <bool wait_for_completion = true>
-        void clear() {
-            worker.template post<wait_for_completion>([]{ WinToastLib::WinToast::instance()->clear(); });
+        auto clear() {
+            return worker.template post<wait_for_completion>([]{ WinToastLib::WinToast::instance()->clear(); });
         }
 
         template <bool wait_for_completion = true>
