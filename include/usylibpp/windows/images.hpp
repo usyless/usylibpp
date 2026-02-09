@@ -114,7 +114,7 @@ namespace usylibpp::windows::images {
         hr = converter->GetSize(&width, &height);
         if (FAILED(hr)) return std::nullopt;
 
-        const UINT stride = width * sizeof(uint8_t);
+        const UINT stride = width * DecodedImageChannels<type>::value;
         const UINT buffer_size = stride * height;
 
         std::vector<uint8_t> buffer(buffer_size);
