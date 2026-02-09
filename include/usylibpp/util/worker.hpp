@@ -1,7 +1,6 @@
 #pragma once
 
 #include <thread>
-#include <optional>
 #include <atomic>
 #include <future>
 #include <mutex>
@@ -11,7 +10,6 @@
 namespace usylibpp::util {
     enum class WorkerType {
         ReturnDefault,
-        ReturnOptional,
         ThrowError
     };
     /**
@@ -70,7 +68,7 @@ namespace usylibpp::util {
         }
 
         template <typename Ret, bool wait_for_completion>
-        using conditional_return = std::conditional_t<wait_for_completion && !std::is_void_v<Ret>, std::conditional_t<type == WorkerType::ReturnOptional, std::optional<Ret>, Ret>, void>;
+        using conditional_return = std::conditional_t<wait_for_completion, Ret, std::future<Ret>>;
 
         /**
          * First template is return type
@@ -80,10 +78,19 @@ namespace usylibpp::util {
         template<typename Ret, bool wait_for_completion, typename Fn>
         auto post(Fn&& fn) -> conditional_return<Ret, wait_for_completion> {
             if (cancelled()) {
-                if constexpr (!wait_for_completion || std::is_void_v<Ret>) return;
-                else if constexpr (type == WorkerType::ReturnOptional) return std::nullopt;
-                else if constexpr (type == WorkerType::ThrowError) throw std::runtime_error("Worker is cancelled");
-                else return Ret{};
+                if constexpr (type == WorkerType::ThrowError) throw std::runtime_error("Worker is cancelled");
+                else if constexpr (wait_for_completion) return Ret{};
+                else {
+                    std::promise<Ret> promise;
+                    auto fut = promise.get_future();
+                    if constexpr (std::is_void_v<Ret>) {
+                        promise.set_value();
+                        return fut;
+                    } else {
+                        promise.set_value(Ret{});
+                        return fut;
+                    }
+                }
             }
 
             auto call = std::make_unique<Call<Fn, Ret>>(std::forward<Fn>(fn));
@@ -95,12 +102,8 @@ namespace usylibpp::util {
             }
             cv.notify_one();
 
-            if constexpr (wait_for_completion) {
-                if constexpr (std::is_void_v<Ret>) fut.get();
-                else return fut.get();
-            } else {
-                return;
-            }
+            if constexpr (wait_for_completion) return fut.get();
+            else return fut;
         }
         
         /**
