@@ -50,11 +50,20 @@ namespace usylibpp::util {
             }
         };
     public:
-        Worker() : worker {[this] { worker_loop(); }} {}
+        Worker() = delete;
+        Worker(const Worker&) = delete;
+        Worker& operator=(const Worker&) = delete;
+
+        explicit Worker(const size_t worker_count) {
+            workers.reserve(worker_count);
+            for (size_t i = 0; i < worker_count; ++i) {
+                workers.emplace_back(&Worker::worker_loop, this);
+            }
+        }
 
         ~Worker() {
             cancel();
-            if (worker.joinable()) worker.join();
+            for (auto& worker : workers) if (worker.joinable()) worker.join();
         }
 
         template <typename Ret, bool wait_for_completion>
@@ -128,7 +137,7 @@ namespace usylibpp::util {
         std::condition_variable cv;
         std::atomic_bool running{true};
         std::queue<std::unique_ptr<CallBase>> queue;
-        std::thread worker;
+        std::vector<std::thread> workers;
 
         inline void worker_loop() {
             while (true) {

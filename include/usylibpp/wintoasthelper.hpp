@@ -11,10 +11,10 @@ namespace usylibpp::wintoast {
      * Returns true if succeeded
      */
     inline bool delete_shortcut(const std::wstring& app_name) {
+        if (app_name.empty()) return false;
+
         auto programs_path = usylibpp::windows::get_known_folder(FOLDERID_Programs);
         if (!programs_path) return false;
-
-        if (app_name.empty()) return true;
 
         auto shortcut_path = programs_path.value() / (app_name + L".lnk");
 
@@ -66,6 +66,10 @@ namespace usylibpp::wintoast {
 
     template <bool delete_on_destruct>
     struct WinToastInit {
+        WinToastInit() = delete;
+        WinToastInit(const WinToastInit&) = delete;
+        WinToastInit& operator=(const WinToastInit&) = delete;
+
         WinToastInit(const std::wstring& app_name, const std::wstring& company_name, const std::wstring& product_name, const std::wstring& sub_product, const std::wstring& version_information, std::optional<WinToastLib::WinToast::ShortcutPolicy> shortcut_policy = std::nullopt) {
             if constexpr (delete_on_destruct) {
                 appname = app_name;
@@ -104,6 +108,10 @@ namespace usylibpp::wintoast {
     template <bool delete_on_destruct, util::WorkerType cancel_return_type>
     class ToastWorker {
     public:
+        ToastWorker() = delete;
+        ToastWorker(const ToastWorker&) = delete;
+        ToastWorker& operator=(const ToastWorker&) = delete;
+
         ToastWorker(const std::wstring& app_name, const std::wstring& company_name, const std::wstring& product_name, const std::wstring& sub_product, const std::wstring& version_information, std::optional<WinToastLib::WinToast::ShortcutPolicy> shortcut_policy = std::nullopt) {
             // ref is fine as it waits until completion
             worker.template post<true>([&, this] { 
@@ -152,8 +160,11 @@ namespace usylibpp::wintoast {
         }
 
     private:
-        static constexpr util::WorkerOpts worker_opts{.drain_queue_on_cancel = false, .type = cancel_return_type};
-        util::Worker<worker_opts> worker{};
+        static constexpr util::WorkerOpts worker_opts{
+            .drain_queue_on_cancel = false, 
+            .type = cancel_return_type
+        };
+        util::Worker<worker_opts> worker{1};
         std::unique_ptr<WinToastInit<delete_on_destruct>> _toast;
     };
 }
