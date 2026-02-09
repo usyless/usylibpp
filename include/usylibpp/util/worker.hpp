@@ -12,10 +12,16 @@ namespace usylibpp::util {
         ReturnDefault,
         ThrowError
     };
+
+    struct WorkerOpts {
+        bool drain_queue_on_cancel{true};
+        WorkerType type{WorkerType::ReturnDefault};
+    };
+
     /**
      * Basic worker in its own thread
      */
-    template <bool drain_queue_on_cancel, WorkerType type = WorkerType::ReturnDefault>
+    template <WorkerOpts opts>
     class Worker {
     private:
         struct CallBase {
@@ -51,7 +57,7 @@ namespace usylibpp::util {
                 {
                     std::unique_lock lock{mtx};
                     cv.wait(lock, [this]{ return !queue.empty() || cancelled(); });
-                    if constexpr (!drain_queue_on_cancel) { if (cancelled()) break; }
+                    if constexpr (!opts.drain_queue_on_cancel) { if (cancelled()) break; }
                     else { if (cancelled() && queue.empty()) break; }
                     call = std::move(queue.front());
                     queue.pop();
@@ -80,7 +86,7 @@ namespace usylibpp::util {
             using Ret = std::invoke_result_t<Fn&>;
             
             if (cancelled()) {
-                if constexpr (type == WorkerType::ThrowError) {
+                if constexpr (opts.type == WorkerType::ThrowError) {
                     if constexpr (wait_for_completion) throw std::runtime_error("Worker is cancelled");
                     else {
                         std::promise<Ret> promise;
