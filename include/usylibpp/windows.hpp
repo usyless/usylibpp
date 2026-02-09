@@ -452,7 +452,7 @@ namespace usylibpp::windows {
             if (FAILED(hr)) taskbar = nullptr;
         }
 
-        [[nodiscard]] constexpr HRESULT status() {
+        [[nodiscard]] constexpr HRESULT status() noexcept {
             return hr;
         }
 
@@ -886,19 +886,19 @@ namespace usylibpp::windows {
         * Call init_dark_mode before this
         * Enable dark mode for an indiviaul hwnd
         */
-        inline bool allow_dark_mode_for_window(HWND hWnd, bool allow) {
+        inline bool allow_dark_mode_for_window(HWND hWnd, bool allow) noexcept {
             if (g_darkModeSupported) return _AllowDarkModeForWindow(hWnd, allow);
             return false;
         }
 
-        inline constexpr bool windows_build_supports_darkmode(DWORD buildNumber) {
+        inline constexpr bool windows_build_supports_darkmode(DWORD buildNumber) noexcept {
             return buildNumber >= 17763;
         }
 
         /**
         * Call this to initialise the dark mode win32 stuff, then call allow_dark_mode_for_window on your individual hwnd
         */
-        inline void init_dark_mode() {
+        inline void init_dark_mode() noexcept {
             auto RtlGetNtVersionNumbers = reinterpret_cast<fnRtlGetNtVersionNumbers>(GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "RtlGetNtVersionNumbers"));
             if (!RtlGetNtVersionNumbers) return;
 
