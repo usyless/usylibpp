@@ -156,12 +156,12 @@ namespace usylibpp::wintoast {
 
         template <bool wait_for_completion = true>
         auto appName() {
-            return worker.template post<wait_for_completion>([]() -> std::wstring { return WinToastLib::WinToast::instance()->appName(); });
+            return worker.template post<wait_for_completion>([]{ return WinToastLib::WinToast::instance()->appName(); });
         }
 
         template <bool wait_for_completion = true>
         auto appUserModelId() {
-            return worker.template post<wait_for_completion>([]() -> std::wstring { return WinToastLib::WinToast::instance()->appUserModelId(); });
+            return worker.template post<wait_for_completion>([]{ return WinToastLib::WinToast::instance()->appUserModelId(); });
         }
 
     private:

@@ -83,6 +83,12 @@ int main() {
 
         // new usage is fine here as it takes shared ownership after
         const auto id = toast.showToast(templ, new wintoast::PrintingWinToastHandler);
+
+        const auto& appname = toast.appName();
+        auto appnamefuture = toast.appName<false>();
+        print::println("App name: {}", windows::to_utf8_or_default(appname));
+        print::println("App name future: {}", windows::to_utf8_or_default(appnamefuture.get()));
+        
         if (id < 0) {
             print::println("Toast failed");
         } else {
