@@ -101,7 +101,7 @@ namespace usylibpp::wintoast {
     /**
      * When using wait_for_completion = false, the return value will be garbage
      */
-    template <bool delete_on_destruct, util::WorkerOpts worker_opts>
+    template <bool delete_on_destruct, util::WorkerType cancel_return_type>
     class ToastWorker {
     public:
         ToastWorker(const std::wstring& app_name, const std::wstring& company_name, const std::wstring& product_name, const std::wstring& sub_product, const std::wstring& version_information, std::optional<WinToastLib::WinToast::ShortcutPolicy> shortcut_policy = std::nullopt) {
@@ -152,7 +152,7 @@ namespace usylibpp::wintoast {
         }
 
     private:
-        util::Worker<worker_opts> worker{};
+        util::Worker<util::WorkerOpts{.drain_queue_on_cancel = false, .type = cancel_return_type}> worker{};
         std::unique_ptr<WinToastInit<delete_on_destruct>> _toast;
     };
 }
