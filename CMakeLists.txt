@@ -182,6 +182,18 @@ This includes windows.h along with various other headers, but enables all of the
 
             target_link_libraries(usylibpp_usylibpp INTERFACE mohabouje_wintoast)
         endif()
+
+        set(USYLIBPP_ENABLE_WINDOWS_IMAGING
+            OFF
+            CACHE BOOL
+            "Enable windows imaging components and wrappers"
+        )
+
+        message(STATUS "Windows imaging components (USYLIBPP_ENABLE_WINDOWS_IMAGING): ${USYLIBPP_ENABLE_WINDOWS_IMAGING}")
+
+        if(USYLIBPP_ENABLE_WINDOWS_IMAGING)
+            target_compile_definitions(usylibpp_usylibpp INTERFACE "USYLIBPP_ENABLE_WINDOWS_IMAGING")
+        endif()
     endif()
 endif()
 

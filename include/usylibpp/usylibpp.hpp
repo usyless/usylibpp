@@ -19,3 +19,7 @@
 #include <wintoastlib.h>
 #include "wintoasthelper.hpp"
 #endif
+
+#ifdef USYLIBPP_ENABLE_WINDOWS_IMAGING
+#include "windows/images.hpp"
+#endif
