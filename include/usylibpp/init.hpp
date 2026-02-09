@@ -22,7 +22,7 @@ namespace usylibpp::init {
      * I forgot the implications but i think you shouldnt be using
      * the C-style out and in stuff at the same time to prevent issues
      */
-    inline void quicker_cin_cout() {
+    inline void quicker_cin_cout() noexcept {
         std::ios_base::sync_with_stdio(false);
         std::cin.tie(NULL);
     }
