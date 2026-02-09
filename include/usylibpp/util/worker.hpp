@@ -93,7 +93,7 @@ namespace usylibpp::util {
                         std::promise<Ret> promise; \
                         auto fut = promise.get_future(); \
                         promise.set_exception(std::make_exception_ptr(std::runtime_error("Worker is cancelled"))); \
-                        return promise; \
+                        return fut; \
                     } \
                 } else { \
                     if constexpr (wait_for_completion) return Ret{}; \
@@ -139,10 +139,10 @@ namespace usylibpp::util {
         }
 
     private:
-        std::thread worker;
         std::mutex mtx;
         std::condition_variable cv;
-        std::queue<std::unique_ptr<CallBase>> queue;
         std::atomic_bool running{true};
+        std::queue<std::unique_ptr<CallBase>> queue;
+        std::thread worker;
     };
 }
