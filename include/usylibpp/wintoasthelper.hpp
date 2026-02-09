@@ -152,7 +152,8 @@ namespace usylibpp::wintoast {
         }
 
     private:
-        util::Worker<util::WorkerOpts{.drain_queue_on_cancel = false, .type = cancel_return_type}> worker{};
+        static constexpr util::WorkerOpts worker_opts{.drain_queue_on_cancel = false, .type = cancel_return_type};
+        util::Worker<worker_opts> worker{};
         std::unique_ptr<WinToastInit<delete_on_destruct>> _toast;
     };
 }
