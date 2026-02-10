@@ -117,57 +117,59 @@ namespace usylibpp::windows::images {
         );
     }
 
-    inline std::optional<wil::com_ptr<IWICBitmapFrameDecode>> pick_jpeg_frame(IWICBitmapDecoder* decoder) {
-        UINT frame_count = 0;
-        auto hr = decoder->GetFrameCount(&frame_count);
-        if (FAILED(hr) || frame_count == 0) return std::nullopt;
+    namespace FramePickers {
+        inline std::optional<wil::com_ptr<IWICBitmapFrameDecode>> pick_jpeg_frame(IWICBitmapDecoder* decoder) {
+            UINT frame_count = 0;
+            auto hr = decoder->GetFrameCount(&frame_count);
+            if (FAILED(hr) || frame_count == 0) return std::nullopt;
 
-        wil::com_ptr<IWICBitmapFrameDecode> best_frame;
-        UINT best_area = 0;
+            wil::com_ptr<IWICBitmapFrameDecode> best_frame;
+            UINT best_area = 0;
 
-        for (UINT i = 0; i < frame_count; ++i) {
-            wil::com_ptr<IWICBitmapFrameDecode> frame;
+            for (UINT i = 0; i < frame_count; ++i) {
+                wil::com_ptr<IWICBitmapFrameDecode> frame;
 
-            hr = decoder->GetFrame(i, &frame);
-            if (FAILED(hr) || !frame) continue;
+                hr = decoder->GetFrame(i, &frame);
+                if (FAILED(hr) || !frame) continue;
 
-            UINT w, h;
-            hr = frame->GetSize(&w, &h);
-            if (FAILED(hr) || w == 0 || h == 0) continue;
+                UINT w, h;
+                hr = frame->GetSize(&w, &h);
+                if (FAILED(hr) || w == 0 || h == 0) continue;
 
-            // Prefer JPEG-like formats
-            WICPixelFormatGUID fmt;
-            hr = frame->GetPixelFormat(&fmt);
-            if (FAILED(hr)) continue;
+                // Prefer JPEG-like formats
+                WICPixelFormatGUID fmt;
+                hr = frame->GetPixelFormat(&fmt);
+                if (FAILED(hr)) continue;
 
-            const bool looksJPEG =
-                IsEqualGUID(fmt, GUID_WICPixelFormat24bppBGR) ||
-                IsEqualGUID(fmt, GUID_WICPixelFormat24bppRGB) ||
-                IsEqualGUID(fmt, GUID_WICPixelFormat32bppBGRA);
+                const bool looksJPEG =
+                    IsEqualGUID(fmt, GUID_WICPixelFormat24bppBGR) ||
+                    IsEqualGUID(fmt, GUID_WICPixelFormat24bppRGB) ||
+                    IsEqualGUID(fmt, GUID_WICPixelFormat32bppBGRA);
 
-            if (!looksJPEG) continue;
+                if (!looksJPEG) continue;
 
-            UINT area = w * h;
-            if (area > best_area) {
-                best_area = area;
-                best_frame = std::move(frame);
+                UINT area = w * h;
+                if (area > best_area) {
+                    best_area = area;
+                    best_frame = std::move(frame);
+                }
             }
+
+            if (best_frame) return best_frame;
+            else return std::nullopt;
         }
 
-        if (best_frame) return best_frame;
-        else return std::nullopt;
-    }
-
-    inline std::optional<wil::com_ptr<IWICBitmapFrameDecode>> pick_frame_zero(IWICBitmapDecoder* decoder) {
-        wil::com_ptr<IWICBitmapFrameDecode> frame;
-        const auto hr = decoder->GetFrame(0, &frame);
-        if (FAILED(hr) || !frame) return std::nullopt;
-        return frame;
+        inline std::optional<wil::com_ptr<IWICBitmapFrameDecode>> pick_frame_zero(IWICBitmapDecoder* decoder) {
+            wil::com_ptr<IWICBitmapFrameDecode> frame;
+            const auto hr = decoder->GetFrame(0, &frame);
+            if (FAILED(hr) || !frame) return std::nullopt;
+            return frame;
+        }
     }
 
     using FramePicker = std::optional<wil::com_ptr<IWICBitmapFrameDecode>> (*)(IWICBitmapDecoder*);
 
-    template <bool ComInitialised = false, DecodedImageType type, FramePicker frame_picker = &pick_frame_zero>
+    template <bool ComInitialised = false, DecodedImageType type, FramePicker frame_picker = &FramePickers::pick_frame_zero>
     inline std::optional<DecodedImage<type>> decode_image(const std::wstring& path) {
         COMWrapper<ComInitialised> COM{COINIT_MULTITHREADED | COINIT_DISABLE_OLE1DDE};
 
@@ -220,7 +222,7 @@ namespace usylibpp::windows::images {
      * Reuses the factory per thread
      * Returned data depends on COM
      */
-    template <DecodedImageType type, FramePicker frame_picker = &pick_frame_zero>
+    template <DecodedImageType type, FramePicker frame_picker = &FramePickers::pick_frame_zero>
     inline std::optional<DecodedImageView<type>> decode_image_threadlocal(const std::wstring& path) {
         thread_local auto factory_opt = create_imaging_factory();
         if (!factory_opt) return std::nullopt;
