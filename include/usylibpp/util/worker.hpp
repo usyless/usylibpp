@@ -54,6 +54,9 @@ namespace usylibpp::util {
         Worker() = delete;
         Worker(const Worker&) = delete;
         Worker& operator=(const Worker&) = delete;
+        Worker(Worker&&) = delete;
+        Worker& operator=(Worker&&) = delete;
+
 
         explicit Worker(const size_t worker_count) {
             workers.reserve(worker_count);

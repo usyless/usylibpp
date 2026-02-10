@@ -111,6 +111,8 @@ namespace usylibpp::wintoast {
         ToastWorker() = delete;
         ToastWorker(const ToastWorker&) = delete;
         ToastWorker& operator=(const ToastWorker&) = delete;
+        ToastWorker(ToastWorker&&) = delete;
+        ToastWorker& operator=(ToastWorker&&) = delete;
 
         ToastWorker(const std::wstring& app_name, const std::wstring& company_name, const std::wstring& product_name, const std::wstring& sub_product, const std::wstring& version_information, std::optional<WinToastLib::WinToast::ShortcutPolicy> shortcut_policy = std::nullopt) {
             // ref is fine as it waits until completion
