@@ -252,7 +252,7 @@ namespace usylibpp::windows::images {
         );
         if (FAILED(hr)) return std::nullopt;
 
-        WICRect rc = { 0, 0, (INT)width, (INT)height };
+        WICRect rc{ 0, 0, (INT)width, (INT)height };
 
         wil::com_ptr<IWICBitmapLock> lock;
         hr = bitmap->Lock(&rc, WICBitmapLockRead, &lock);
