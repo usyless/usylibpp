@@ -275,8 +275,8 @@ namespace usylibpp::windows::images {
     /**
      * Does not include leading dot by default, change with template arg
      */
-    template <bool ComInitialised = false, bool include_leading_dot = false>
-    inline std::vector<std::string> get_all_supported_file_extensions() {
+    template <bool ComInitialised = false, bool include_leading_dot = false, types::CharOrWChar Char = char>
+    inline std::vector<std::basic_string<Char>> get_all_supported_file_extensions() {
         COMWrapper<ComInitialised> COM{COINIT_MULTITHREADED | COINIT_DISABLE_OLE1DDE};
 
         if (FAILED(COM.status())) return {};
@@ -292,7 +292,7 @@ namespace usylibpp::windows::images {
             &enumDecoders);
         if (FAILED(hr) || !enumDecoders) return {};
 
-        std::vector<std::string> formats;
+        std::vector<std::basic_string<Char>> formats;
 
         wil::com_ptr<IUnknown> unk;
         while (enumDecoders->Next(1, &unk, nullptr) == S_OK) {
@@ -319,16 +319,22 @@ namespace usylibpp::windows::images {
                 hr = codecInfo->GetFileExtensions(cch, ext.data(), &cch);
                 if (FAILED(hr)) continue;
 
-                auto ext_utf8 = windows::to_utf8(ext);
-                if (!ext_utf8) continue;
+                std::basic_string<Char> ext_converted;
+                if constexpr (std::is_same_v<Char, char>) {
+                    auto ext_utf8 = windows::to_utf8(ext);
+                    if (!ext_utf8) continue;
+                    ext_converted = std::move(ext_utf8.value());
+                } else {
+                    ext_converted = std::move(ext);
+                }
 
-                strings::split_by_for_each(ext_utf8.value(), ',', [&formats](const std::string_view extension) {
+                strings::split_by_for_each(ext_converted, Char(','), [&formats](const std::basic_string_view<Char> extension) {
                     if (extension.size() < 1) return;
 
                     if constexpr (include_leading_dot) {
                         formats.emplace_back(extension);
                     } else {
-                        if (extension.starts_with('.')) formats.emplace_back(extension.substr(1));
+                        if (extension.starts_with(Char('.'))) formats.emplace_back(extension.substr(1));
                         else formats.emplace_back(extension);
                     }
                 });

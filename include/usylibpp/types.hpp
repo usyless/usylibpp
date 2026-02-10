@@ -31,6 +31,9 @@ namespace usylibpp::types {
     template <typename T>
     concept Numeric = std::is_arithmetic_v<T>;
 
+    template <typename T>
+    concept CharOrWChar = std::is_same_v<T, char> || std::is_same_v<T, wchar_t>;
+
     template <typename S>
     concept is_basic_string =
         requires { typename std::remove_cvref_t<S>::value_type; } &&
