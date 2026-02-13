@@ -38,7 +38,7 @@ namespace usylibpp::strings {
      * Don't pass in an rvalue as it return a view into the input
      */
     template <types::CharOrWChar Char, types::is_basic_string_view SV>
-    requires (std::same_as<typename types::string_view_char_t<SV>, Char>)
+    requires (std::same_as<types::string_view_char_t<SV>, Char>)
     inline constexpr std::basic_string_view<Char> trim_left(SV&& _input, const Char character) noexcept {
         const std::basic_string_view<Char> input{_input};
         if (input.empty()) return input;
@@ -56,7 +56,7 @@ namespace usylibpp::strings {
      * Don't pass in an rvalue as it return a view into the input
      */
     template <types::CharOrWChar Char, types::is_basic_string_view SV>
-    requires (std::same_as<typename types::string_view_char_t<SV>, Char>)
+    requires (std::same_as<types::string_view_char_t<SV>, Char>)
     inline constexpr std::basic_string_view<Char> trim_right(SV&& _input, const Char character) noexcept {
         const std::basic_string_view<Char> input{_input};
         if (input.empty()) return input;
@@ -71,7 +71,7 @@ namespace usylibpp::strings {
      * Don't pass in an rvalue as it return a view into the input
      */
     template <types::CharOrWChar Char, types::is_basic_string_view SV>
-    requires (std::same_as<typename types::string_view_char_t<SV>, Char>)
+    requires (std::same_as<types::string_view_char_t<SV>, Char>)
     inline constexpr std::basic_string_view<Char> trim(SV&& _input, const Char character) noexcept {
         std::basic_string_view<Char> input{_input};
         input = trim_left(input, character);
@@ -80,7 +80,7 @@ namespace usylibpp::strings {
     }
 
     template <types::is_basic_string S, types::is_basic_string_view SV1, types::is_basic_string_view SV2>
-    requires (std::same_as<typename S::value_type, types::string_view_char_t<SV1>> && std::same_as<typename types::string_view_char_t<SV1>, types::string_view_char_t<SV2>>)
+    requires (std::same_as<typename S::value_type, types::string_view_char_t<SV1>> && std::same_as<types::string_view_char_t<SV1>, types::string_view_char_t<SV2>>)
     inline constexpr void replace_all_inplace(S& str, SV1&& _from, SV2&& _to) {
         using Char = S::value_type;
 
@@ -95,7 +95,7 @@ namespace usylibpp::strings {
     }
 
     template <types::is_basic_string_view SV1, types::is_basic_string_view SV2, types::is_basic_string_view SV3>
-    requires (std::same_as<typename types::string_view_char_t<SV1>, types::string_view_char_t<SV2>> && std::same_as<typename types::string_view_char_t<SV2>, types::string_view_char_t<SV3>>)
+    requires (std::same_as<types::string_view_char_t<SV1>, types::string_view_char_t<SV2>> && std::same_as<types::string_view_char_t<SV2>, types::string_view_char_t<SV3>>)
     [[nodiscard]] inline constexpr auto replace_all(SV1&& str, SV2&& from, SV3&& to) {
         using Char = types::string_view_char_t<SV1>;
 
@@ -132,7 +132,7 @@ namespace usylibpp::strings {
      * Stop looping early if false returned from function
      */
     template <types::CharOrWChar Char, typename F, types::is_basic_string_view SV>
-    requires (std::invocable<F, std::basic_string_view<Char>> && std::same_as<typename types::string_view_char_t<SV>, Char>)
+    requires (std::invocable<F, std::basic_string_view<Char>> && std::same_as<types::string_view_char_t<SV>, Char>)
     inline constexpr void split_by_for_each(SV&& _input, const Char split_by, F&& f) noexcept(noexcept(std::invoke(f, _input))) {
         std::basic_string_view<Char> input{_input};
         
@@ -155,7 +155,7 @@ namespace usylibpp::strings {
     }
 
     template <types::CharOrWChar Char, types::is_basic_string_view SV>
-    requires (std::same_as<typename types::string_view_char_t<SV>, Char>)
+    requires (std::same_as<types::string_view_char_t<SV>, Char>)
     inline constexpr std::vector<std::basic_string_view<Char>> split_by(SV&& _input, const Char split_by) {
         std::vector<std::basic_string_view<Char>> result;
         split_by_for_each(std::forward<SV>(_input), split_by, [&result](auto&& view) {
@@ -176,7 +176,7 @@ namespace usylibpp::strings {
     }
 
     template <types::CharOrWChar Char, types::is_basic_string_view SV>
-    requires (std::convertible_to<SV, std::basic_string_view<Char>> && std::same_as<typename types::string_view_char_t<SV>, Char>)
+    requires (std::convertible_to<SV, std::basic_string_view<Char>> && std::same_as<types::string_view_char_t<SV>, Char>)
     [[nodiscard]] inline constexpr size_t count_of(SV&& str, const Char c) noexcept {
         size_t count = 0;
         for (const auto a : str) if (a == c) ++count;
