@@ -102,8 +102,8 @@ namespace usylibpp::strings {
 
     template <types::is_basic_string_view SV, typename F>
     requires (std::invocable<F, std::basic_string_view<types::string_view_char_t<SV>>>)
-    inline constexpr void for_each_line(SV&& input, F&& f) noexcept(noexcept(split_by_for_each(input, '\n', f))) {
-        split_by_for_each(std::forward<SV>(input), '\n', std::forward<F>(f));
+    inline constexpr void for_each_line(SV&& input, F&& f) noexcept(noexcept(split_by_for_each(std::forward<SV>(input), types::string_view_char_t<SV>('\n'), std::forward<F>(f)))) {
+        split_by_for_each(std::forward<SV>(input), types::string_view_char_t<SV>('\n'), std::forward<F>(f));
     }
 
     template <typename Char, types::is_basic_string_view S>
