@@ -28,6 +28,7 @@ namespace usylibpp::util {
         struct CallBase {
             virtual ~CallBase() = default;
             virtual void execute() noexcept = 0;
+            virtual void cancel() noexcept = 0;
         };
 
         template<typename Fn, typename Ret>
@@ -46,7 +47,24 @@ namespace usylibpp::util {
                         result.set_value(fn());
                     }
                 } catch (...) {
-                    result.set_exception(std::current_exception());
+                    try {
+                        result.set_exception(std::current_exception());
+                    } catch (...) {}
+                }
+            }
+
+            void cancel() noexcept override final {
+                try {
+                    if constexpr (opts.type == WorkerType::ThrowError) {
+                        result.set_exception(std::make_exception_ptr(std::runtime_error("Worker is cancelled")));
+                    } else {
+                        if constexpr (std::is_void_v<Ret>) result.set_value();
+                        else result.set_value(Ret{});
+                    }
+                } catch (...) {
+                    try {
+                        result.set_exception(std::current_exception());
+                    } catch (...) {}
                 }
             }
         };
@@ -130,6 +148,19 @@ namespace usylibpp::util {
                 running.store(false);
             }
             cv.notify_all();
+        }
+
+        /**
+         * Cancels everything in the current queue, throwing exceptions or returning default values
+         */
+        inline void clear_queue() noexcept {
+            {
+                std::lock_guard lock{mtx};
+                while (!queue.empty()) {
+                    queue.front()->cancel();
+                    queue.pop();
+                }
+            }
         }
 
         inline constexpr bool cancelled() const noexcept {
