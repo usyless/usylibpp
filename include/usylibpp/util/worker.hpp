@@ -56,7 +56,7 @@ namespace usylibpp::util {
             void cancel() noexcept override final {
                 try {
                     if constexpr (opts.type == WorkerType::ThrowError) {
-                        result.set_exception(std::make_exception_ptr(std::runtime_error("Worker is cancelled")));
+                        result.set_exception(std::make_exception_ptr(std::runtime_error("Queue is being cleared")));
                     } else {
                         if constexpr (std::is_void_v<Ret>) result.set_value();
                         else result.set_value(Ret{});
