@@ -37,9 +37,8 @@ namespace usylibpp::strings {
     }
 
     template <types::is_basic_string_view SV>
-    [[nodiscard]] inline constexpr std::basic_string<types::string_view_char_t<SV>> to_lowercase(SV str) {
-        using Char = types::string_view_char_t<SV>;
-        std::basic_string<Char> ret{str};
+    [[nodiscard]] inline constexpr std::basic_string<types::string_view_char_t<SV>> to_lowercase(SV&& str) {
+        std::basic_string<types::string_view_char_t<SV>> ret{str};
         to_lowercase_inplace(ret);
         return ret;
     }
