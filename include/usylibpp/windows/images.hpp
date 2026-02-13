@@ -177,19 +177,19 @@ namespace usylibpp::windows::images {
 
         auto factory_opt = create_imaging_factory();
         if (!factory_opt) return std::nullopt;
-        auto& factory = factory_opt.value();
+        auto& factory = *factory_opt;
 
         auto decoder_opt = create_imaging_decoder(factory.get(), path);
         if (!decoder_opt) return std::nullopt;
-        auto& decoder = decoder_opt.value();
+        auto& decoder = *decoder_opt;
 
         auto frame_opt = frame_picker(decoder.get());
         if (!frame_opt) return std::nullopt;
-        auto& frame = frame_opt.value();
+        auto& frame = *frame_opt;
 
         auto converter_opt = create_imaging_format_converter<type>(factory.get(), frame.get());
         if (!converter_opt) return std::nullopt;
-        auto& converter = converter_opt.value();
+        auto& converter = *converter_opt;
 
         UINT width, height;
         auto hr = converter->GetSize(&width, &height);
@@ -226,19 +226,19 @@ namespace usylibpp::windows::images {
     inline std::optional<DecodedImageView<type>> decode_image_threadlocal(const std::wstring& path) {
         thread_local auto factory_opt = create_imaging_factory();
         if (!factory_opt) return std::nullopt;
-        auto& factory = factory_opt.value();
+        auto& factory = *factory_opt;
 
         auto decoder_opt = create_imaging_decoder(factory.get(), path);
         if (!decoder_opt) return std::nullopt;
-        auto& decoder = decoder_opt.value();
+        auto& decoder = *decoder_opt;
 
         auto frame_opt = frame_picker(decoder.get());
         if (!frame_opt) return std::nullopt;
-        auto& frame = frame_opt.value();
+        auto& frame = *frame_opt;
 
         auto converter_opt = create_imaging_format_converter<type>(factory.get(), frame.get());
         if (!converter_opt) return std::nullopt;
-        auto& converter = converter_opt.value();
+        auto& converter = *converter_opt;
 
         UINT width, height;
         auto hr = converter->GetSize(&width, &height);
@@ -283,7 +283,7 @@ namespace usylibpp::windows::images {
 
         auto factory_opt = create_imaging_factory();
         if (!factory_opt) return {};
-        auto& factory = factory_opt.value();
+        auto& factory = *factory_opt;
 
         wil::com_ptr<IEnumUnknown> enumDecoders;
         auto hr = factory->CreateComponentEnumerator(
@@ -323,7 +323,7 @@ namespace usylibpp::windows::images {
                 if constexpr (std::is_same_v<Char, char>) {
                     auto ext_utf8 = windows::to_utf8(ext);
                     if (!ext_utf8) continue;
-                    ext_converted = std::move(ext_utf8.value());
+                    ext_converted = std::move(*ext_utf8);
                 } else {
                     ext_converted = std::move(ext);
                 }

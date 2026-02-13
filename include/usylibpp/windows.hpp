@@ -252,7 +252,7 @@ namespace usylibpp::windows {
 
         if (!exe_path_opt) return false;
 
-        auto& exe_path = exe_path_opt.value();
+        auto& exe_path = *exe_path_opt;
 
         const auto pos = exe_path.get().native().find_last_of(L'\\');
         if (pos != std::wstring::npos) {
@@ -383,7 +383,7 @@ namespace usylibpp::windows {
             using T = std::decay_t<decltype(s)>;
             if constexpr (std::is_same_v<T, std::wstring>) return s;
             else return to_wstr(s);
-        }, res.value());
+        }, *res);
     }
 
     USYLIBPP__MAKE_OR(get_clipboard_text_as_wstring, std::wstring{})
@@ -396,7 +396,7 @@ namespace usylibpp::windows {
             using T = std::decay_t<decltype(s)>;
             if constexpr (std::is_same_v<T, std::string>) return s;
             else return to_utf8(s);
-        }, res.value());
+        }, *res);
     }
 
     USYLIBPP__MAKE_OR(get_clipboard_text_as_string, std::string{})
@@ -765,7 +765,7 @@ namespace usylibpp::windows {
             
             sei.cbSize = sizeof(sei);
             sei.lpVerb = L"runas";
-            sei.lpFile = exe_path_option.value().get().c_str();
+            sei.lpFile = exe_path_option->get().c_str();
             sei.hwnd = nullptr;
             sei.nShow = SW_NORMAL;
 

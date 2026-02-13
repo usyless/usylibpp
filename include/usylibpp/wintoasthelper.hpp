@@ -16,7 +16,7 @@ namespace usylibpp::wintoast {
         auto programs_path = usylibpp::windows::get_known_folder(FOLDERID_Programs);
         if (!programs_path) return false;
 
-        auto shortcut_path = programs_path.value() / (app_name + L".lnk");
+        auto shortcut_path = *programs_path / (app_name + L".lnk");
 
         std::error_code ec;
         std::filesystem::remove(shortcut_path, ec);
@@ -79,7 +79,7 @@ namespace usylibpp::wintoast {
 
             if (!WinToast::isCompatible()) return;
 
-            if (shortcut_policy) WinToast::instance()->setShortcutPolicy(shortcut_policy.value());
+            if (shortcut_policy) WinToast::instance()->setShortcutPolicy(*shortcut_policy);
             WinToast::instance()->setAppName(app_name);
             WinToast::instance()->setAppUserModelId(WinToast::configureAUMI(company_name, product_name, sub_product, version_information));
 
