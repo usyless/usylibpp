@@ -146,6 +146,12 @@ namespace usylibpp::util {
             {
                 std::lock_guard lock{mtx};
                 running.store(false);
+                if constexpr (!opts.drain_queue_on_cancel) {
+                    while (!queue.empty()) {
+                        queue.front()->cancel();
+                        queue.pop();
+                    }
+                }
             }
             cv.notify_all();
         }
