@@ -81,6 +81,9 @@ namespace usylibpp::strings {
 
     USYLIBPP__MAKE_OR(to_string_view, std::string_view{})
 
+    /**
+     * Stop looping early if false returned from function
+     */
     template <typename Char, typename F, types::is_basic_string_view SV>
     requires (std::invocable<F, std::basic_string_view<Char>>)
     inline constexpr void split_by_for_each(SV&& _input, const Char split_by, F&& f) noexcept(noexcept(std::invoke(f, _input))) {
@@ -92,9 +95,13 @@ namespace usylibpp::strings {
             const auto end = input.find(split_by, start);
             if (end == std::basic_string_view<Char>::npos) {
                 std::invoke(f, input.substr(start));
-                break;
+                return;
             } else {
-                std::invoke(f, input.substr(start, end - start));
+                if constexpr (std::is_same_v<std::invoke_result_t<F, std::basic_string_view<Char>>, bool>) {
+                    if (!std::invoke(f, input.substr(start, end - start))) return;
+                } else {
+                    std::invoke(f, input.substr(start, end - start));
+                }
                 start = end + 1;
             }
         }
