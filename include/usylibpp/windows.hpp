@@ -788,10 +788,10 @@ namespace usylibpp::windows {
 
     namespace task_dialog {
         namespace internal {
-            inline int create(PCWSTR title, PCWSTR message, PCWSTR mainContent, PCWSTR icon, TASKDIALOG_BUTTON* buttons, UINT buttons_size) {
+            inline int create(PCWSTR title, PCWSTR message, PCWSTR mainContent, PCWSTR icon, TASKDIALOG_BUTTON* buttons, UINT buttons_size, HWND hwnd = nullptr) {
                 TASKDIALOGCONFIG td_config{};
                 td_config.cbSize = sizeof(td_config);
-                td_config.hwndParent = nullptr;
+                td_config.hwndParent = hwnd;
                 td_config.pszWindowTitle = title;
                 td_config.pszMainInstruction = message;
                 td_config.pszContent = mainContent;
@@ -806,57 +806,61 @@ namespace usylibpp::windows {
                 return buttonPressed;
             }
 
-            inline void ok(PCWSTR title, PCWSTR message, PCWSTR mainContent, PCWSTR icon) {
+            inline void ok(PCWSTR title, PCWSTR message, PCWSTR mainContent, PCWSTR icon, HWND hwnd = nullptr) {
                 TASKDIALOG_BUTTON buttons[] = { { IDOK, L"Ok" } };
-                create(title, message, mainContent, icon, buttons, ARRAYSIZE(buttons));
+                create(title, message, mainContent, icon, buttons, ARRAYSIZE(buttons), hwnd);
             }
 
-            [[nodiscard]] inline bool confirmation(PCWSTR title, PCWSTR message, PCWSTR mainContent, PCWSTR icon) {
+            [[nodiscard]] inline bool confirmation(PCWSTR title, PCWSTR message, PCWSTR mainContent, PCWSTR icon, HWND hwnd = nullptr) {
                 TASKDIALOG_BUTTON buttons[] = { 
                     { IDOK, L"Confirm" },
                     { IDCANCEL, L"Cancel" } 
                 };
-                return create(title, message, mainContent, icon, buttons, ARRAYSIZE(buttons)) == IDOK;
+                return create(title, message, mainContent, icon, buttons, ARRAYSIZE(buttons), hwnd) == IDOK;
             }
         }
 
         template <types::wchar_t_strict T1, types::wchar_t_strict T2, types::wchar_t_strict T3>
-        inline void error(T1&& title, T2&& message, T3&& message_body) noexcept {
+        inline void error(T1&& title, T2&& message, T3&& message_body, HWND hwnd = nullptr) noexcept {
             internal::ok(
                 wchar_t_from_strict(std::forward<T1>(title)), 
                 wchar_t_from_strict(std::forward<T2>(message)), 
                 wchar_t_from_strict(std::forward<T3>(message_body)), 
-                TD_ERROR_ICON
+                TD_ERROR_ICON,
+                hwnd
             );
         }
 
         template <types::wchar_t_strict T1, types::wchar_t_strict T2, types::wchar_t_strict T3>
-        inline void warning(T1&& title, T2&& message, T3&& message_body) noexcept {
+        inline void warning(T1&& title, T2&& message, T3&& message_body, HWND hwnd = nullptr) noexcept {
             internal::ok(
                 wchar_t_from_strict(std::forward<T1>(title)), 
                 wchar_t_from_strict(std::forward<T2>(message)), 
                 wchar_t_from_strict(std::forward<T3>(message_body)), 
-                TD_WARNING_ICON
+                TD_WARNING_ICON,
+                hwnd
             );
         }
 
         template <types::wchar_t_strict T1, types::wchar_t_strict T2, types::wchar_t_strict T3>
-        inline void info(T1&& title, T2&& message, T3&& message_body) noexcept {
+        inline void info(T1&& title, T2&& message, T3&& message_body, HWND hwnd = nullptr) noexcept {
             internal::ok(
                 wchar_t_from_strict(std::forward<T1>(title)), 
                 wchar_t_from_strict(std::forward<T2>(message)), 
                 wchar_t_from_strict(std::forward<T3>(message_body)), 
-                TD_INFORMATION_ICON
+                TD_INFORMATION_ICON,
+                hwnd
             );
         }
 
         template <types::wchar_t_strict T1, types::wchar_t_strict T2, types::wchar_t_strict T3>
-        [[nodiscard]] inline bool confirmation(T1&& title, T2&& message, T3&& message_body) noexcept {
+        [[nodiscard]] inline bool confirmation(T1&& title, T2&& message, T3&& message_body, HWND hwnd = nullptr) noexcept {
             return internal::confirmation(
                 wchar_t_from_strict(std::forward<T1>(title)), 
                 wchar_t_from_strict(std::forward<T2>(message)), 
                 wchar_t_from_strict(std::forward<T3>(message_body)), 
-                TD_INFORMATION_ICON
+                TD_INFORMATION_ICON,
+                hwnd
             );
         }
     }
