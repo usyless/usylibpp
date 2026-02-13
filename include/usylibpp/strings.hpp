@@ -118,7 +118,7 @@ namespace usylibpp::strings {
      * Stop looping early if false returned from function
      */
     template <typename Char, typename F, types::is_basic_string_view SV>
-    requires (std::invocable<F, std::basic_string_view<Char>>)
+    requires (std::invocable<F, std::basic_string_view<Char>> && typename types::string_view_char_t<SV>() == Char())
     inline constexpr void split_by_for_each(SV&& _input, const Char split_by, F&& f) noexcept(noexcept(std::invoke(f, _input))) {
         std::basic_string_view<Char> input{_input};
         
@@ -141,6 +141,7 @@ namespace usylibpp::strings {
     }
 
     template <typename Char, types::is_basic_string_view SV>
+    requires (typename types::string_view_char_t<SV>() == Char())
     inline constexpr std::vector<std::basic_string_view<Char>> split_by(SV&& _input, const Char split_by) {
         std::vector<std::basic_string_view<Char>> result;
         split_by_for_each(std::forward<SV>(_input), split_by, [&result](auto&& view) {
@@ -161,7 +162,7 @@ namespace usylibpp::strings {
     }
 
     template <typename Char, types::is_basic_string_view S>
-    requires (std::convertible_to<S, std::basic_string_view<Char>>)
+    requires (std::convertible_to<S, std::basic_string_view<Char>> && typename types::string_view_char_t<S>() == Char())
     [[nodiscard]] inline constexpr size_t count_of(S&& str, const Char c) noexcept {
         size_t count = 0;
         for (const auto a : str) if (a == c) ++count;
