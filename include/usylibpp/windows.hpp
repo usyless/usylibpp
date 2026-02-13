@@ -485,7 +485,7 @@ namespace usylibpp::windows {
             /**
              * The callback is a function which takes one argument of std::string_view
              */
-            template <bool with_output = true, typename Callback = std::nullptr_t>
+            template <bool with_output = true, bool break_line = true, typename Callback = std::nullptr_t>
             inline std::string read_from_pipe(std::stop_token stop, HANDLE pipe, Callback&& on_line = nullptr) {
                 std::string output;
                 char buffer[4096];
@@ -503,26 +503,30 @@ namespace usylibpp::windows {
                     if constexpr (with_output) output.append(buffer, bytesRead);
 
                     if constexpr (!std::is_same_v<Callback, std::nullptr_t>) {
-                        partialLine.append(buffer, bytesRead);
+                        if constexpr (!break_line) {
+                            on_line(std::string_view{buffer, bytesRead});
+                        } else {
+                            partialLine.append(buffer, bytesRead);
 
-                        std::size_t start_pos = 0;
-                        std::size_t new_line_pos = 0;
-                        while ((new_line_pos = partialLine.find('\n', new_line_pos)) != std::string::npos) {
-                            std::size_t line_end = new_line_pos;
+                            std::size_t start_pos = 0;
+                            std::size_t new_line_pos = 0;
+                            while ((new_line_pos = partialLine.find('\n', new_line_pos)) != std::string::npos) {
+                                std::size_t line_end = new_line_pos;
 
-                            if (line_end > start_pos && partialLine[line_end - 1] == '\r') --line_end;
+                                if (line_end > start_pos && partialLine[line_end - 1] == '\r') --line_end;
 
-                            std::string_view line{partialLine.data() + start_pos, line_end - start_pos};
+                                std::string_view line{partialLine.data() + start_pos, line_end - start_pos};
 
-                            on_line(line);
-                            start_pos = ++new_line_pos;
+                                on_line(line);
+                                start_pos = ++new_line_pos;
+                            }
+
+                            partialLine.erase(0, start_pos);
                         }
-
-                        partialLine.erase(0, start_pos);
                     }
                 }
 
-                if constexpr (!std::is_same_v<Callback, std::nullptr_t>) {
+                if constexpr (!std::is_same_v<Callback, std::nullptr_t> && break_line) {
                     if (!partialLine.empty()) {
                         on_line(partialLine);
                     }
@@ -554,6 +558,8 @@ namespace usylibpp::windows {
             bool capture_stdout = true;
             bool capture_stderr = true;
             bool set_lifetime_of_subprocess_to_this_process = true;
+            bool on_stdout_line_call_on_lines = true; // otherwise only call on buffer full
+            bool on_stderr_line_call_on_lines = true;
         };
 
         /**
@@ -690,7 +696,7 @@ namespace usylibpp::windows {
             std::jthread stdoutThread;
             if (opts.capture_stdout || options.on_stdout_line) {
                 stdoutThread = std::jthread([&stdoutOutput, hStdOutRead = hStdOutRead.get(), &options](std::stop_token st) {
-                    if (options.on_stdout_line) stdoutOutput = internal::read_from_pipe<opts.capture_stdout>(st, hStdOutRead, options.on_stdout_line);
+                    if (options.on_stdout_line) stdoutOutput = internal::read_from_pipe<opts.capture_stdout, opts.on_stdout_line_call_on_lines>(st, hStdOutRead, options.on_stdout_line);
                     else stdoutOutput = internal::read_from_pipe<opts.capture_stdout>(st, hStdOutRead);
                 });
             }
@@ -698,7 +704,7 @@ namespace usylibpp::windows {
             std::jthread stderrThread;
             if (opts.capture_stderr || options.on_stderr_line) {
                 stderrThread = std::jthread([&stderrOutput, hStdErrRead = hStdErrRead.get(), &options](std::stop_token st) {
-                    if (options.on_stderr_line) stderrOutput = internal::read_from_pipe<opts.capture_stderr>(st, hStdErrRead, options.on_stderr_line);
+                    if (options.on_stderr_line) stderrOutput = internal::read_from_pipe<opts.capture_stderr, opts.on_stderr_line_call_on_lines>(st, hStdErrRead, options.on_stderr_line);
                     else stderrOutput = internal::read_from_pipe<opts.capture_stderr>(st, hStdErrRead);
                 });
             }
