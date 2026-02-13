@@ -2,6 +2,7 @@
 
 #include "macros.hpp"
 #include <algorithm>
+#include <cwctype>
 #include <string>
 #include <string_view>
 #include <cstring>
@@ -24,12 +25,21 @@ namespace usylibpp::strings {
         return result;
     }
 
-    inline constexpr void to_lowercase_inplace(std::string& str) noexcept {
-        std::transform(str.begin(), str.end(), str.begin(), [](unsigned char c) noexcept -> char { return static_cast<char>(std::tolower(c)); });
+    template <types::is_basic_string S>
+    requires (types::CharOrWChar<typename S::value_type>)
+    inline constexpr void to_lowercase_inplace(S& str) noexcept {
+        using Char = S::value_type;
+        if constexpr (std::is_same_v<Char, char>) {
+            std::transform(str.begin(), str.end(), str.begin(), [](unsigned char c) noexcept -> char { return static_cast<char>(std::tolower(c)); });
+        } else {
+            std::transform(str.begin(), str.end(), str.begin(), [](wchar_t c) noexcept -> wchar_t { return static_cast<wchar_t>(std::towlower(c)); });
+        }
     }
 
-    [[nodiscard]] inline constexpr std::string to_lowercase(const std::string_view str) {
-        std::string ret{str};
+    template <types::is_basic_string_view SV>
+    [[nodiscard]] inline constexpr std::basic_string<types::string_view_char_t<SV>> to_lowercase(SV str) {
+        using Char = types::string_view_char_t<SV>;
+        std::basic_string<Char> ret{str};
         to_lowercase_inplace(ret);
         return ret;
     }
