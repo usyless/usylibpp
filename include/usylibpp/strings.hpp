@@ -39,7 +39,7 @@ namespace usylibpp::strings {
      */
     template <types::CharOrWChar Char, types::is_basic_string_view SV>
     requires (std::same_as<typename types::string_view_char_t<SV>, Char>)
-    inline constexpr std::basic_string_view<Char> trim_left(SV&& _input, const Char character) { // no rvalues
+    inline constexpr std::basic_string_view<Char> trim_left(SV&& _input, const Char character) noexcept {
         const std::basic_string_view<Char> input{_input};
         if (input.empty()) return input;
 
@@ -57,7 +57,7 @@ namespace usylibpp::strings {
      */
     template <types::CharOrWChar Char, types::is_basic_string_view SV>
     requires (std::same_as<typename types::string_view_char_t<SV>, Char>)
-    inline constexpr std::basic_string_view<Char> trim_right(SV&& _input, const Char character) { // no rvalues
+    inline constexpr std::basic_string_view<Char> trim_right(SV&& _input, const Char character) noexcept {
         const std::basic_string_view<Char> input{_input};
         if (input.empty()) return input;
 
@@ -72,7 +72,7 @@ namespace usylibpp::strings {
      */
     template <types::CharOrWChar Char, types::is_basic_string_view SV>
     requires (std::same_as<typename types::string_view_char_t<SV>, Char>)
-    inline constexpr std::basic_string_view<Char> trim(SV&& _input, const Char character) { // no rvalues
+    inline constexpr std::basic_string_view<Char> trim(SV&& _input, const Char character) noexcept {
         std::basic_string_view<Char> input{_input};
         input = trim_left(input, character);
         input = trim_right(input, character);
