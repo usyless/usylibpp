@@ -100,10 +100,24 @@ namespace usylibpp::strings {
         }
     }
 
+    template <typename Char, types::is_basic_string_view SV>
+    inline constexpr std::vector<std::basic_string_view<Char>> split_by(SV&& _input, const Char split_by) {
+        std::vector<std::basic_string_view<Char>> result;
+        split_by_for_each(std::forward<SV>(_input), split_by, [&result](auto&& view) {
+            result.emplace_back(view);
+        });
+        return result;
+    }
+
     template <types::is_basic_string_view SV, typename F>
     requires (std::invocable<F, std::basic_string_view<types::string_view_char_t<SV>>>)
     inline constexpr void for_each_line(SV&& input, F&& f) noexcept(noexcept(split_by_for_each(std::forward<SV>(input), types::string_view_char_t<SV>('\n'), std::forward<F>(f)))) {
         split_by_for_each(std::forward<SV>(input), types::string_view_char_t<SV>('\n'), std::forward<F>(f));
+    }
+
+    template <types::is_basic_string_view SV>
+    inline constexpr std::vector<std::basic_string_view<types::string_view_char_t<SV>>> split_lines(SV&& input) {
+        return split_by(std::forward<SV>(input), types::string_view_char_t<SV>('\n'));
     }
 
     template <typename Char, types::is_basic_string_view S>
