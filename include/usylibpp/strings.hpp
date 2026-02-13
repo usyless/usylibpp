@@ -34,12 +34,44 @@ namespace usylibpp::strings {
         return ret;
     }
 
-    template <types::is_basic_string S, types::is_basic_string_view SV>
-    inline constexpr void replace_all_inplace(S& str, const SV _from, const SV _to) {
+    /**
+     * Don't pass in an rvalue as it return a view into the input
+     */
+    template <typename Char, types::is_basic_string_view SV>
+    inline constexpr std::basic_string_view<Char> trim_left(SV&& _input, const Char character) { // no rvalues
+        const std::basic_string_view<Char> input{_input};
+        if (input.empty()) return input;
+
+        const auto input_size = input.size();
+
+        for (size_t i = 0; i < input_size; ++i) {
+            if (input[i] != character) return input.substr(i);
+        }
+
+        return {};
+    }
+
+    /**
+     * Don't pass in an rvalue as it return a view into the input
+     */
+    template <typename Char, types::is_basic_string_view SV>
+    inline constexpr std::basic_string_view<Char> trim_right(SV&& _input, const Char character) { // no rvalues
+        const std::basic_string_view<Char> input{_input};
+        if (input.empty()) return input;
+
+        size_t end = input.size();
+        while (end > 0 && (input[end - 1] == character)) --end;
+
+        return input.substr(0, end);
+    }
+
+    template <types::is_basic_string S, types::is_basic_string_view SV1, types::is_basic_string_view SV2>
+    requires (typename S::value_type() == typename types::string_view_char_t<SV1>() && typename types::string_view_char_t<SV1>() == typename types::string_view_char_t<SV2>())
+    inline constexpr void replace_all_inplace(S& str, SV1&& _from, SV2&& _to) {
         using Char = S::value_type;
 
-        std::basic_string_view<Char> from{_from};
-        std::basic_string_view<Char> to{_to};
+        const std::basic_string_view<Char> from{_from};
+        const std::basic_string_view<Char> to{_to};
 
         size_t start_pos = 0;
         while ((start_pos = str.find(from, start_pos)) != std::basic_string<Char>::npos) {
@@ -48,12 +80,13 @@ namespace usylibpp::strings {
         }
     }
 
-    template <types::is_basic_string_view SV>
-    [[nodiscard]] inline constexpr auto replace_all(const SV str, const SV from, const SV to) {
-        using Char = types::string_view_char_t<SV>;
+    template <types::is_basic_string_view SV1, types::is_basic_string_view SV2, types::is_basic_string_view SV3>
+    requires (typename types::string_view_char_t<SV1>() == typename types::string_view_char_t<SV2>() && typename types::string_view_char_t<SV2>() == typename types::string_view_char_t<SV3>())
+    [[nodiscard]] inline constexpr auto replace_all(SV1&& str, SV2&& from, SV3&& to) {
+        using Char = types::string_view_char_t<SV1>;
 
         std::basic_string<Char> ret{str};
-        replace_all_inplace(ret, from, to);
+        replace_all_inplace(ret, std::forward<SV2>(from), std::forward<SV3>(to));
         return ret;
     }
 
