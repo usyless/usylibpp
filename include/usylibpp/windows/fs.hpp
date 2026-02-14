@@ -86,6 +86,8 @@ struct WalkOpts {
 
 /**
  * Return false from on_directory to not recurse into it if using recursive
+ * Otherwise returning false from any method stops iterating
+ * Call cancel_walk_directory on the data to completely cancel the walk even if recursed
  */
 template <WalkOpts opts = {}, CallbacksType CB>
 inline void _walk_directory(std::wstring&& root, CB&& cb, FindDataWrapper& wrapper) {
