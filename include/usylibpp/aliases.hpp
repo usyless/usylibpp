@@ -28,9 +28,11 @@ namespace usylibpp {
     namespace fs = files;
     namespace wt = wintoast;
 
-    namespace proc = win::process;
-    namespace img = win::images;
-    namespace dark = win::darkmode;
-    namespace td = win::task_dialog;
+    namespace windows {
+        namespace proc = process;
+        namespace img = images;
+        namespace dark = darkmode;
+        namespace td = task_dialog;
+    }
 }
 // NOLINTEND(misc-unused-alias-decls)
