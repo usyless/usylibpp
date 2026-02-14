@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../aliases.hpp" // IWYU pragma: export
 #include "../windows.hpp"
 #include "../strings.hpp"
 #include <wincodec.h>

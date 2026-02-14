@@ -1,6 +1,7 @@
 #pragma once
 
 #ifdef USYLIBPP_ENABLE_TASK_DIALOG_DARK_MODE
+#include "../aliases.hpp" // IWYU pragma: export
 #include <windows.h>
 #include <shobjidl.h>
 #include "../types.hpp"

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "aliases.hpp" // IWYU pragma: export
 #include "windows.hpp"
 #include "print.hpp"
 #include <wintoastlib.h>

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "aliases.hpp" // IWYU pragma: export
 #include "strings.hpp"
 
 namespace usylibpp::discord {

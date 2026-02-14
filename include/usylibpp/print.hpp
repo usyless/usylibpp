@@ -1,5 +1,6 @@
 #pragma once
 
+#include "aliases.hpp" // IWYU pragma: exports
 #include <iostream>
 #include <format>
 

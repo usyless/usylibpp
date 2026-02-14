@@ -1,6 +1,7 @@
 #pragma once
 
 #ifdef USYLIBPP_ENABLE_WIL
+#include "../aliases.hpp" // IWYU pragma: export
 #include <string>
 #include <thread>
 #include <functional>
