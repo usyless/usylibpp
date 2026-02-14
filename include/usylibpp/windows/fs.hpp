@@ -144,7 +144,11 @@ inline void _walk_directory(std::wstring&& root, CB&& cb, FindDataWrapper& wrapp
                 }
                 #undef recurse
             } else {
-                std::invoke(cb.on_directory, root, wrapper);
+                if constexpr (std::is_same_v<std::invoke_result_t<decltype(std::declval<CB>().on_directory), wstring_arg, data_arg>, bool>) {
+                    if (!std::invoke(cb.on_directory, root, wrapper)) break;
+                } else {
+                    std::invoke(cb.on_directory, root, wrapper);
+                }
             }
         } else {
             if constexpr (std::is_same_v<std::invoke_result_t<decltype(std::declval<CB>().on_file), wstring_arg, data_arg>, bool>) {
