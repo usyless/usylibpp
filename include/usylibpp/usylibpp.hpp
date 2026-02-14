@@ -6,6 +6,7 @@
 #ifdef USYLIBPP_ENABLE_WINDOWS
 #include "windows.hpp"
 #include "windows/fs.hpp"
+#include "windows/process.hpp"
 #endif
 
 #include "discord.hpp"
