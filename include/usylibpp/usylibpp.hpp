@@ -42,14 +42,26 @@ namespace usylibpp {
 #ifdef USYLIBPP_ENABLE_WINTOAST
 #include <wintoastlib.h>
 #include "wintoasthelper.hpp" // IWYU pragma: export
+namespace usylibpp {
+    namespace wt = ulp::wintoast;
+}
 #endif
 
 #ifdef USYLIBPP_ENABLE_WINDOWS_IMAGING
 #include "windows/images.hpp" // IWYU pragma: export
+namespace usylibpp::windows {
+    namespace img = win::images;
+}
 #endif
 
 #ifdef USYLIBPP_ENABLE_TASK_DIALOG_DARK_MODE
 #include "windows/darkmode.hpp" // IWYU pragma: export
+namespace usylibpp::windows {
+    namespace dark = win::darkmode;
+}
 #include "windows/task_dialog.hpp" // IWYU pragma: export
+namespace usylibpp::windows {
+    namespace td = win::task_dialog;
+}
 #endif
 // NOLINTEND(misc-unused-alias-decls)
