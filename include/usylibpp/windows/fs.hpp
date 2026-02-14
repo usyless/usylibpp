@@ -26,18 +26,26 @@ struct FindDataWrapper {
     [[nodiscard]] uint64_t file_size() const noexcept {
         return (static_cast<uint64_t>(data.nFileSizeHigh) << 32) | data.nFileSizeLow;
     }
+
+    [[nodiscard]] const wchar_t* filename() const noexcept {
+        return data.cFileName;
+    }
+
+    [[nodiscard]] std::wstring_view filename_view() const noexcept {
+        return data.cFileName;
+    }
 };
 
 using wstring_arg = const std::wstring&;
 using data_arg = const FindDataWrapper&;
 template <
-    typename F1 = decltype([](wstring_arg, wstring_arg, data_arg){}), 
-    typename F2 = decltype([](wstring_arg, wstring_arg, data_arg){}), 
-    typename F3 = decltype([](wstring_arg, wstring_arg, data_arg){})
+    typename F1 = decltype([](wstring_arg, data_arg){}), 
+    typename F2 = decltype([](wstring_arg, data_arg){}), 
+    typename F3 = decltype([](wstring_arg, data_arg){})
 >
-requires (std::invocable<F1, wstring_arg, wstring_arg, data_arg> && 
-          std::invocable<F2, wstring_arg, wstring_arg, data_arg> && 
-          std::invocable<F3, wstring_arg, wstring_arg, data_arg>)
+requires (std::invocable<F1, wstring_arg, data_arg> && 
+          std::invocable<F2, wstring_arg, data_arg> && 
+          std::invocable<F3, wstring_arg, data_arg>)
 struct Callbacks {
     F1 on_file{};
     F2 on_directory{};
@@ -85,28 +93,27 @@ inline void walk_directory(std::wstring root, CB&& cb) {
 
     do {
         // Skip "." and ".."
-        if (data.cFileName[0] == L'.' &&
-            (data.cFileName[1] == L'\0' ||
-             (data.cFileName[1] == L'.' && data.cFileName[2] == L'\0')))
+        const auto* filename = data.cFileName;
+        if (filename[0] == L'.' &&
+            (filename[1] == L'\0' ||
+             (filename[1] == L'.' && filename[2] == L'\0')))
             continue;
 
         const DWORD attr = data.dwFileAttributes;
-
-        if (attr & FILE_ATTRIBUTE_DIRECTORY) {
-            if constexpr (opts.recursive && std::is_same_v<std::invoke_result_t<decltype(std::declval<CB>().on_directory), wstring_arg, wstring_arg, data_arg>, bool>) {
-                if (std::invoke(cb.on_directory, root, data.cFileName, FindDataWrapper{data})) {
-                    walk_directory<opts>(strings::concat_strings(root, data.cFileName), cb);
+        
+        if (attr & FILE_ATTRIBUTE_REPARSE_POINT) {
+            std::invoke(cb.on_other, root, FindDataWrapper{data});
+        } else if (attr & FILE_ATTRIBUTE_DIRECTORY) {
+            if constexpr (opts.recursive && std::is_same_v<std::invoke_result_t<decltype(std::declval<CB>().on_directory), wstring_arg, data_arg>, bool>) {
+                if (std::invoke(cb.on_directory, root, FindDataWrapper{data})) {
+                    walk_directory<opts>(strings::concat_strings(root, filename), cb);
                 }
             } else {
-                std::invoke(cb.on_directory, root, data.cFileName, FindDataWrapper{data});
+                std::invoke(cb.on_directory, root, FindDataWrapper{data});
             }
-        }
-        else if (attr & FILE_ATTRIBUTE_REPARSE_POINT) {
-            std::invoke(cb.on_other, root, data.cFileName, FindDataWrapper{data});
-        }
-        else if (attr & FILE_ATTRIBUTE_DEVICE || attr & FILE_ATTRIBUTE_OFFLINE) continue;
+        } else if (attr & FILE_ATTRIBUTE_DEVICE || attr & FILE_ATTRIBUTE_OFFLINE) continue;
         else {
-            std::invoke(cb.on_file, root, data.cFileName, FindDataWrapper{data});
+            std::invoke(cb.on_file, root, FindDataWrapper{data});
         }
 
     } while (FindNextFileW(hFind_ptr, &data));
