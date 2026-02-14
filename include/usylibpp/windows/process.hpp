@@ -25,9 +25,12 @@ namespace usylibpp::windows::process {
 
             std::string partialLine;
 
-            std::stop_callback cb(stop, [&pipe, thread = GetCurrentThread()]() {
-                CancelSynchronousIo(thread);
-            });
+            HANDLE threadHandle;
+            if (DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(), &threadHandle, 0, FALSE, DUPLICATE_SAME_ACCESS)) {
+                std::stop_callback cb(stop, [&pipe, threadHandle]() {
+                    CancelSynchronousIo(threadHandle);
+                });
+            }
 
             while (ReadFile(pipe, buffer, sizeof(buffer), &bytesRead, NULL) && bytesRead > 0) {
                 if (stop.stop_requested()) break;
