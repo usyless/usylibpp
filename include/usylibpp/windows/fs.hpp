@@ -10,14 +10,18 @@
 namespace usylibpp::windows::fs {
 using wstring_arg = const std::wstring&;
 using data_arg = const WIN32_FIND_DATAW&;
-template <typename F1 = decltype([](wstring_arg, wstring_arg, data_arg){}), typename F2 = decltype([](wstring_arg, wstring_arg, data_arg){}), typename F3 = decltype([](wstring_arg, wstring_arg, data_arg){})>
+template <
+    typename F1 = decltype([](wstring_arg, wstring_arg, data_arg){}), 
+    typename F2 = decltype([](wstring_arg, wstring_arg, data_arg){}), 
+    typename F3 = decltype([](wstring_arg, wstring_arg, data_arg){})
+>
 requires (std::invocable<F1, wstring_arg, wstring_arg, data_arg> && 
           std::invocable<F2, wstring_arg, wstring_arg, data_arg> && 
           std::invocable<F3, wstring_arg, wstring_arg, data_arg>)
 struct DirectoryCallbacks {
-    F1&& on_file;
-    F2&& on_directory;
-    F3&& on_other;
+    F1 on_file{};
+    F2 on_directory{};
+    F3 on_other{};
 };
 
 template <typename>
