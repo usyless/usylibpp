@@ -25,13 +25,13 @@ struct Callbacks {
 };
 
 template <typename>
-struct is_directory_callbacks : std::false_type {};
+struct is_callbacks : std::false_type {};
 
 template <typename F1, typename F2, typename F3>
-struct is_directory_callbacks<Callbacks<F1, F2, F3>> : std::true_type {};
+struct is_callbacks<Callbacks<F1, F2, F3>> : std::true_type {};
 
 template <typename T>
-concept DirectoryCallbacksType = is_directory_callbacks<std::remove_cvref_t<T>>::value;
+concept CallbacksType = is_callbacks<std::remove_cvref_t<T>>::value;
 
 struct WalkOpts {
     bool recursive = false;
@@ -40,7 +40,7 @@ struct WalkOpts {
 /**
  * Return false from on_directory to not recurse into it if using recursive
  */
-template <WalkOpts opts = {}, DirectoryCallbacksType CB>
+template <WalkOpts opts = {}, CallbacksType CB>
 inline void walk_directory(std::wstring root, CB&& cb) {
     if (!root.ends_with(L'\\')) root.push_back(L'\\');
 
