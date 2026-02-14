@@ -26,7 +26,6 @@ namespace usylibpp {
     namespace win = windows;
     namespace str = strings;
     namespace fs = files;
-    namespace tm = time;
     namespace wt = wintoast;
 
     namespace proc = win::process;
