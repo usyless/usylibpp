@@ -118,15 +118,22 @@ inline void _walk_directory(std::wstring&& root, CB&& cb, FindDataWrapper& wrapp
 
         const DWORD attr = data.dwFileAttributes;
         
+        #pragma push_macro("HANDLE")
+        #undef HANDLE
+        #define HANDLE(func) \
+        if constexpr (std::is_same_v<std::invoke_result_t<decltype(std::declval<CB>().func), wstring_arg, data_arg>, bool>) { \
+            if (!std::invoke(cb.func, root, wrapper)) break; \
+        } else { \
+            std::invoke(cb.func, root, wrapper); \
+        }
+        
         if (attr & FILE_ATTRIBUTE_DEVICE || attr & FILE_ATTRIBUTE_OFFLINE || attr & FILE_ATTRIBUTE_VIRTUAL) continue;
         else if (attr & FILE_ATTRIBUTE_REPARSE_POINT) {
-            if constexpr (std::is_same_v<std::invoke_result_t<decltype(std::declval<CB>().on_other), wstring_arg, data_arg>, bool>) {
-                if (!std::invoke(cb.on_other, root, wrapper)) break;
-            } else {
-                std::invoke(cb.on_other, root, wrapper);
-            }
+            HANDLE(on_other)
         } else if (attr & FILE_ATTRIBUTE_DIRECTORY) {
             if constexpr (opts.recursive) {
+                #pragma push_macro("recurse")
+                #undef recurse
                 #define recurse \
                 if constexpr (opts.trailing_slash_on_parent) { \
                     _walk_directory<opts>(strings::concat_strings(root, filename), cb, wrapper); \
@@ -142,21 +149,15 @@ inline void _walk_directory(std::wstring&& root, CB&& cb, FindDataWrapper& wrapp
                     std::invoke(cb.on_directory, root, wrapper);
                     recurse
                 }
-                #undef recurse
+                #pragma pop_macro("recurse")
             } else {
-                if constexpr (std::is_same_v<std::invoke_result_t<decltype(std::declval<CB>().on_directory), wstring_arg, data_arg>, bool>) {
-                    if (!std::invoke(cb.on_directory, root, wrapper)) break;
-                } else {
-                    std::invoke(cb.on_directory, root, wrapper);
-                }
+                HANDLE(on_directory)
             }
         } else {
-            if constexpr (std::is_same_v<std::invoke_result_t<decltype(std::declval<CB>().on_file), wstring_arg, data_arg>, bool>) {
-                if (!std::invoke(cb.on_file, root, wrapper)) break;
-            } else {
-                std::invoke(cb.on_file, root, wrapper);
-            }
+            HANDLE(on_file)
         }
+
+        #pragma pop_macro("HANDLE")
 
     } while (!wrapper.cancelled && FindNextFileW(hFind_ptr, &data));
 }
