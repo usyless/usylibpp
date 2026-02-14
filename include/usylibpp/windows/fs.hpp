@@ -8,8 +8,16 @@
 #include <string>
 
 namespace usylibpp::windows::fs {
+struct FindDataWrapper {
+    const WIN32_FIND_DATAW& data;
+
+    [[nodiscard]] auto time() const noexcept {
+        return wil::filetime::to_int64(data.ftLastWriteTime);
+    }
+};
+
 using wstring_arg = const std::wstring&;
-using data_arg = const WIN32_FIND_DATAW&;
+using data_arg = const FindDataWrapper&;
 template <
     typename F1 = decltype([](wstring_arg, wstring_arg, data_arg){}), 
     typename F2 = decltype([](wstring_arg, wstring_arg, data_arg){}), 
@@ -74,18 +82,18 @@ inline void walk_directory(std::wstring root, CB&& cb) {
 
         if (attr & FILE_ATTRIBUTE_DIRECTORY) {
             if constexpr (opts.recursive && std::is_same_v<std::invoke_result_t<decltype(std::declval<CB>().on_directory), wstring_arg, wstring_arg, data_arg>, bool>) {
-                if (std::invoke(cb.on_directory, root, data.cFileName, data)) {
+                if (std::invoke(cb.on_directory, root, data.cFileName, FindDataWrapper{data})) {
                     walk_directory<opts>(strings::concat_strings(root, data.cFileName), cb);
                 }
             } else {
-                std::invoke(cb.on_directory, root, data.cFileName, data);
+                std::invoke(cb.on_directory, root, data.cFileName, FindDataWrapper{data});
             }
         }
         else if (attr & FILE_ATTRIBUTE_REPARSE_POINT) {
-            std::invoke(cb.on_other, root, data.cFileName, data);
+            std::invoke(cb.on_other, root, data.cFileName, FindDataWrapper{data});
         }
         else {
-            std::invoke(cb.on_file, root, data.cFileName, data);
+            std::invoke(cb.on_file, root, data.cFileName, FindDataWrapper{data});
         }
 
     } while (FindNextFileW(hFind_ptr, &data));
