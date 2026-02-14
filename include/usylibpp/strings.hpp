@@ -32,6 +32,34 @@ namespace usylibpp::strings {
         return result;
     }
 
+    template <types::is_basic_string_view SV>
+    inline constexpr bool is_valid_ascii(SV&& _str) noexcept {
+        using Char = ulp::types::string_view_char_t<SV>;
+        using cast = std::conditional_t<std::is_same_v<Char, wchar_t>, wchar_t, unsigned char>;
+
+        std::basic_string_view<Char> str{_str};
+        return std::all_of(str.begin(), str.end(), [](Char c) noexcept { return static_cast<cast>(c) < 128; });
+    }
+
+    /**
+     * Super basic ascii string conversion from string <=> wstring
+     * Does not perform any utf8/utf16 conversion
+     * Returns nullopt if not a valid conversion
+     */
+    template <types::is_basic_string_view SV>
+    inline constexpr std::optional<std::basic_string<std::conditional_t<std::is_same_v<types::string_view_char_t<SV>, char>, wchar_t, char>>> ascii_convert_string(SV&& _str) {
+        using Char = ulp::types::string_view_char_t<SV>;
+        using other_char = std::conditional_t<std::is_same_v<Char, char>, wchar_t, char>;
+
+        std::basic_string_view<Char> str{_str};
+        if (!is_valid_ascii(str)) return std::nullopt;
+
+        std::basic_string<other_char> out;
+        out.reserve(str.size());
+        for (const auto c : str) out.push_back(static_cast<other_char>(c));
+        return out;
+    }
+
     template <types::is_basic_string S>
     requires (types::CharOrWChar<typename S::value_type>)
     inline constexpr void to_lowercase_inplace(S& str) noexcept {
