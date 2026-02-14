@@ -101,7 +101,8 @@ inline void walk_directory(std::wstring root, CB&& cb) {
 
         const DWORD attr = data.dwFileAttributes;
         
-        if (attr & FILE_ATTRIBUTE_REPARSE_POINT) {
+        if (attr & FILE_ATTRIBUTE_DEVICE || attr & FILE_ATTRIBUTE_OFFLINE || attr & FILE_ATTRIBUTE_VIRTUAL) continue;
+        else if (attr & FILE_ATTRIBUTE_REPARSE_POINT) {
             std::invoke(cb.on_other, root, FindDataWrapper{data});
         } else if (attr & FILE_ATTRIBUTE_DIRECTORY) {
             if constexpr (opts.recursive && std::is_same_v<std::invoke_result_t<decltype(std::declval<CB>().on_directory), wstring_arg, data_arg>, bool>) {
@@ -111,8 +112,7 @@ inline void walk_directory(std::wstring root, CB&& cb) {
             } else {
                 std::invoke(cb.on_directory, root, FindDataWrapper{data});
             }
-        } else if (attr & FILE_ATTRIBUTE_DEVICE || attr & FILE_ATTRIBUTE_OFFLINE) continue;
-        else {
+        } else {
             std::invoke(cb.on_file, root, FindDataWrapper{data});
         }
 
