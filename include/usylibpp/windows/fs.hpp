@@ -126,8 +126,17 @@ inline void _walk_directory(std::wstring root, CB&& cb, FindDataWrapper& wrapper
                 std::invoke(cb.on_other, root, wrapper);
             }
         } else if (attr & FILE_ATTRIBUTE_DIRECTORY) {
-            if constexpr (opts.recursive && std::is_same_v<std::invoke_result_t<decltype(std::declval<CB>().on_directory), wstring_arg, data_arg>, bool>) {
-                if (std::invoke(cb.on_directory, root, wrapper)) {
+            if constexpr (opts.recursive) {
+                if constexpr (std::is_same_v<std::invoke_result_t<decltype(std::declval<CB>().on_directory), wstring_arg, data_arg>, bool>) {
+                    if (std::invoke(cb.on_directory, root, wrapper)) {
+                        if constexpr (opts.trailing_slash_on_parent) {
+                            walk_directory<opts>(strings::concat_strings(root, filename), cb, wrapper);
+                        } else {
+                            walk_directory<opts>(strings::concat_strings(root, L"\\", filename), cb, wrapper);
+                        }
+                    }
+                } else {
+                    std::invoke(cb.on_directory, root, wrapper);
                     if constexpr (opts.trailing_slash_on_parent) {
                         walk_directory<opts>(strings::concat_strings(root, filename), cb, wrapper);
                     } else {
