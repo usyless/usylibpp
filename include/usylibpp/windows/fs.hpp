@@ -18,7 +18,7 @@ template <
 requires (std::invocable<F1, wstring_arg, wstring_arg, data_arg> && 
           std::invocable<F2, wstring_arg, wstring_arg, data_arg> && 
           std::invocable<F3, wstring_arg, wstring_arg, data_arg>)
-struct DirectoryCallbacks {
+struct Callbacks {
     F1 on_file{};
     F2 on_directory{};
     F3 on_other{};
@@ -28,7 +28,7 @@ template <typename>
 struct is_directory_callbacks : std::false_type {};
 
 template <typename F1, typename F2, typename F3>
-struct is_directory_callbacks<DirectoryCallbacks<F1, F2, F3>> : std::true_type {};
+struct is_directory_callbacks<Callbacks<F1, F2, F3>> : std::true_type {};
 
 template <typename T>
 concept DirectoryCallbacksType = is_directory_callbacks<std::remove_cvref_t<T>>::value;

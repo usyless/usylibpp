@@ -130,7 +130,7 @@ int main() {
     print::println("Windows fs stuff:");
     {
         print::println("All files in current folder:");
-        windows::fs::walk_directory<windows::fs::WalkOpts{.recursive = true}>(L"..", windows::fs::DirectoryCallbacks{
+        windows::fs::walk_directory<windows::fs::WalkOpts{.recursive = true}>(L"..", windows::fs::Callbacks{
             .on_file = [](const std::wstring& parent, const std::wstring& filename, const WIN32_FIND_DATAW& data) {
                 print::println("File - Parent: {} ; Filename: {} ; Last Write time: {}", windows::to_utf8_or_default(parent), windows::to_utf8_or_default(filename), wil::filetime::to_int64(data.ftLastWriteTime));
             },
