@@ -113,7 +113,11 @@ inline void walk_directory(std::wstring root, CB&& cb) {
         
         if (attr & FILE_ATTRIBUTE_DEVICE || attr & FILE_ATTRIBUTE_OFFLINE || attr & FILE_ATTRIBUTE_VIRTUAL) continue;
         else if (attr & FILE_ATTRIBUTE_REPARSE_POINT) {
-            std::invoke(cb.on_other, root, wrapper);
+            if constexpr (opts.recursive && std::is_same_v<std::invoke_result_t<decltype(std::declval<CB>().on_other), wstring_arg, data_arg>, bool>) {
+                if (!std::invoke(cb.on_other, root, wrapper)) break;
+            } else {
+                std::invoke(cb.on_other, root, wrapper);
+            }
         } else if (attr & FILE_ATTRIBUTE_DIRECTORY) {
             if constexpr (opts.recursive && std::is_same_v<std::invoke_result_t<decltype(std::declval<CB>().on_directory), wstring_arg, data_arg>, bool>) {
                 if (std::invoke(cb.on_directory, root, wrapper)) {
@@ -123,7 +127,11 @@ inline void walk_directory(std::wstring root, CB&& cb) {
                 std::invoke(cb.on_directory, root, wrapper);
             }
         } else {
-            std::invoke(cb.on_file, root, wrapper);
+            if constexpr (opts.recursive && std::is_same_v<std::invoke_result_t<decltype(std::declval<CB>().on_file), wstring_arg, data_arg>, bool>) {
+                if (!std::invoke(cb.on_file, root, wrapper)) break;
+            } else {
+                std::invoke(cb.on_file, root, wrapper);
+            }
         }
 
     } while (FindNextFileW(hFind_ptr, &data));
