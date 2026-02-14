@@ -3,6 +3,7 @@
 #ifdef USYLIBPP_ENABLE_WIL
 #include "../windows.hpp"
 #include "../strings.hpp"
+#include "../types.hpp"
 #include <windows.h>
 #include <wil/resource.h>
 #include <string>
@@ -51,15 +52,11 @@ struct FindDataWrapper {
 
 using wstring_arg = const std::wstring&;
 using data_arg = FindDataWrapper&;
-struct noop_t {
-    template <typename... Args>
-    void operator()(Args&&...) const noexcept {}
-};
 
 template <
-    typename F1 = noop_t,
-    typename F2 = noop_t,
-    typename F3 = noop_t
+    typename F1 = types::noop_t,
+    typename F2 = types::noop_t,
+    typename F3 = types::noop_t
 >
 requires (std::invocable<F1, wstring_arg, data_arg> && 
           std::invocable<F2, wstring_arg, data_arg> && 
@@ -128,7 +125,7 @@ inline void _walk_directory(std::wstring&& root, CB&& cb, FindDataWrapper& wrapp
         #pragma push_macro("HANDLE")
         #undef HANDLE
         #define HANDLE(func) \
-        if constexpr (!std::is_same_v<decltype(std::declval<CB>().func), noop_t>) { \
+        if constexpr (!std::is_same_v<decltype(std::declval<CB>().func), types::noop_t>) { \
             if constexpr (std::is_same_v<std::invoke_result_t<decltype(std::declval<CB>().func), wstring_arg, data_arg>, bool>) { \
                 if (!std::invoke(cb.func, root, wrapper)) break; \
             } else { \
@@ -141,7 +138,7 @@ inline void _walk_directory(std::wstring&& root, CB&& cb, FindDataWrapper& wrapp
             HANDLE(on_other)
         } else if (attr & FILE_ATTRIBUTE_DIRECTORY) {
             if constexpr (opts.recursive) {
-                if constexpr (!std::is_same_v<decltype(std::declval<CB>().on_directory), noop_t>) {
+                if constexpr (!std::is_same_v<decltype(std::declval<CB>().on_directory), types::noop_t>) {
                     #pragma push_macro("recurse")
                     #undef recurse
                     #define recurse \
