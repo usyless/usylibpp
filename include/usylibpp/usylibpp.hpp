@@ -7,6 +7,7 @@
 #include "windows.hpp"
 #include "windows/fs.hpp"
 #include "windows/process.hpp"
+#include "windows/strings.hpp"
 #endif
 
 #include "discord.hpp"
@@ -15,6 +16,8 @@
 #include "init.hpp"
 #include "time.hpp"
 #include "print.hpp"
+#include "util/worker.hpp"
+#include "util/timer.hpp"
 #include <usylibppconfig.hpp>
 
 #ifdef USYLIBPP_ENABLE_WINTOAST
