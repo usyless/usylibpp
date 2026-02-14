@@ -83,7 +83,7 @@ struct WalkOpts {
  * Return false from on_directory to not recurse into it if using recursive
  */
 template <WalkOpts opts = {}, CallbacksType CB>
-inline void _walk_directory(std::wstring root, CB&& cb, FindDataWrapper& wrapper) {
+inline void _walk_directory(std::wstring&& root, CB&& cb, FindDataWrapper& wrapper) {
     if (!root.ends_with(L'\\')) root.push_back(L'\\');
 
     root.push_back(L'*');
@@ -133,7 +133,7 @@ inline void _walk_directory(std::wstring root, CB&& cb, FindDataWrapper& wrapper
                 } else { \
                     _walk_directory<opts>(strings::concat_strings(root, L"\\", filename), cb, wrapper); \
                 }
-                
+
                 if constexpr (std::is_same_v<std::invoke_result_t<decltype(std::declval<CB>().on_directory), wstring_arg, data_arg>, bool>) {
                     if (std::invoke(cb.on_directory, root, wrapper)) {
                         recurse
@@ -161,9 +161,9 @@ inline void _walk_directory(std::wstring root, CB&& cb, FindDataWrapper& wrapper
  * Return false from on_directory to not recurse into it if using recursive
  */
 template <WalkOpts opts = {}, CallbacksType CB>
-inline void walk_directory(const std::wstring& root, CB&& cb) {
+inline void walk_directory(std::wstring root, CB&& cb) {
     FindDataWrapper wrapper{};
-    _walk_directory<opts>(root, std::forward<CB>(cb), wrapper);
+    _walk_directory<opts>(std::move(root), std::forward<CB>(cb), wrapper);
 }
 }
 #endif
