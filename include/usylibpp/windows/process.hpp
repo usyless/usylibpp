@@ -47,9 +47,7 @@ namespace usylibpp::windows::process {
 
                             if (line_end > start_pos && partialLine[line_end - 1] == '\r') --line_end;
 
-                            std::string_view line{partialLine.data() + start_pos, line_end - start_pos};
-
-                            std::invoke(on_line, line);
+                            std::invoke(on_line, std::string_view{partialLine.data() + start_pos, line_end - start_pos});
                             start_pos = ++new_line_pos;
                         }
 
