@@ -44,13 +44,13 @@ struct FindDataWrapper {
         return data.cFileName;
     }
 
-    void cancel_walk_directory() {
+    void cancel_walk_directory() noexcept {
         cancelled = true;
     }
 };
 
 using wstring_arg = const std::wstring&;
-using data_arg = const FindDataWrapper&;
+using data_arg = FindDataWrapper&;
 template <
     typename F1 = decltype([](wstring_arg, data_arg){}), 
     typename F2 = decltype([](wstring_arg, data_arg){}), 
