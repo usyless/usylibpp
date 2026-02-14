@@ -31,6 +31,14 @@ struct FindDataWrapper {
         return data.cFileName;
     }
 
+    [[nodiscard]] std::optional<std::string> filename_utf8() const {
+        return to_utf8(filename());
+    }
+
+    [[nodiscard]] std::string filename_utf8_or_default() const {
+        return to_utf8_or_default(filename());
+    }
+
     [[nodiscard]] std::wstring_view filename_view() const noexcept {
         return data.cFileName;
     }

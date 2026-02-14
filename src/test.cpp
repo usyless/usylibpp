@@ -132,10 +132,10 @@ int main() {
         print::println("All files in current folder:");
         windows::fs::walk_directory<windows::fs::WalkOpts{.recursive = true}>(L"..", windows::fs::Callbacks{
             .on_file = [](const std::wstring& parent, const windows::fs::FindDataWrapper& data) {
-                print::println("File - Parent: {} ; Filename: {} ; Last Write time: {}", windows::to_utf8_or_default(parent), windows::to_utf8_or_default(data.filename()), data.date_modified());
+                print::println("File - Parent: {} ; Filename: {} ; Last Write time: {}", windows::to_utf8_or_default(parent), data.filename_utf8_or_default(), data.date_modified());
             },
             .on_directory = [](const std::wstring& parent, const windows::fs::FindDataWrapper& data) {
-                print::println("Directory - Parent: {} ; Filename: {} ; Last Write time: {}", windows::to_utf8_or_default(parent), windows::to_utf8_or_default(data.filename()), data.date_modified());
+                print::println("Directory - Parent: {} ; Filename: {} ; Last Write time: {}", windows::to_utf8_or_default(parent), data.filename_utf8_or_default(), data.date_modified());
 
                 auto filename = data.filename_view();
                 if (filename == L".cmake" || filename == L"_deps" || filename == L".cache" || filename == L"CMakeFiles") return false;
@@ -143,7 +143,7 @@ int main() {
                 return true;
             },
             .on_other = [](const std::wstring& parent, const windows::fs::FindDataWrapper& data) {
-                print::println("Other - Parent: {} ; Filename: {}", windows::to_utf8_or_default(parent), windows::to_utf8_or_default(data.filename()));
+                print::println("Other - Parent: {} ; Filename: {}", windows::to_utf8_or_default(parent), data.filename_utf8_or_default());
             },
         });
     }
