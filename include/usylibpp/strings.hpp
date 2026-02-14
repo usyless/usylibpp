@@ -12,16 +12,22 @@
 
 namespace usylibpp::strings {
     template<types::is_basic_string_view... Ts>
+    requires (
+        sizeof...(Ts) > 1) && 
+        (std::same_as<
+            types::string_view_char_t<Ts>, 
+            types::string_view_char_t<std::tuple_element_t<0, std::tuple<Ts...>>>
+        > && ...)
     [[nodiscard]] inline constexpr auto concat_strings(Ts&&... parts) {
-        using First = decltype(([](auto&& first, auto&&...) -> auto&& { return first; })(parts...));
-        using Char = std::remove_cvref_t<decltype(std::declval<First>()[0])>;
+        using First = std::tuple_element_t<0, std::tuple<Ts...>>;
+        using Char = types::string_view_char_t<First>;
 
         std::basic_string<Char> result;
         result.resize((std::basic_string_view<Char>(std::forward<Ts>(parts)).size() + ... + 0));
 
         Char* dest = result.data();
         std::basic_string_view<Char> sv;
-        ((sv = std::basic_string_view<Char>(std::forward<Ts>(parts)), memcpy(dest, sv.data(), sv.size() * sizeof(Char)), dest += sv.size()), ...);
+        ((sv = std::basic_string_view<Char>(std::forward<Ts>(parts)), ::memcpy(dest, sv.data(), sv.size() * sizeof(Char)), dest += sv.size()), ...);
 
         return result;
     }
