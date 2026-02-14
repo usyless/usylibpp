@@ -25,7 +25,7 @@ namespace usylibpp::windows::process {
 
             std::string partialLine;
 
-            HANDLE threadHandle;
+            HANDLE threadHandle{nullptr};
             if (DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(), &threadHandle, 0, FALSE, DUPLICATE_SAME_ACCESS)) {
                 std::stop_callback cb(stop, [&pipe, threadHandle]() {
                     CancelSynchronousIo(threadHandle);
