@@ -24,3 +24,8 @@
 #ifdef USYLIBPP_ENABLE_WINDOWS_IMAGING
 #include "windows/images.hpp"
 #endif
+
+#ifdef USYLIBPP_ENABLE_TASK_DIALOG_DARK_MODE
+#include "windows/darkmode.hpp"
+#include "windows/task_dialog.hpp"
+#endif
