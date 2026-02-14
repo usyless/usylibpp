@@ -113,6 +113,10 @@ namespace usylibpp::windows::process {
         if (options.commandline.empty()) {
             return { -1 };
         }
+
+        #pragma push_macro("IS_NOOP")
+        #undef IS_NOOP
+        #define IS_NOOP(func) (std::is_same_v<decltype(std::declval<settings>().func), types::noop_t>)
         
         SECURITY_ATTRIBUTES saAttr{};
         saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
@@ -128,7 +132,7 @@ namespace usylibpp::windows::process {
         HANDLE hReadErr = NULL, hWriteErr = NULL;
         HANDLE hInRead = NULL, hInWrite = NULL;
         
-        if constexpr (opts.capture_stdout || !std::is_same_v<decltype(std::declval<settings>().on_stdout_line), types::noop_t>) {
+        if constexpr (opts.capture_stdout || !IS_NOOP(on_stdout_line)) {
             if (!CreatePipe(&hReadOut, &hWriteOut, &saAttr, 0)) {
                 return { -1 };
             }
@@ -137,13 +141,13 @@ namespace usylibpp::windows::process {
         hStdOutRead.reset(hReadOut);
         hStdOutWrite.reset(hWriteOut);
 
-        if constexpr (opts.capture_stdout || !std::is_same_v<decltype(std::declval<settings>().on_stdout_line), types::noop_t>) {
+        if constexpr (opts.capture_stdout || !IS_NOOP(on_stdout_line)) {
             if (!SetHandleInformation(hStdOutRead.get(), HANDLE_FLAG_INHERIT, 0)) {
                 return { -1 };
             }
         }
 
-        if constexpr (opts.capture_stderr || !std::is_same_v<decltype(std::declval<settings>().on_stderr_line), types::noop_t>) {
+        if constexpr (opts.capture_stderr || !IS_NOOP(on_stderr_line)) {
             if (!CreatePipe(&hReadErr, &hWriteErr, &saAttr, 0)) {
                 return { -1 };
             }
@@ -152,7 +156,7 @@ namespace usylibpp::windows::process {
         hStdErrRead.reset(hReadErr);
         hStdErrWrite.reset(hWriteErr);
 
-        if constexpr (opts.capture_stderr || !std::is_same_v<decltype(std::declval<settings>().on_stderr_line), types::noop_t>) {
+        if constexpr (opts.capture_stderr || !IS_NOOP(on_stderr_line)) {
             if (!SetHandleInformation(hStdErrRead.get(), HANDLE_FLAG_INHERIT, 0)) {
                 return { -1 };
             }
@@ -236,14 +240,14 @@ namespace usylibpp::windows::process {
 
         {
         std::jthread stdoutThread;
-        if constexpr (opts.capture_stdout || !std::is_same_v<decltype(std::declval<settings>().on_stdout_line), types::noop_t>) {
+        if constexpr (opts.capture_stdout || !IS_NOOP(on_stdout_line)) {
             stdoutThread = std::jthread([&stdoutOutput, hStdOutRead = hStdOutRead.get(), &options](std::stop_token st) {
                 stdoutOutput = internal::read_from_pipe<opts.capture_stdout, opts.on_stdout_line_call_on_lines>(st, hStdOutRead, options.on_stdout_line);
             });
         }
 
         std::jthread stderrThread;
-        if constexpr (opts.capture_stderr || !std::is_same_v<decltype(std::declval<settings>().on_stderr_line), types::noop_t>) {
+        if constexpr (opts.capture_stderr || !IS_NOOP(on_stderr_line)) {
             stderrThread = std::jthread([&stderrOutput, hStdErrRead = hStdErrRead.get(), &options](std::stop_token st) {
                 stderrOutput = internal::read_from_pipe<opts.capture_stderr, opts.on_stderr_line_call_on_lines>(st, hStdErrRead, options.on_stderr_line);
             });
@@ -262,6 +266,8 @@ namespace usylibpp::windows::process {
 
         DWORD exitCode = 0;
         GetExitCodeProcess(process.get(), &exitCode);
+
+        #pragma pop_macro("IS_NOOP")
 
         return { static_cast<int>(exitCode), stdoutOutput, stderrOutput };
     }
