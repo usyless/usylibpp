@@ -165,10 +165,12 @@ inline void _walk_directory(std::wstring&& root, CB&& cb, FindDataWrapper& wrapp
 /**
  * Return false from on_directory to not recurse into it if using recursive
  */
-template <WalkOpts opts = {}, CallbacksType CB>
-inline void walk_directory(std::wstring root, CB&& cb) {
+template <WalkOpts opts = {}, CallbacksType CB, types::wchar_t_compatible T>
+inline void walk_directory(T&& _root, CB&& cb) {
     FindDataWrapper wrapper{};
-    _walk_directory<opts>(std::move(root), std::forward<CB>(cb), wrapper);
+    std::wstring root{wchar_t_from_compatible(std::forward<T>(_root))};
+    if (!root.empty())
+        _walk_directory<opts>(std::move(root), std::forward<CB>(cb), wrapper);
 }
 }
 #endif
