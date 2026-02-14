@@ -67,6 +67,22 @@ int main() {
     print::println("windows::exe_exists(L\"usylibpp\"): {}", windows::exe_exists(L"usylibpp"));
     print::println("windows::exe_exists(L\"ffmpeg\"): {}", windows::exe_exists(L"ffmpeg"));
     print::println("windows::admin::is_admin: {}", windows::admin::is_admin());
+
+    {
+        print::println("\nProcess (whoami):");
+        const auto [status, output, error] = windows::process::run_process<windows::process::process_options{
+            .allow_visible_windows = false,
+            .capture_stdout = true,
+            .capture_stderr = true,
+            .set_lifetime_of_subprocess_to_this_process = true,
+        }>(windows::process::process_settings{
+            .commandline = L"whoami",
+            .on_stdout_line = [](std::string_view line) {
+                print::println("windows::process::run_process(whoami) - stdout line recieved: {}", line);
+            }
+        });
+        print::println("windows::process::run_process(whoami) - status: {} ; output: {} ; error: {}", status, output, error);
+    }
     #endif
 
     #ifdef USYLIBPP_ENABLE_WINTOAST

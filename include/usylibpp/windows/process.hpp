@@ -6,6 +6,7 @@
 #include <functional>
 #include <filesystem>
 #include <windows.h>
+#include "../types.hpp"
 
 #include <wil/resource.h>
 #include <wil/com.h>
@@ -15,8 +16,9 @@ namespace usylibpp::windows::process {
         /**
             * The callback is a function which takes one argument of std::string_view
             */
-        template <bool with_output = true, bool break_line = true, typename Callback = std::nullptr_t>
-        inline std::string read_from_pipe(std::stop_token stop, HANDLE pipe, Callback&& on_line = nullptr) {
+        template <bool with_output = true, bool break_line = true, typename Callback = types::noop_t>
+        requires (std::invocable<Callback, std::string_view>)
+        inline std::string read_from_pipe(std::stop_token stop, HANDLE pipe, Callback&& on_line = {}) {
             std::string output;
             char buffer[4096];
             DWORD bytesRead{0};
@@ -32,9 +34,9 @@ namespace usylibpp::windows::process {
 
                 if constexpr (with_output) output.append(buffer, bytesRead);
 
-                if constexpr (!std::is_same_v<Callback, std::nullptr_t>) {
+                if constexpr (!std::is_same_v<Callback, types::noop_t>) {
                     if constexpr (!break_line) {
-                        on_line(std::string_view{buffer, bytesRead});
+                        std::invoke(on_line, std::string_view{buffer, bytesRead});
                     } else {
                         partialLine.append(buffer, bytesRead);
 
@@ -47,7 +49,7 @@ namespace usylibpp::windows::process {
 
                             std::string_view line{partialLine.data() + start_pos, line_end - start_pos};
 
-                            on_line(line);
+                            std::invoke(on_line, line);
                             start_pos = ++new_line_pos;
                         }
 
@@ -56,10 +58,8 @@ namespace usylibpp::windows::process {
                 }
             }
 
-            if constexpr (!std::is_same_v<Callback, std::nullptr_t> && break_line) {
-                if (!partialLine.empty()) {
-                    on_line(partialLine);
-                }
+            if constexpr (!std::is_same_v<Callback, types::noop_t> && break_line) {
+                if (!partialLine.empty()) std::invoke(on_line, partialLine);
             }
 
             return output;
@@ -72,16 +72,30 @@ namespace usylibpp::windows::process {
         std::string stderr_{};
     };
 
+    template <
+        typename F1 = types::noop_t,
+        typename F2 = types::noop_t
+    >
+    requires (std::invocable<F1, std::string_view> && std::invocable<F2, std::string_view>)
     struct process_settings {
         std::wstring_view commandline;
         std::string_view input = "";
         std::filesystem::path* working_directory = nullptr;
 
-        std::function<void(std::string_view)> on_stdout_line = nullptr;
-        std::function<void(std::string_view)> on_stderr_line = nullptr;
+        F1 on_stdout_line{};
+        F2 on_stderr_line{};
 
         DWORD wait_for_ms = INFINITE;
     };
+
+    template <typename>
+    struct is_process_settings : std::false_type {};
+
+    template <typename F1, typename F2>
+    struct is_process_settings<process_settings<F1, F2>> : std::true_type {};
+
+    template <typename T>
+    concept process_settings_type = is_process_settings<std::remove_cvref_t<T>>::value;
 
     struct process_options {
         bool allow_visible_windows = true;
@@ -96,8 +110,8 @@ namespace usylibpp::windows::process {
         * Run a process and either capture its output or dont
         * Blocks until the process exits
         */
-    template <process_options opts = {}>
-    inline process_output run_process(const process_settings& options) {
+    template <process_options opts = {}, process_settings_type settings>
+    inline process_output run_process(settings&& options) {
         if (options.commandline.empty()) {
             return { -1 };
         }
@@ -116,7 +130,7 @@ namespace usylibpp::windows::process {
         HANDLE hReadErr = NULL, hWriteErr = NULL;
         HANDLE hInRead = NULL, hInWrite = NULL;
         
-        if (opts.capture_stdout || options.on_stdout_line) {
+        if constexpr (opts.capture_stdout || !std::is_same_v<decltype(std::declval<settings>().on_stdout_line), types::noop_t>) {
             if (!CreatePipe(&hReadOut, &hWriteOut, &saAttr, 0)) {
                 return { -1 };
             }
@@ -125,13 +139,13 @@ namespace usylibpp::windows::process {
         hStdOutRead.reset(hReadOut);
         hStdOutWrite.reset(hWriteOut);
 
-        if (opts.capture_stdout || options.on_stdout_line) {
+        if constexpr (opts.capture_stdout || !std::is_same_v<decltype(std::declval<settings>().on_stdout_line), types::noop_t>) {
             if (!SetHandleInformation(hStdOutRead.get(), HANDLE_FLAG_INHERIT, 0)) {
                 return { -1 };
             }
         }
 
-        if (opts.capture_stderr || options.on_stderr_line) {
+        if constexpr (opts.capture_stderr || !std::is_same_v<decltype(std::declval<settings>().on_stderr_line), types::noop_t>) {
             if (!CreatePipe(&hReadErr, &hWriteErr, &saAttr, 0)) {
                 return { -1 };
             }
@@ -140,7 +154,7 @@ namespace usylibpp::windows::process {
         hStdErrRead.reset(hReadErr);
         hStdErrWrite.reset(hWriteErr);
 
-        if (opts.capture_stderr || options.on_stderr_line) {
+        if constexpr (opts.capture_stderr || !std::is_same_v<decltype(std::declval<settings>().on_stderr_line), types::noop_t>) {
             if (!SetHandleInformation(hStdErrRead.get(), HANDLE_FLAG_INHERIT, 0)) {
                 return { -1 };
             }
@@ -224,18 +238,16 @@ namespace usylibpp::windows::process {
 
         {
         std::jthread stdoutThread;
-        if (opts.capture_stdout || options.on_stdout_line) {
+        if constexpr (opts.capture_stdout || !std::is_same_v<decltype(std::declval<settings>().on_stdout_line), types::noop_t>) {
             stdoutThread = std::jthread([&stdoutOutput, hStdOutRead = hStdOutRead.get(), &options](std::stop_token st) {
-                if (options.on_stdout_line) stdoutOutput = internal::read_from_pipe<opts.capture_stdout, opts.on_stdout_line_call_on_lines>(st, hStdOutRead, options.on_stdout_line);
-                else stdoutOutput = internal::read_from_pipe<opts.capture_stdout>(st, hStdOutRead);
+                stdoutOutput = internal::read_from_pipe<opts.capture_stdout, opts.on_stdout_line_call_on_lines>(st, hStdOutRead, options.on_stdout_line);
             });
         }
 
         std::jthread stderrThread;
-        if (opts.capture_stderr || options.on_stderr_line) {
+        if constexpr (opts.capture_stderr || !std::is_same_v<decltype(std::declval<settings>().on_stderr_line), types::noop_t>) {
             stderrThread = std::jthread([&stderrOutput, hStdErrRead = hStdErrRead.get(), &options](std::stop_token st) {
-                if (options.on_stderr_line) stderrOutput = internal::read_from_pipe<opts.capture_stderr, opts.on_stderr_line_call_on_lines>(st, hStdErrRead, options.on_stderr_line);
-                else stderrOutput = internal::read_from_pipe<opts.capture_stderr>(st, hStdErrRead);
+                stderrOutput = internal::read_from_pipe<opts.capture_stderr, opts.on_stderr_line_call_on_lines>(st, hStdErrRead, options.on_stderr_line);
             });
         }
 
