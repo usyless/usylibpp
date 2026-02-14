@@ -22,6 +22,10 @@ struct FindDataWrapper {
     [[nodiscard]] auto access_time() const noexcept {
         return wil::filetime::to_int64(data.ftLastAccessTime);
     }
+
+    [[nodiscard]] uint64_t file_size() const noexcept {
+        return (static_cast<uint64_t>(data.nFileSizeHigh) << 32) | data.nFileSizeLow;
+    }
 };
 
 using wstring_arg = const std::wstring&;
