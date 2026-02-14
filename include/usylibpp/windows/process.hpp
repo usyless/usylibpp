@@ -14,8 +14,8 @@
 namespace usylibpp::windows::process {
     namespace internal {
         /**
-            * The callback is a function which takes one argument of std::string_view
-            */
+         * The callback is a function which takes one argument of std::string_view
+         */
         template <bool with_output = true, bool break_line = true, typename Callback = types::noop_t>
         requires (std::invocable<Callback, std::string_view>)
         inline std::string read_from_pipe(std::stop_token stop, HANDLE pipe, Callback&& on_line = {}) {
