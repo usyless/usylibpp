@@ -9,7 +9,7 @@
 
 namespace usylibpp::windows::fs {
 struct FindDataWrapper {
-    const WIN32_FIND_DATAW& data;
+    WIN32_FIND_DATAW& data;
 
     [[nodiscard]] auto date_modified() const noexcept {
         return wil::filetime::to_int64(data.ftLastWriteTime);
@@ -86,10 +86,12 @@ inline void walk_directory(std::wstring root, CB&& cb) {
         )
     };
 
-    if (!hFind || hFind.get() == INVALID_HANDLE_VALUE) return;
+    if (!hFind) return;
 
     root.pop_back();
     const HANDLE hFind_ptr = static_cast<HANDLE>(hFind.get());
+
+    FindDataWrapper wrapper{data};
 
     do {
         // Skip "." and ".."
@@ -103,17 +105,17 @@ inline void walk_directory(std::wstring root, CB&& cb) {
         
         if (attr & FILE_ATTRIBUTE_DEVICE || attr & FILE_ATTRIBUTE_OFFLINE || attr & FILE_ATTRIBUTE_VIRTUAL) continue;
         else if (attr & FILE_ATTRIBUTE_REPARSE_POINT) {
-            std::invoke(cb.on_other, root, FindDataWrapper{data});
+            std::invoke(cb.on_other, root, wrapper);
         } else if (attr & FILE_ATTRIBUTE_DIRECTORY) {
             if constexpr (opts.recursive && std::is_same_v<std::invoke_result_t<decltype(std::declval<CB>().on_directory), wstring_arg, data_arg>, bool>) {
-                if (std::invoke(cb.on_directory, root, FindDataWrapper{data})) {
+                if (std::invoke(cb.on_directory, root, wrapper)) {
                     walk_directory<opts>(strings::concat_strings(root, filename), cb);
                 }
             } else {
-                std::invoke(cb.on_directory, root, FindDataWrapper{data});
+                std::invoke(cb.on_directory, root, wrapper);
             }
         } else {
-            std::invoke(cb.on_file, root, FindDataWrapper{data});
+            std::invoke(cb.on_file, root, wrapper);
         }
 
     } while (FindNextFileW(hFind_ptr, &data));
