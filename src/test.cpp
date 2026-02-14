@@ -132,10 +132,10 @@ int main() {
         print::println("All files in current folder:");
         windows::fs::walk_directory<windows::fs::WalkOpts{.recursive = true}>(L"..", windows::fs::Callbacks{
             .on_file = [](const std::wstring& parent, const std::wstring& filename, const windows::fs::FindDataWrapper& data) {
-                print::println("File - Parent: {} ; Filename: {} ; Last Write time: {}", windows::to_utf8_or_default(parent), windows::to_utf8_or_default(filename), data.time());
+                print::println("File - Parent: {} ; Filename: {} ; Last Write time: {}", windows::to_utf8_or_default(parent), windows::to_utf8_or_default(filename), data.date_modified());
             },
             .on_directory = [](const std::wstring& parent, const std::wstring& filename, const windows::fs::FindDataWrapper& data) {
-                print::println("Directory - Parent: {} ; Filename: {} ; Last Write time: {}", windows::to_utf8_or_default(parent), windows::to_utf8_or_default(filename), data.time());
+                print::println("Directory - Parent: {} ; Filename: {} ; Last Write time: {}", windows::to_utf8_or_default(parent), windows::to_utf8_or_default(filename), data.date_modified());
 
                 if (filename == L".cmake" || filename == L"_deps" || filename == L".cache" || filename == L"CMakeFiles") return false;
 

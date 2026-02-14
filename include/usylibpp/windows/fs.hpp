@@ -11,8 +11,16 @@ namespace usylibpp::windows::fs {
 struct FindDataWrapper {
     const WIN32_FIND_DATAW& data;
 
-    [[nodiscard]] auto time() const noexcept {
+    [[nodiscard]] auto date_modified() const noexcept {
         return wil::filetime::to_int64(data.ftLastWriteTime);
+    }
+
+    [[nodiscard]] auto creation_time() const noexcept {
+        return wil::filetime::to_int64(data.ftCreationTime);
+    }
+
+    [[nodiscard]] auto access_time() const noexcept {
+        return wil::filetime::to_int64(data.ftLastAccessTime);
     }
 };
 
@@ -92,6 +100,7 @@ inline void walk_directory(std::wstring root, CB&& cb) {
         else if (attr & FILE_ATTRIBUTE_REPARSE_POINT) {
             std::invoke(cb.on_other, root, data.cFileName, FindDataWrapper{data});
         }
+        else if (attr & FILE_ATTRIBUTE_DEVICE || attr & FILE_ATTRIBUTE_OFFLINE) continue;
         else {
             std::invoke(cb.on_file, root, data.cFileName, FindDataWrapper{data});
         }
