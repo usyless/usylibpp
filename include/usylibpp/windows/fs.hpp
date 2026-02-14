@@ -51,10 +51,15 @@ struct FindDataWrapper {
 
 using wstring_arg = const std::wstring&;
 using data_arg = FindDataWrapper&;
+struct noop_t {
+    template <typename... Args>
+    void operator()(Args&&...) const noexcept {}
+};
+
 template <
-    typename F1 = decltype([](wstring_arg, data_arg){}), 
-    typename F2 = decltype([](wstring_arg, data_arg){}), 
-    typename F3 = decltype([](wstring_arg, data_arg){})
+    typename F1 = noop_t,
+    typename F2 = noop_t,
+    typename F3 = noop_t
 >
 requires (std::invocable<F1, wstring_arg, data_arg> && 
           std::invocable<F2, wstring_arg, data_arg> && 
@@ -121,10 +126,12 @@ inline void _walk_directory(std::wstring&& root, CB&& cb, FindDataWrapper& wrapp
         #pragma push_macro("HANDLE")
         #undef HANDLE
         #define HANDLE(func) \
-        if constexpr (std::is_same_v<std::invoke_result_t<decltype(std::declval<CB>().func), wstring_arg, data_arg>, bool>) { \
-            if (!std::invoke(cb.func, root, wrapper)) break; \
-        } else { \
-            std::invoke(cb.func, root, wrapper); \
+        if constexpr (!std::is_same_v<decltype(std::declval<CB>().func), noop_t>) { \
+            if constexpr (std::is_same_v<std::invoke_result_t<decltype(std::declval<CB>().func), wstring_arg, data_arg>, bool>) { \
+                if (!std::invoke(cb.func, root, wrapper)) break; \
+            } else { \
+                std::invoke(cb.func, root, wrapper); \
+            } \
         }
         
         if (attr & FILE_ATTRIBUTE_DEVICE || attr & FILE_ATTRIBUTE_OFFLINE || attr & FILE_ATTRIBUTE_VIRTUAL) continue;
@@ -132,24 +139,26 @@ inline void _walk_directory(std::wstring&& root, CB&& cb, FindDataWrapper& wrapp
             HANDLE(on_other)
         } else if (attr & FILE_ATTRIBUTE_DIRECTORY) {
             if constexpr (opts.recursive) {
-                #pragma push_macro("recurse")
-                #undef recurse
-                #define recurse \
-                if constexpr (opts.trailing_slash_on_parent) { \
-                    _walk_directory<opts>(strings::concat_strings(root, filename), cb, wrapper); \
-                } else { \
-                    _walk_directory<opts>(strings::concat_strings(root, L"\\", filename), cb, wrapper); \
-                }
+                if constexpr (!std::is_same_v<decltype(std::declval<CB>().on_directory), noop_t>) {
+                    #pragma push_macro("recurse")
+                    #undef recurse
+                    #define recurse \
+                    if constexpr (opts.trailing_slash_on_parent) { \
+                        _walk_directory<opts>(strings::concat_strings(root, filename), cb, wrapper); \
+                    } else { \
+                        _walk_directory<opts>(strings::concat_strings(root, L"\\", filename), cb, wrapper); \
+                    }
 
-                if constexpr (std::is_same_v<std::invoke_result_t<decltype(std::declval<CB>().on_directory), wstring_arg, data_arg>, bool>) {
-                    if (std::invoke(cb.on_directory, root, wrapper)) {
+                    if constexpr (std::is_same_v<std::invoke_result_t<decltype(std::declval<CB>().on_directory), wstring_arg, data_arg>, bool>) {
+                        if (std::invoke(cb.on_directory, root, wrapper)) {
+                            recurse
+                        }
+                    } else {
+                        std::invoke(cb.on_directory, root, wrapper);
                         recurse
                     }
-                } else {
-                    std::invoke(cb.on_directory, root, wrapper);
-                    recurse
+                    #pragma pop_macro("recurse")
                 }
-                #pragma pop_macro("recurse")
             } else {
                 HANDLE(on_directory)
             }
