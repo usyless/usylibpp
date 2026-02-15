@@ -18,15 +18,15 @@ namespace usylibpp::windows::images {
     };
 
     template <DecodedImageType type>
-    inline consteval auto DecodedImageType_to_format() noexcept {
+    inline constexpr auto DecodedImageType_to_format() noexcept {
         #pragma push_macro("HANDLE")
         #undef HANDLE
         #define HANDLE(T, R) if constexpr (type == DecodedImageType::T) return R;
         HANDLE(RGB, GUID_WICPixelFormat24bppRGB)
-        HANDLE(RGBA, GUID_WICPixelFormat32bppRGBA)
-        HANDLE(Gray, GUID_WICPixelFormat8bppGray)
-        HANDLE(BGR, GUID_WICPixelFormat24bppBGR)
-        HANDLE(BGRA, GUID_WICPixelFormat32bppBGRA)
+        else HANDLE(RGBA, GUID_WICPixelFormat32bppRGBA)
+        else HANDLE(Gray, GUID_WICPixelFormat8bppGray)
+        else HANDLE(BGR, GUID_WICPixelFormat24bppBGR)
+        else HANDLE(BGRA, GUID_WICPixelFormat32bppBGRA)
         else {
             static_assert(!std::is_same_v<decltype(type), decltype(type)>, "Invalid type passed into DecodedImageType_to_format");
         }
