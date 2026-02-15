@@ -27,7 +27,19 @@ namespace usylibpp::strings {
 
         Char* dest = result.data();
         std::basic_string_view<Char> sv;
-        ((sv = std::basic_string_view<Char>(std::forward<Ts>(parts)), ::memcpy(dest, sv.data(), sv.size() * sizeof(Char)), dest += sv.size()), ...);
+        #if __cplusplus >= 202302L
+        if consteval {
+        #else
+        if (std::is_constant_evaluated()) {
+        #endif
+            ((sv = std::basic_string_view<Char>(std::forward<Ts>(parts)), [&sv, &dest]{
+                for (::size_t i = 0; i < sv.size(); ++i) {
+                    dest[i] = sv[i];
+                }
+            }, dest += sv.size()), ...);
+        } else {
+            ((sv = std::basic_string_view<Char>(std::forward<Ts>(parts)), ::memcpy(dest, sv.data(), sv.size() * sizeof(Char)), dest += sv.size()), ...);
+        }
 
         return result;
     }
