@@ -42,30 +42,23 @@ namespace usylibpp::windows::images {
         }
     }
 
-    template <DecodedImageType T>
-    struct DecodedImageChannels;
-
-    template <>
-    struct DecodedImageChannels<DecodedImageType::Gray> {
-        static constexpr uint8_t value = 1;
-    };
-
-    template <>
-    struct DecodedImageChannels<DecodedImageType::RGB> {
-        static constexpr uint8_t value = 3;
-    };
-
-    template <>
-    struct DecodedImageChannels<DecodedImageType::RGBA> {
-        static constexpr uint8_t value = 4;
-    };
+    template <DecodedImageType type>
+    inline consteval uint8_t channels_of() noexcept {
+        if constexpr (type == DecodedImageType::Gray) {
+            return 1;
+        } else if constexpr (type == DecodedImageType::RGB || type == DecodedImageType::RGBA) {
+            return 3;
+        } else {
+            return 4;
+        }
+    }
 
     #pragma warning(push)
     #pragma warning(disable:4201)
 
     template <DecodedImageType type>
     struct DecodedImage {
-        static constexpr uint8_t channels = DecodedImageChannels<type>::value;
+        static constexpr uint8_t channels = channels_of<type>();
 
         std::vector<uint8_t> data;
         union {
@@ -79,7 +72,7 @@ namespace usylibpp::windows::images {
 
     template <DecodedImageType type>
     struct DecodedImageView {
-        static constexpr uint8_t channels = DecodedImageChannels<type>::value;
+        static constexpr uint8_t channels = channels_of<type>();
 
         wil::com_ptr<IWICBitmap> bitmap;
         wil::com_ptr<IWICBitmapLock> lock;
@@ -223,7 +216,7 @@ namespace usylibpp::windows::images {
         auto hr = converter->GetSize(&width, &height);
         if (FAILED(hr)) return std::nullopt;
 
-        const UINT stride = width * DecodedImageChannels<type>::value;
+        const UINT stride = width * channels_of<type>();
         const UINT buffer_size = stride * height;
 
         std::vector<uint8_t> buffer(buffer_size);
