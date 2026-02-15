@@ -12,8 +12,35 @@ namespace usylibpp::windows::images {
     enum class DecodedImageType {
         RGB,
         RGBA,
-        Gray
+        Gray,
+        BGR,
+        BGRA
     };
+
+    template <DecodedImageType type>
+    inline consteval auto DecodedImageType_to_format() noexcept {
+        #pragma push_macro("HANDLE")
+        #undef HANDLE
+        #define HANDLE(T, R) if constexpr (type == DecodedImageType::T) return R;
+        HANDLE(RGB, GUID_WICPixelFormat24bppRGB)
+        HANDLE(RGBA, GUID_WICPixelFormat32bppRGBA)
+        HANDLE(Gray, GUID_WICPixelFormat8bppGray)
+        HANDLE(BGR, GUID_WICPixelFormat24bppBGR)
+        HANDLE(BGRA, GUID_WICPixelFormat32bppBGRA)
+        else {
+            static_assert(!std::is_same_v<decltype(type), decltype(type)>, "Invalid type passed into DecodedImageType_to_format");
+        }
+        #pragma pop_macro("HANDLE")
+    }
+
+    template <DecodedImageType type>
+    inline consteval auto DecodedImageType_to_palette() noexcept {
+        if constexpr (type == DecodedImageType::Gray) {
+            return WICBitmapPaletteTypeFixedGray256;
+        } else {
+            return WICBitmapPaletteTypeCustom;
+        }
+    }
 
     template <DecodedImageType T>
     struct DecodedImageChannels;
@@ -111,10 +138,10 @@ namespace usylibpp::windows::images {
     template <DecodedImageType type>
     inline std::optional<wil::com_ptr<IWICFormatConverter>> create_imaging_format_converter(IWICImagingFactory* factory, IWICBitmapFrameDecode* frame) {
         return create_imaging_format_converter(factory, frame,
-            (type == DecodedImageType::Gray) ? GUID_WICPixelFormat8bppGray : (type == DecodedImageType::RGBA) ? GUID_WICPixelFormat32bppRGBA : GUID_WICPixelFormat24bppRGB,
+            DecodedImageType_to_format<type>(),
             WICBitmapDitherTypeNone,
             nullptr, 0.0,
-            (type == DecodedImageType::Gray) ? WICBitmapPaletteTypeFixedGray256 : WICBitmapPaletteTypeCustom
+            DecodedImageType_to_palette<type>()
         );
     }
 
