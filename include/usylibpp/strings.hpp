@@ -28,10 +28,11 @@ namespace usylibpp::strings {
         Char* dest = result.data();
         std::basic_string_view<Char> sv;
         #if __cplusplus >= 202302L
-        if consteval {
+        if consteval
         #else
-        if (std::is_constant_evaluated()) {
+        if (std::is_constant_evaluated())
         #endif
+        {
             ((sv = std::basic_string_view<Char>(std::forward<Ts>(parts)), [&sv, &dest]{
                 for (::size_t i = 0; i < sv.size(); ++i) {
                     dest[i] = sv[i];
