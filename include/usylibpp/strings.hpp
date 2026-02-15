@@ -37,7 +37,7 @@ namespace usylibpp::strings {
                 for (::size_t i = 0; i < sv.size(); ++i) {
                     dest[i] = sv[i];
                 }
-            }, dest += sv.size()), ...);
+            }(), dest += sv.size()), ...);
         } else {
             ((sv = std::basic_string_view<Char>(std::forward<Ts>(parts)), ::memcpy(dest, sv.data(), sv.size() * sizeof(Char)), dest += sv.size()), ...);
         }
