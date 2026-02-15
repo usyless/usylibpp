@@ -28,7 +28,7 @@ namespace usylibpp::windows::images {
         else HANDLE(BGR, GUID_WICPixelFormat24bppBGR)
         else HANDLE(BGRA, GUID_WICPixelFormat32bppBGRA)
         else {
-            static_assert(!std::is_same_v<decltype(type), decltype(type)>, "Invalid type passed into DecodedImageType_to_format");
+            static_assert(!std::is_same_v<decltype(type), decltype(type)>, "Invalid type passed into usylibpp::windows::images::DecodedImageType_to_format");
         }
         #pragma pop_macro("HANDLE")
     }
@@ -46,10 +46,12 @@ namespace usylibpp::windows::images {
     inline consteval uint8_t channels_of() noexcept {
         if constexpr (type == DecodedImageType::Gray) {
             return 1;
-        } else if constexpr (type == DecodedImageType::RGB || type == DecodedImageType::RGBA) {
+        } else if constexpr (type == DecodedImageType::RGB || type == DecodedImageType::BGR) {
             return 3;
-        } else {
+        } else if constexpr (type == DecodedImageType::RGBA || type == DecodedImageType::BGRA) {
             return 4;
+        } else {
+            static_assert(!std::is_same_v<decltype(type), decltype(type)>, "Invalid type passed into usylibpp::windows::images::channels_of");
         }
     }
 
