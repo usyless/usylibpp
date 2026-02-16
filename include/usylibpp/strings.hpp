@@ -47,7 +47,7 @@ namespace usylibpp::strings {
 
     template <types::is_basic_string_view SV>
     inline constexpr bool is_valid_ascii(SV&& _str) noexcept {
-        using Char = ulp::types::string_view_char_t<SV>;
+        using Char = types::string_view_char_t<SV>;
         using cast = std::conditional_t<std::is_same_v<Char, wchar_t>, wchar_t, unsigned char>;
 
         std::basic_string_view<Char> str{_str};
@@ -61,7 +61,7 @@ namespace usylibpp::strings {
      */
     template <types::is_basic_string_view SV>
     inline constexpr std::optional<std::basic_string<std::conditional_t<std::is_same_v<types::string_view_char_t<SV>, char>, wchar_t, char>>> ascii_convert_string(SV&& _str) {
-        using Char = ulp::types::string_view_char_t<SV>;
+        using Char = types::string_view_char_t<SV>;
         using other_char = std::conditional_t<std::is_same_v<Char, char>, wchar_t, char>;
 
         std::basic_string_view<Char> str{_str};
