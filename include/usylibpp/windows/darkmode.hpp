@@ -50,7 +50,7 @@ namespace usylibpp::windows::darkmode {
         return false;
     }
 
-    inline constexpr bool windows_build_supports_darkmode(DWORD buildNumber) noexcept {
+    [[nodiscard]] inline constexpr bool windows_build_supports_darkmode(DWORD buildNumber) noexcept {
         return buildNumber >= 17763;
     }
 
