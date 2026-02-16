@@ -1,6 +1,7 @@
 #pragma once
 
 #include "aliases.hpp" // IWYU pragma: exports
+#include "types.hpp"
 #include <iostream>
 #include <format>
 
@@ -9,10 +10,10 @@ namespace usylibpp::print {
      * Will fail silently on mismatched paranthesis and args
      * Prints to cout or wcout depending on the args passed in
      */
-    template<typename Fmt = const char*, typename... Ts>
+    template<types::is_basic_string_view Fmt, typename... Ts>
     inline auto& print(Fmt&& fmt = "", Ts&&... args) {
         // using Char = typename std::basic_string_view<std::remove_cvref_t<decltype(fmt[0])>>::value_type;
-        using Char = std::remove_cvref_t<decltype(fmt[0])>;
+        using Char = types::string_view_char_t<Fmt>;
 
         if constexpr (std::is_same_v<Char, char>) {
             std::cout << std::vformat(std::forward<Fmt>(fmt), std::make_format_args(args...));
@@ -29,10 +30,10 @@ namespace usylibpp::print {
      * Will fail silently on mismatched paranthesis and args
      * Prints to cout or wcout depending on the args passed in
      */
-    template<typename Fmt = const char*, typename... Ts>
+    template<types::is_basic_string_view Fmt = decltype(""), typename... Ts>
     inline void println(Fmt&& fmt = "", Ts&&... args) {
-        using Char = std::remove_cvref_t<decltype(fmt[0])>;
+        using Char = types::string_view_char_t<Fmt>;
 
-        print(fmt, args...) << Char('\n');
+        print(std::forward<Fmt>(fmt), std::forward<Ts>(args)...) << Char('\n');
     }
 }
