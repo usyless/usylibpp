@@ -381,7 +381,8 @@ namespace usylibpp::windows::images {
                     if (extension.size() < 1) return;
 
                     if constexpr (include_leading_dot) {
-                        formats.emplace_back(extension);
+                        if (extension.starts_with(Char('.'))) formats.emplace_back(extension);
+                        else formats.emplace_back(strings::concat_strings(Char('.', extension)));
                     } else {
                         if (extension.starts_with(Char('.'))) formats.emplace_back(extension.substr(1));
                         else formats.emplace_back(extension);
