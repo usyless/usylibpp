@@ -192,30 +192,61 @@ namespace usylibpp::windows::images {
 
     using FramePicker = std::optional<wil::com_ptr<IWICBitmapFrameDecode>> (*)(IWICBitmapDecoder*);
 
+    template <DecodedImageType type, FramePicker frame_picker = FramePickers::pick_frame_zero>
+    struct ImageDecodeData {
+        wil::com_ptr<IWICImagingFactory> factory;
+        wil::com_ptr<IWICBitmapDecoder> decoder;
+        wil::com_ptr<IWICBitmapFrameDecode> frame;
+        wil::com_ptr<IWICFormatConverter> converter;
+
+        static std::optional<ImageDecodeData> from(const std::wstring& path) {
+            ImageDecodeData ret;
+            auto factory_opt = create_imaging_factory();
+            if (!factory_opt) return std::nullopt;
+            ret.factory = std::move(*factory_opt);
+
+            if (ret.from_factory(path)) return ret;
+            return std::nullopt;
+        }
+
+        static std::optional<ImageDecodeData> from_threadlocal(const std::wstring& path) {
+            ImageDecodeData ret;
+            thread_local auto factory_opt = create_imaging_factory();
+            if (!factory_opt) return std::nullopt;
+            ret.factory = *factory_opt;
+
+            if (ret.from_factory(path)) return ret;
+            return std::nullopt;
+        }
+    private:
+        bool from_factory(const std::wstring& path) {
+            auto decoder_opt = create_imaging_decoder(factory.get(), path);
+            if (!decoder_opt) return false;
+            decoder = std::move(*decoder_opt);
+
+            auto frame_opt = frame_picker(decoder.get());
+            if (!frame_opt) return false;
+            frame = std::move(*frame_opt);
+
+            auto converter_opt = create_imaging_format_converter<type>(factory.get(), frame.get());
+            if (!converter_opt) return false;
+            converter = std::move(*converter_opt);
+        
+            return true;
+        }
+    };
+
     template <bool ComInitialised = false, DecodedImageType type, FramePicker frame_picker = FramePickers::pick_frame_zero>
     inline std::optional<DecodedImage<type>> decode_image(const std::wstring& path) {
         COMWrapper<ComInitialised> COM{COINIT_MULTITHREADED | COINIT_DISABLE_OLE1DDE};
-
         if (FAILED(COM.status())) return std::nullopt;
 
-        auto factory_opt = create_imaging_factory();
-        if (!factory_opt) return std::nullopt;
-        auto& factory = *factory_opt;
-
-        auto decoder_opt = create_imaging_decoder(factory.get(), path);
-        if (!decoder_opt) return std::nullopt;
-        auto& decoder = *decoder_opt;
-
-        auto frame_opt = frame_picker(decoder.get());
-        if (!frame_opt) return std::nullopt;
-        auto& frame = *frame_opt;
-
-        auto converter_opt = create_imaging_format_converter<type>(factory.get(), frame.get());
-        if (!converter_opt) return std::nullopt;
-        auto& converter = *converter_opt;
+        auto data_opt = ImageDecodeData<type, frame_picker>::from(path);
+        if (!data_opt) return std::nullopt;
+        auto& data = *data_opt;
 
         UINT width, height;
-        auto hr = converter->GetSize(&width, &height);
+        auto hr = data.converter->GetSize(&width, &height);
         if (FAILED(hr)) return std::nullopt;
 
         const UINT stride = width * channels_of<type>();
@@ -223,7 +254,7 @@ namespace usylibpp::windows::images {
 
         std::vector<uint8_t> buffer(buffer_size);
 
-        hr = converter->CopyPixels(
+        hr = data.converter->CopyPixels(
             nullptr,
             stride,
             buffer_size,
@@ -247,29 +278,17 @@ namespace usylibpp::windows::images {
      */
     template <DecodedImageType type, FramePicker frame_picker = FramePickers::pick_frame_zero>
     inline std::optional<DecodedImageView<type>> decode_image_threadlocal(const std::wstring& path) {
-        thread_local auto factory_opt = create_imaging_factory();
-        if (!factory_opt) return std::nullopt;
-        auto& factory = *factory_opt;
-
-        auto decoder_opt = create_imaging_decoder(factory.get(), path);
-        if (!decoder_opt) return std::nullopt;
-        auto& decoder = *decoder_opt;
-
-        auto frame_opt = frame_picker(decoder.get());
-        if (!frame_opt) return std::nullopt;
-        auto& frame = *frame_opt;
-
-        auto converter_opt = create_imaging_format_converter<type>(factory.get(), frame.get());
-        if (!converter_opt) return std::nullopt;
-        auto& converter = *converter_opt;
+        auto data_opt = ImageDecodeData<type, frame_picker>::from_threadlocal(path);
+        if (!data_opt) return std::nullopt;
+        auto& data = *data_opt;
 
         UINT width, height;
-        auto hr = converter->GetSize(&width, &height);
+        auto hr = data.converter->GetSize(&width, &height);
         if (FAILED(hr)) return std::nullopt;
 
         wil::com_ptr<IWICBitmap> bitmap;
-        hr = factory->CreateBitmapFromSource(
-            converter.get(),
+        hr = data.factory->CreateBitmapFromSource(
+            data.converter.get(),
             WICBitmapCacheOnLoad,
             &bitmap
         );
@@ -282,12 +301,12 @@ namespace usylibpp::windows::images {
         if (FAILED(hr)) return std::nullopt;
 
         UINT bufferSize = 0;
-        BYTE* data = nullptr;
-        hr = lock->GetDataPointer(&bufferSize, &data);
+        BYTE* locked_data = nullptr;
+        hr = lock->GetDataPointer(&bufferSize, &locked_data);
         if (FAILED(hr)) return std::nullopt;
 
         DecodedImageView<type> ret {
-            bitmap, lock, data, {0}, bufferSize
+            bitmap, lock, locked_data, {0}, bufferSize
         };
         ret.dimensions.width = width;
         ret.dimensions.height = height;
