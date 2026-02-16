@@ -1,10 +1,18 @@
 #pragma once
 
 #include "aliases.hpp" // IWYU pragma: exports
+#if __cplusplus >= 202302L
+#include <print>
+#else
 #include <iostream>
 #include <format>
+#endif
 
 namespace usylibpp::print {
+    #if __cplusplus >= 202302L
+    using std::println;
+    using std::print;
+    #else
     template<typename... Ts>
     inline auto& print(const std::format_string<Ts...>& fmt, Ts&&... args) {
         std::cout << std::vformat(fmt.get(), std::make_format_args(args...));
@@ -18,7 +26,7 @@ namespace usylibpp::print {
     }
 
     template<typename... Ts>
-    inline void println(const std::format_string<Ts...>& fmt = "", Ts&&... args) {
+    inline void println(const std::format_string<Ts...>& fmt, Ts&&... args) {
         print(fmt, std::forward<Ts>(args)...) << '\n';
     }
 
@@ -26,4 +34,9 @@ namespace usylibpp::print {
     inline void println(const std::wformat_string<Ts...>& fmt, Ts&&... args) {
         print(fmt, std::forward<Ts>(args)...) << L'\n';
     }
+
+    inline void println() {
+        std::cout << '\n';
+    }
+    #endif
 }
