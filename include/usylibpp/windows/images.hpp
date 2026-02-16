@@ -192,7 +192,7 @@ namespace usylibpp::windows::images {
 
     using FramePicker = std::optional<wil::com_ptr<IWICBitmapFrameDecode>> (*)(IWICBitmapDecoder*);
 
-    template <bool ComInitialised = false, DecodedImageType type, FramePicker frame_picker = &FramePickers::pick_frame_zero>
+    template <bool ComInitialised = false, DecodedImageType type, FramePicker frame_picker = FramePickers::pick_frame_zero>
     inline std::optional<DecodedImage<type>> decode_image(const std::wstring& path) {
         COMWrapper<ComInitialised> COM{COINIT_MULTITHREADED | COINIT_DISABLE_OLE1DDE};
 
@@ -245,7 +245,7 @@ namespace usylibpp::windows::images {
      * Reuses the factory per thread
      * Returned data depends on COM
      */
-    template <DecodedImageType type, FramePicker frame_picker = &FramePickers::pick_frame_zero>
+    template <DecodedImageType type, FramePicker frame_picker = FramePickers::pick_frame_zero>
     inline std::optional<DecodedImageView<type>> decode_image_threadlocal(const std::wstring& path) {
         thread_local auto factory_opt = create_imaging_factory();
         if (!factory_opt) return std::nullopt;
