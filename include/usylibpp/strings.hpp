@@ -46,7 +46,7 @@ namespace usylibpp::strings {
     }
 
     template <types::is_basic_string_view SV>
-    inline constexpr bool is_valid_ascii(SV&& _str) noexcept {
+    [[nodiscard]] inline constexpr bool is_valid_ascii(SV&& _str) noexcept {
         using Char = types::string_view_char_t<SV>;
         using cast = std::conditional_t<std::is_same_v<Char, wchar_t>, wchar_t, unsigned char>;
 
@@ -60,7 +60,7 @@ namespace usylibpp::strings {
      * Returns nullopt if not a valid conversion
      */
     template <types::is_basic_string_view SV>
-    inline constexpr std::optional<std::basic_string<std::conditional_t<std::is_same_v<types::string_view_char_t<SV>, char>, wchar_t, char>>> ascii_convert_string(SV&& _str) {
+    [[nodiscard]] inline constexpr std::optional<std::basic_string<std::conditional_t<std::is_same_v<types::string_view_char_t<SV>, char>, wchar_t, char>>> ascii_convert_string(SV&& _str) {
         using Char = types::string_view_char_t<SV>;
         using other_char = std::conditional_t<std::is_same_v<Char, char>, wchar_t, char>;
 
@@ -96,7 +96,7 @@ namespace usylibpp::strings {
      */
     template <types::CharOrWChar Char, types::is_basic_string_view SV>
     requires (std::same_as<types::string_view_char_t<SV>, Char>)
-    inline constexpr std::basic_string_view<Char> trim_left(SV&& _input, const Char character) noexcept {
+    [[nodiscard]] inline constexpr std::basic_string_view<Char> trim_left(SV&& _input, const Char character) noexcept {
         const std::basic_string_view<Char> input{_input};
         if (input.empty()) return input;
 
@@ -114,7 +114,7 @@ namespace usylibpp::strings {
      */
     template <types::CharOrWChar Char, types::is_basic_string_view SV>
     requires (std::same_as<types::string_view_char_t<SV>, Char>)
-    inline constexpr std::basic_string_view<Char> trim_right(SV&& _input, const Char character) noexcept {
+    [[nodiscard]] inline constexpr std::basic_string_view<Char> trim_right(SV&& _input, const Char character) noexcept {
         const std::basic_string_view<Char> input{_input};
         if (input.empty()) return input;
 
@@ -129,7 +129,7 @@ namespace usylibpp::strings {
      */
     template <types::CharOrWChar Char, types::is_basic_string_view SV>
     requires (std::same_as<types::string_view_char_t<SV>, Char>)
-    inline constexpr std::basic_string_view<Char> trim(SV&& _input, const Char character) noexcept {
+    [[nodiscard]] inline constexpr std::basic_string_view<Char> trim(SV&& _input, const Char character) noexcept {
         std::basic_string_view<Char> input{_input};
         input = trim_left(input, character);
         input = trim_right(input, character);
@@ -213,7 +213,7 @@ namespace usylibpp::strings {
 
     template <types::CharOrWChar Char, types::is_basic_string_view SV>
     requires (std::same_as<types::string_view_char_t<SV>, Char>)
-    inline constexpr std::vector<std::basic_string_view<Char>> split_by(SV&& _input, const Char split_by) {
+    [[nodiscard]] inline constexpr std::vector<std::basic_string_view<Char>> split_by(SV&& _input, const Char split_by) {
         std::vector<std::basic_string_view<Char>> result;
         split_by_for_each(std::forward<SV>(_input), split_by, [&result](auto&& view) {
             result.emplace_back(view);
@@ -228,7 +228,7 @@ namespace usylibpp::strings {
     }
 
     template <types::is_basic_string_view SV>
-    inline constexpr std::vector<std::basic_string_view<types::string_view_char_t<SV>>> split_lines(SV&& input) {
+    [[nodiscard]] inline constexpr std::vector<std::basic_string_view<types::string_view_char_t<SV>>> split_lines(SV&& input) {
         return split_by(std::forward<SV>(input), types::string_view_char_t<SV>('\n'));
     }
 
