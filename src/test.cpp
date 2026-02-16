@@ -129,7 +129,9 @@ int main() {
         print::println("");
     }
     {
-        auto wic_test_png_result = windows::images::decode_image<false, windows::images::DecodedImageType::Gray>(L"test.png");
+        auto wic_test_png_result = windows::images::decode_image<false, windows::images::DecodeOpts{
+            .type = windows::images::DecodedImageType::Gray
+        }>(L"test.png");
         if (!wic_test_png_result) print::println("Failed to decode test.png! Ensure it exists");
         else {
             auto& res = wic_test_png_result.value();
@@ -138,7 +140,9 @@ int main() {
     }
     {
         windows::COMWrapper<false> COM{COINIT_MULTITHREADED | COINIT_DISABLE_OLE1DDE};
-        auto wic_test_png_result = windows::images::decode_image_threadlocal<windows::images::DecodedImageType::Gray>(L"test.png");
+        auto wic_test_png_result = windows::images::decode_image_threadlocal<windows::images::DecodeOpts{
+            .type = windows::images::DecodedImageType::Gray
+        }>(L"test.png");
         if (!wic_test_png_result) print::println("Failed to decode test.png! Ensure it exists");
         else {
             auto& res = wic_test_png_result.value();
