@@ -18,7 +18,7 @@ namespace usylibpp::windows::images {
     };
 
     template <DecodedImageType type>
-    inline constexpr auto DecodedImageType_to_format() noexcept {
+    [[nodiscard]] inline constexpr auto DecodedImageType_to_format() noexcept {
         #pragma push_macro("HANDLE")
         #undef HANDLE
         #define HANDLE(T, R) if constexpr (type == DecodedImageType::T) return R;
@@ -34,7 +34,7 @@ namespace usylibpp::windows::images {
     }
 
     template <DecodedImageType type>
-    inline consteval auto DecodedImageType_to_palette() noexcept {
+    [[nodiscard]] inline consteval auto DecodedImageType_to_palette() noexcept {
         if constexpr (type == DecodedImageType::Gray) {
             return WICBitmapPaletteTypeFixedGray256;
         } else {
@@ -43,7 +43,7 @@ namespace usylibpp::windows::images {
     }
 
     template <DecodedImageType type>
-    inline consteval uint8_t channels_of() noexcept {
+    [[nodiscard]] inline consteval uint8_t channels_of() noexcept {
         if constexpr (type == DecodedImageType::Gray) {
             return 1;
         } else if constexpr (type == DecodedImageType::RGB || type == DecodedImageType::BGR) {
@@ -92,7 +92,7 @@ namespace usylibpp::windows::images {
 
     #pragma warning(pop)
 
-    inline std::optional<wil::com_ptr<IWICImagingFactory>> create_imaging_factory() {
+    [[nodiscard]] inline std::optional<wil::com_ptr<IWICImagingFactory>> create_imaging_factory() {
         wil::com_ptr<IWICImagingFactory> factory;
         const auto hr = CoCreateInstance(
             CLSID_WICImagingFactory,
@@ -105,7 +105,7 @@ namespace usylibpp::windows::images {
         return factory;
     }
 
-    inline std::optional<wil::com_ptr<IWICBitmapDecoder>> create_imaging_decoder(IWICImagingFactory* factory, const std::wstring& path) {
+    [[nodiscard]] inline std::optional<wil::com_ptr<IWICBitmapDecoder>> create_imaging_decoder(IWICImagingFactory* factory, const std::wstring& path) {
         wil::com_ptr<IWICBitmapDecoder> decoder;
         const auto hr = factory->CreateDecoderFromFilename(
             path.c_str(),
@@ -119,7 +119,7 @@ namespace usylibpp::windows::images {
         return decoder;
     }
 
-    inline std::optional<wil::com_ptr<IWICFormatConverter>> create_imaging_format_converter(IWICImagingFactory* factory, IWICBitmapFrameDecode* frame, REFWICPixelFormatGUID dstFormat, WICBitmapDitherType dither, IWICPalette * pIPalette, double alphaThresholdPercent, WICBitmapPaletteType paletteTranslate) {
+    [[nodiscard]] inline std::optional<wil::com_ptr<IWICFormatConverter>> create_imaging_format_converter(IWICImagingFactory* factory, IWICBitmapFrameDecode* frame, REFWICPixelFormatGUID dstFormat, WICBitmapDitherType dither, IWICPalette * pIPalette, double alphaThresholdPercent, WICBitmapPaletteType paletteTranslate) {
         wil::com_ptr<IWICFormatConverter> converter;
         auto hr = factory->CreateFormatConverter(&converter);
         if (FAILED(hr) || !converter) return std::nullopt;
@@ -131,7 +131,7 @@ namespace usylibpp::windows::images {
     }
 
     template <DecodedImageType type>
-    inline std::optional<wil::com_ptr<IWICFormatConverter>> create_imaging_format_converter(IWICImagingFactory* factory, IWICBitmapFrameDecode* frame) {
+    [[nodiscard]] inline std::optional<wil::com_ptr<IWICFormatConverter>> create_imaging_format_converter(IWICImagingFactory* factory, IWICBitmapFrameDecode* frame) {
         return create_imaging_format_converter(factory, frame,
             DecodedImageType_to_format<type>(),
             WICBitmapDitherTypeNone,
@@ -141,7 +141,7 @@ namespace usylibpp::windows::images {
     }
 
     namespace FramePickers {
-        inline std::optional<wil::com_ptr<IWICBitmapFrameDecode>> pick_jpeg_frame(IWICBitmapDecoder* decoder) {
+        [[nodiscard]] inline std::optional<wil::com_ptr<IWICBitmapFrameDecode>> pick_jpeg_frame(IWICBitmapDecoder* decoder) {
             UINT frame_count = 0;
             auto hr = decoder->GetFrameCount(&frame_count);
             if (FAILED(hr) || frame_count == 0) return std::nullopt;
@@ -182,7 +182,7 @@ namespace usylibpp::windows::images {
             else return std::nullopt;
         }
 
-        inline std::optional<wil::com_ptr<IWICBitmapFrameDecode>> pick_frame_zero(IWICBitmapDecoder* decoder) {
+        [[nodiscard]] inline std::optional<wil::com_ptr<IWICBitmapFrameDecode>> pick_frame_zero(IWICBitmapDecoder* decoder) {
             wil::com_ptr<IWICBitmapFrameDecode> frame;
             const auto hr = decoder->GetFrame(0, &frame);
             if (FAILED(hr) || !frame) return std::nullopt;
@@ -205,7 +205,7 @@ namespace usylibpp::windows::images {
         wil::com_ptr<IWICBitmapFrameDecode> frame;
         wil::com_ptr<IWICFormatConverter> converter;
 
-        static std::optional<ImageDecodeData> from(const std::wstring& path) {
+        [[nodiscard]] static std::optional<ImageDecodeData> from(const std::wstring& path) {
             ImageDecodeData ret;
             auto factory_opt = create_imaging_factory();
             if (!factory_opt) return std::nullopt;
@@ -215,7 +215,7 @@ namespace usylibpp::windows::images {
             return std::nullopt;
         }
 
-        static std::optional<ImageDecodeData> from_threadlocal(const std::wstring& path) {
+        [[nodiscard]] static std::optional<ImageDecodeData> from_threadlocal(const std::wstring& path) {
             ImageDecodeData ret;
             thread_local auto factory_opt = create_imaging_factory();
             if (!factory_opt) return std::nullopt;
@@ -225,7 +225,7 @@ namespace usylibpp::windows::images {
             return std::nullopt;
         }
     private:
-        bool from_factory(const std::wstring& path) {
+        [[nodiscard]] bool from_factory(const std::wstring& path) {
             auto decoder_opt = create_imaging_decoder(factory.get(), path);
             if (!decoder_opt) return false;
             decoder = std::move(*decoder_opt);
@@ -243,7 +243,7 @@ namespace usylibpp::windows::images {
     };
 
     template <bool ComInitialised = false, DecodeOpts opts>
-    inline std::optional<DecodedImage<opts.type>> decode_image(const std::wstring& path) {
+    [[nodiscard]] inline std::optional<DecodedImage<opts.type>> decode_image(const std::wstring& path) {
         COMWrapper<ComInitialised> COM{COINIT_MULTITHREADED | COINIT_DISABLE_OLE1DDE};
         if (FAILED(COM.status())) return std::nullopt;
 
@@ -284,7 +284,7 @@ namespace usylibpp::windows::images {
      * Control whether factory is threadlocal with opts.thread_local_factory
      */
     template <DecodeOpts opts>
-    inline std::optional<DecodedImageView<opts.type>> decode_image_as_view(const std::wstring& path) {
+    [[nodiscard]] inline std::optional<DecodedImageView<opts.type>> decode_image_as_view(const std::wstring& path) {
         auto data_opt = (opts.thread_local_factory) ? ImageDecodeData<opts>::from_threadlocal(path) : ImageDecodeData<opts>::from(path);
         if (!data_opt) return std::nullopt;
         auto& data = *data_opt;
@@ -325,7 +325,7 @@ namespace usylibpp::windows::images {
      * Does not include leading dot by default, change with template arg
      */
     template <bool ComInitialised = false, bool include_leading_dot = false, types::CharOrWChar Char = char>
-    inline std::vector<std::basic_string<Char>> get_all_supported_file_extensions() {
+    [[nodiscard]] inline std::vector<std::basic_string<Char>> get_all_supported_file_extensions() {
         COMWrapper<ComInitialised> COM{COINIT_MULTITHREADED | COINIT_DISABLE_OLE1DDE};
 
         if (FAILED(COM.status())) return {};
