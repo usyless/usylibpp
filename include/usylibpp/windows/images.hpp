@@ -194,7 +194,8 @@ namespace usylibpp::windows::images {
 
     struct DecodeOpts{
         DecodedImageType type;
-        FramePicker frame_picker = FramePickers::pick_frame_zero;
+        FramePicker frame_picker{FramePickers::pick_frame_zero};
+        bool thread_local_factory{true}; // only applies to decode_image_as_view
     };
 
     template <DecodeOpts opts>
@@ -280,10 +281,11 @@ namespace usylibpp::windows::images {
      * COM MUST BE INITIALISED
      * Reuses the factory per thread
      * Returned data depends on COM
+     * Control whether factory is threadlocal with opts.thread_local_factory
      */
     template <DecodeOpts opts>
-    inline std::optional<DecodedImageView<opts.type>> decode_image_threadlocal(const std::wstring& path) {
-        auto data_opt = ImageDecodeData<opts>::from_threadlocal(path);
+    inline std::optional<DecodedImageView<opts.type>> decode_image_as_view(const std::wstring& path) {
+        auto data_opt = (opts.thread_local_factory) ? ImageDecodeData<opts>::from_threadlocal(path) : ImageDecodeData<opts>::from(path);
         if (!data_opt) return std::nullopt;
         auto& data = *data_opt;
 

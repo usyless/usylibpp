@@ -140,7 +140,7 @@ int main() {
     }
     {
         windows::COMWrapper<false> COM{COINIT_MULTITHREADED | COINIT_DISABLE_OLE1DDE};
-        auto wic_test_png_result = windows::images::decode_image_threadlocal<windows::images::DecodeOpts{
+        auto wic_test_png_result = windows::images::decode_image_as_view<windows::images::DecodeOpts{
             .type = windows::images::DecodedImageType::Gray
         }>(L"test.png");
         if (!wic_test_png_result) print::println("Failed to decode test.png! Ensure it exists");
