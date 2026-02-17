@@ -362,12 +362,6 @@ if (PROJECT_IS_TOP_LEVEL)
         usylibpp::usylibpp
     )
 
-    if(CMAKE_BUILD_TYPE STREQUAL "Release")
-        set_property(TARGET usylibpp_test PROPERTY
-            INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE
-        )
-    endif()
-
     if (MSVC)
         target_compile_options(usylibpp_test PRIVATE
             /EHsc
@@ -391,19 +385,6 @@ if (PROJECT_IS_TOP_LEVEL)
             >
         )
 
-        target_compile_definitions(usylibpp_test PRIVATE
-            _WINDOWS
-            UNICODE
-            _UNICODE
-
-            $<$<CONFIG:Debug>:
-                _DEBUG
-            >
-            $<$<CONFIG:Release>:
-                NDEBUG
-            >
-        )
-
         target_link_options(usylibpp_test PRIVATE
             # /SUBSYSTEM:WINDOWS
 
@@ -413,7 +394,6 @@ if (PROJECT_IS_TOP_LEVEL)
             $<$<CONFIG:Release>:
                 "/OPT:ICF"
                 "/OPT:REF"
-                "/LTCG"
             >
         )
     endif()
