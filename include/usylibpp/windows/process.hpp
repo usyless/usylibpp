@@ -111,7 +111,8 @@ namespace usylibpp::windows::process {
         bool set_lifetime_of_subprocess_to_this_process = true;
         bool on_stdout_line_call_on_lines = true; // otherwise only call on buffer full
         bool on_stderr_line_call_on_lines = true;
-        bool one_shot_process = false; // returns -1 as the status code
+
+        bool one_shot_process = false; // no stdout or stderr
     };
 
     /**
