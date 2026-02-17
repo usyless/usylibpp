@@ -20,6 +20,7 @@ if (PROJECT_IS_TOP_LEVEL)
 endif()
 
 set(USYLIBPP_DEPS_DIR "${CMAKE_CURRENT_BINARY_DIR}/_deps")
+set(USYLIBPP_3RD_PARTY_DIR "${PROJECT_SOURCE_DIR}/3rdparty")
 
 configure_file(
     "${PROJECT_SOURCE_DIR}/cmake/usylibppconfig.hpp.in"
@@ -52,6 +53,25 @@ This includes windows.h along with various other headers, but enables all of the
     if (USYLIBPP_ENABLE_WINDOWS)
         target_compile_definitions(usylibpp_usylibpp INTERFACE "USYLIBPP_ENABLE_WINDOWS")
 
+        add_library(usylibpp_unicode INTERFACE)
+
+        target_compile_definitions(usylibpp_unicode INTERFACE 
+            "_UNICODE"
+            "UNICODE"
+        )
+
+        set(USYLIBPP_ENABLE_WINDOWS_UNICODE
+            ON
+            CACHE BOOL
+            "Enable unicode for windows stuff"
+        )
+
+        message(STATUS "Using unicode defines: (USYLIBPP_ENABLE_WINDOWS_UNICODE): ${USYLIBPP_ENABLE_WINDOWS_UNICODE}")
+
+        if(USYLIBPP_ENABLE_WINDOWS_UNICODE)
+            target_link_libraries(usylibpp_usylibpp INTERFACE usylibpp_unicode)
+        endif()
+
         set(USYLIBPP_ENABLE_BASIC_WINDOWS_DEFINES
             ON
             CACHE BOOL
@@ -63,8 +83,6 @@ This includes windows.h along with various other headers, but enables all of the
         if(USYLIBPP_ENABLE_BASIC_WINDOWS_DEFINES)
             target_compile_definitions(usylibpp_usylibpp INTERFACE
                 "WIN32_LEAN_AND_MEAN"
-                "_UNICODE"
-                "UNICODE"
                 "NOMINMAX"
             )
         endif()
@@ -216,6 +234,10 @@ This includes windows.h along with various other headers, but enables all of the
                 target_link_libraries(mohabouje_wintoast PUBLIC usylibpp_ltcg)
             endif()
 
+            if(USYLIBPP_ENABLE_WINDOWS_UNICODE)
+                target_link_libraries(mohabouje_wintoast INTERFACE usylibpp_unicode)
+            endif()
+
             target_include_directories(mohabouje_wintoast PUBLIC
                 ${mohabouje_wintoast_SOURCE_DIR}/include
             )
@@ -250,34 +272,18 @@ This includes windows.h along with various other headers, but enables all of the
         if(USYLIBPP_ENABLE_VOIDTOOLS_EVERYTHING)
             target_compile_definitions(usylibpp_usylibpp INTERFACE "USYLIBPP_ENABLE_VOIDTOOLS_EVERYTHING")
 
-            set(USYLIBPP_VOIDTOOLS_EVERYTHING_URL "https://www.voidtools.com/Everything-SDK.zip")
-            set(USYLIBPP_VOIDTOOLS_EVERYTHING_ZIP "${USYLIBPP_DEPS_DIR}/everything.zip")
-            set(USYLIBPP_VOIDTOOLS_EVERYTHING_DIR "${USYLIBPP_DEPS_DIR}/voidtools-everything")
-
-            if(NOT EXISTS "${USYLIBPP_VOIDTOOLS_EVERYTHING_ZIP}")
-                message(STATUS "Downloading everything sdk...")
-                file(DOWNLOAD "${USYLIBPP_VOIDTOOLS_EVERYTHING_URL}" "${USYLIBPP_VOIDTOOLS_EVERYTHING_ZIP}" SHOW_PROGRESS)
-            endif()
-
-            if(NOT EXISTS "${USYLIBPP_VOIDTOOLS_EVERYTHING_DIR}")
-                message(STATUS "Extracting everything sdk...")
-                file(ARCHIVE_EXTRACT
-                    INPUT "${USYLIBPP_VOIDTOOLS_EVERYTHING_ZIP}"
-                    DESTINATION "${USYLIBPP_VOIDTOOLS_EVERYTHING_DIR}"
-                )
-            endif()
+            set(USYLIBPP_VOIDTOOLS_EVERYTHING_DIR "${USYLIBPP_3RD_PARTY_DIR}/voidtools-everything-sdk")
 
             add_library(voidtools_everything STATIC 
                 "${USYLIBPP_VOIDTOOLS_EVERYTHING_DIR}/src/Everything.c"
             )
 
-            target_compile_features(voidtools_everything PUBLIC 
+            target_compile_features(voidtools_everything PRIVATE 
                 c_std_11
             )
 
             target_include_directories(voidtools_everything PUBLIC 
                 "${USYLIBPP_VOIDTOOLS_EVERYTHING_DIR}/include"
-                "${USYLIBPP_VOIDTOOLS_EVERYTHING_DIR}/ipc"
             )
 
             target_compile_definitions(voidtools_everything PRIVATE
@@ -313,6 +319,10 @@ This includes windows.h along with various other headers, but enables all of the
                 target_link_libraries(voidtools_everything PUBLIC usylibpp_ltcg)
             endif()
 
+            if(USYLIBPP_ENABLE_WINDOWS_UNICODE)
+                target_link_libraries(voidtools_everything INTERFACE usylibpp_unicode)
+            endif()
+
             target_link_libraries(usylibpp_usylibpp INTERFACE voidtools_everything)
         endif()
     endif()
@@ -332,6 +342,7 @@ if (PROJECT_IS_TOP_LEVEL)
     )
 
     set(USYLIBPP_ENABLE_LTCG ON CACHE BOOL "" FORCE)
+    set(USYLIBPP_ENABLE_WINDOWS_UNICODE ON CACHE BOOL "" FORCE)
 
     target_link_libraries(usylibpp_test PRIVATE 
         usylibpp::usylibpp

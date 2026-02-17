@@ -172,4 +172,6 @@ int main() {
         });
     }
     #endif
+
+    everything::Everything test{L"usylibpp_test"};
 }

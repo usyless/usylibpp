@@ -18,6 +18,10 @@ include(FetchContent)
 # set(USYLIBPP_ENABLE_LTCG ON CACHE BOOL "" FORCE)
 # set(USYLIBPP_ENABLE_LTCG OFF CACHE BOOL "" FORCE)
 
+# To enable/disable windows unicode: (on by default)
+# set(USYLIBPP_ENABLE_WINDOWS_UNICODE ON CACHE BOOL "" FORCE)
+# set(USYLIBPP_ENABLE_WINDOWS_UNICODE OFF CACHE BOOL "" FORCE)
+
 FetchContent_Declare(
     usylibpp
     GIT_REPOSITORY https://github.com/usyless/usylibpp.git
@@ -40,6 +44,7 @@ These are printed when configuring, which will be more up to date probably
 ### WIN32 Specific
 - `USYLIBPP_ENABLE_WINDOWS` (BOOL, Default: ON) - Toggles all of the following
 
+- `USYLIBPP_ENABLE_WINDOWS_UNICODE` (BOOL, Default: ON) - Define UNICODE and _UNICODE
 - `USYLIBPP_ENABLE_BASIC_WINDOWS_DEFINES` (BOOL, Default: ON) - Adds basic windows defines
 - `USYLIBPP_ENABLE_LTCG` (BOOL, Default: ON) - Enables LTCG for compiled dependencies
 - `USYLIBPP_ENABLE_TASK_DIALOG_DARK_MODE` (BOOL, Default: ON) - Adds a manifest entry and support for the task dialog + win32 darkmode stuff
