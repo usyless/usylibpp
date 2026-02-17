@@ -7,6 +7,7 @@
 
 #include "../aliases.hpp" // IWYU pragma: export
 #include "../windows/process.hpp"
+#include "../windows/strings.hpp"
 #include "../strings.hpp"
 
 #include <Everything.h>
@@ -24,12 +25,36 @@ namespace usylibpp {
             return Everything_GetResultFileName(i);
         }
 
+        [[nodiscard]] inline auto filename_utf8() const {
+            return windows::to_utf8(filename());
+        }
+
+        [[nodiscard]] inline auto filename_utf8_or_default() const {
+            return filename_utf8().value_or(std::string{});
+        }
+
         [[nodiscard]] inline auto parent_path() const noexcept {
             return Everything_GetResultPath(i);
         }
 
+        [[nodiscard]] inline auto parent_path_utf8() const {
+            return windows::to_utf8(parent_path());
+        }
+
+        [[nodiscard]] inline auto parent_path_utf8_or_default() const {
+            return parent_path_utf8().value_or(std::string{});
+        }
+
         [[nodiscard]] inline auto extension() const noexcept {
             return Everything_GetResultExtension(i);
+        }
+
+        [[nodiscard]] inline auto extension_utf8() const {
+            return windows::to_utf8(extension());
+        }
+
+        [[nodiscard]] inline auto extension_utf8_or_default() const {
+            return extension_utf8().value_or(std::string{});
         }
 
         [[nodiscard]] inline std::optional<uint64_t> size() const noexcept {
