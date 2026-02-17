@@ -49,6 +49,53 @@ namespace usylibpp {
 
         template <typename T>
         concept CallbacksType = is_callbacks<std::remove_cvref_t<T>>::value;
+
+        /**
+         * Very basic query constructor
+         * Can add a recursive directory and then exclude any amount of directories from it
+         */
+        struct Query {
+            std::wstring q;
+
+            constexpr explicit Query(std::wstring_view dir) {
+                if (!q.empty()) q.push_back(L' ');
+                q += L"path:\"";
+                q += dir;
+                if (!dir.ends_with(L'\\')) q.push_back(L'\\');
+                q.push_back(L'\"');
+            }
+
+            constexpr inline Query& exclude_directory_absolute(std::wstring_view dir) {
+                if (!q.empty()) q.push_back(L' ');
+                q += L"!path:\"";
+                q += dir;
+                if (!dir.ends_with(L'*') && !dir.ends_with(L'\\')) q.push_back(L'\\');
+                q.push_back(L'\"');
+
+                return *this;
+            }
+
+            /**
+             * Can't perform any other operations on this query
+             */
+            static constexpr inline Query from_directory_absolute(std::wstring_view dir) {
+                Query query{dir};
+                std::wstring excluded{dir};
+                if (!excluded.ends_with(L'\\')) excluded.push_back(L'\\');
+                excluded += L"*\\*";
+                query.exclude_directory_absolute(excluded);
+
+                return query;
+            }
+
+            const std::wstring get() const & noexcept {
+                return q;
+            }
+
+            const std::wstring get() && noexcept {
+                return std::move(q);
+            }
+        };
     }
 
     /**

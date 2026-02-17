@@ -184,12 +184,24 @@ int main() {
                 const auto executable_path_opt = windows::current_executable_path();
                 if (executable_path_opt) {
                     const auto build_folder = executable_path_opt->get().parent_path().parent_path();
-                    const std::wstring query = strings::concat_strings(build_folder.native(), L"\\*");
-                    print::println("Performing query: {}", windows::to_utf8_or_default(query));
-                    if (everything.do_query(query)) {
+                    const auto query = EverythingExtra::Query::from_directory_absolute(build_folder.native());
+
+                    print::println("Performing query: {}", windows::to_utf8_or_default(query.get()));
+                    if (everything.do_query(query.get())) {
                         print::println("Query success!");
 
                         print::println("File count: {} ; Directory count: {} ; Total results count: {}", everything.query_file_count(), everything.query_folder_count(), everything.query_results_count());
+                        everything.walk_results(EverythingExtra::Callbacks{
+                            .on_file = [](const DWORD i) {
+                                print::println("File result filename: {}", windows::to_utf8_or_default(Everything_GetResultFileName(i)));
+                            },
+                            .on_directory = [](const DWORD i) {
+                                print::println("Directory result filename: {}", windows::to_utf8_or_default(Everything_GetResultFileName(i)));
+                            },
+                            .on_volume = [](const DWORD i) {
+                                print::println("Volume result filename: {}", windows::to_utf8_or_default(Everything_GetResultFileName(i)));
+                            }
+                        });
                     } else {
                         print::println("Query failed!");
                     }
