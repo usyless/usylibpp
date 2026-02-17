@@ -232,6 +232,14 @@ namespace usylibpp::strings {
         return split_by(std::forward<SV>(input), types::string_view_char_t<SV>('\n'));
     }
 
+    template <types::is_basic_string_view SV, typename F>
+    requires (std::invocable<F, types::string_view_char_t<SV>> && std::is_same_v<std::invoke_result_t<F, types::string_view_char_t<SV>>, bool>)
+    [[nodiscard]] inline constexpr size_t count_if(SV&& str, F&& f) noexcept(noexcept(std::invoke(f, std::declval<types::string_view_char_t<SV>>()))) {
+        size_t count = 0;
+        for (const auto a : str) if (std::invoke(f, a)) ++count;
+        return count;
+    }
+
     template <types::CharOrWChar Char, types::is_basic_string_view SV>
     requires (std::convertible_to<SV, std::basic_string_view<Char>> && std::same_as<types::string_view_char_t<SV>, Char>)
     [[nodiscard]] inline constexpr size_t count_of(SV&& str, const Char c) noexcept {
