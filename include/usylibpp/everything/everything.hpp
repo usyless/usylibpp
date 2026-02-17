@@ -189,17 +189,28 @@ namespace usylibpp {
      */
     struct Everything {
     private:
+        #ifdef UNICODE
+        using Char = wchar_t;
+        #else
+        using Char = char;
+        #endif
+
+        #ifdef UNICODE
         std::wstring instance_name;
         std::wstring everything_path = L"everything.exe";
-        
         std::unique_ptr<std::wstring> wndclass;
+        #else
+        std::string instance_name;
+        std::string everything_path = "everything.exe";
+        std::unique_ptr<std::string> wndclass;
+        #endif
 
         void reset_wndclass() {
             _Everything_IPC_WndClass = EVERYTHING_IPC_WNDCLASS;
             wndclass.reset();
         }
 
-    static inline constexpr void validate_name(std::wstring_view name) {
+    static inline constexpr void validate_name(std::basic_string_view<Char> name) {
         constexpr auto fail = [&](auto&& msg) {
             throw std::invalid_argument(msg);
         };
@@ -212,38 +223,43 @@ namespace usylibpp {
         if (N > 64)
             fail("Instance name too long!");
 
-        if (name.front() == L' ' || name.back() == L' ')
+        if (name.front() == Char(' ') || name.back() == Char(' '))
             fail("Instance name cannot start or end with whitespace!");
 
-        if (name.back() == L'.')
+        if (name.back() == Char('.'))
             fail("Instance name cannot end with a dot!");
 
         for (wchar_t c : name) {
-            if (c == L'"')
+            if (c == Char('"'))
                 fail("Instance name cannot have quotes!");
 
             if (c < 0x20)
                 fail("Instance name contains control characters!");
 
+            #ifdef UNICODE
             if (std::wstring_view{L"/\\:*?|<> "} .find(c) != std::wstring_view::npos)
                 fail("Instance name contains invalid path characters!");
+            #else
+            if (std::string_view{"/\\:*?|<> "} .find(c) != std::string_view::npos)
+                fail("Instance name contains invalid path characters!");
+            #endif
         }
     }
 
     struct instance_name {
     public:
         template <class T>
-        requires std::convertible_to<const T&, std::wstring_view>
+        requires std::convertible_to<const T&, std::basic_string_view<Char>>
         consteval instance_name(const T& str) : _str(str) {
             validate_name(_str);
         }
 
-        [[nodiscard]] constexpr std::wstring_view get() const noexcept {
+        [[nodiscard]] constexpr std::basic_string_view<Char> get() const noexcept {
             return _str;
         }
 
     private:
-        std::wstring_view _str;
+        std::basic_string_view<Char> _str;
     };
     
     public:
@@ -263,7 +279,7 @@ namespace usylibpp {
             }
         }
 
-        Everything(struct instance_name _instance_name, std::wstring _everything_path) : instance_name{_instance_name.get()}, everything_path{std::move(_everything_path)} {
+        Everything(struct instance_name _instance_name, std::basic_string<Char> _everything_path) : instance_name{_instance_name.get()}, everything_path{std::move(_everything_path)} {
             #if __cplusplus >= 202302L
             if consteval {} else
             #else
@@ -302,7 +318,11 @@ namespace usylibpp {
                 return LoadStatus::NoExeFound;
             }
 
+            #ifdef UNICODE
             const auto args = strings::concat_strings(L"-instance \"", instance_name, L"\" -admin -startup -is-run-as");
+            #else
+            const auto args = strings::concat_strings("-instance \"", instance_name, "\" -admin -startup -is-run-as");
+            #endif
             auto status = windows::process::run_admin_process<{
                 .allow_visible_windows = true,
             }>({
@@ -319,7 +339,11 @@ namespace usylibpp {
 
             std::this_thread::sleep_for(std::chrono::seconds(1));
 
+            #ifdef UNICODE
             wndclass = std::make_unique<std::wstring>(strings::concat_strings(EVERYTHING_IPC_WNDCLASS, L"_(", instance_name, L")"));
+            #else
+            wndclass = std::make_unique<std::string>(strings::concat_strings(EVERYTHING_IPC_WNDCLASS, "_(", instance_name, ")"));
+            #endif
 
             _Everything_IPC_WndClass = wndclass->c_str();
 
@@ -372,7 +396,7 @@ namespace usylibpp {
             return Everything_GetTotResults();
         }
 
-        [[nodiscard]] static inline auto do_query(const std::wstring& query, const EverythingExtra::EverythingSearch& options = {}) noexcept {
+        [[nodiscard]] static inline auto do_query(const std::basic_string<Char>& query, const EverythingExtra::EverythingSearch& options = {}) noexcept {
             Everything_Reset();
 
             Everything_SetMatchPath(options.MatchPath);
