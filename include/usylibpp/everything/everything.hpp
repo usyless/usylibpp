@@ -38,7 +38,7 @@ namespace usylibpp::everything {
             if (c < 0x20)
                 fail("Instance name contains control characters!");
 
-            if (std::wstring_view{L"/\\:*?|<>"} .find(c) != std::wstring_view::npos)
+            if (std::wstring_view{L"/\\:*?|<> "} .find(c) != std::wstring_view::npos)
                 fail("Instance name contains invalid path characters!");
         }
     }
