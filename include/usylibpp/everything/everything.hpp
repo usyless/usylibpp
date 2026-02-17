@@ -1,6 +1,9 @@
 #pragma once
 
 #ifdef USYLIBPP_ENABLE_VOIDTOOLS_EVERYTHING
+#ifndef USYLIBPP_ENABLE_WIL
+#error "USYLIBPP_ENABLE_WIL must be enabled to use everything"
+#endif
 
 #include "../aliases.hpp" // IWYU pragma: export
 #include "../windows/process.hpp"
@@ -9,7 +12,88 @@
 #include <Everything.h>
 #include <everything_ipc.h>
 
+#include <wil/resource.h>
+
 namespace usylibpp {
+    struct EverythingFile {
+        const DWORD i;
+
+        EverythingFile(DWORD _i) : i{_i} {}
+
+        [[nodiscard]] inline auto filename() const noexcept {
+            return Everything_GetResultFileName(i);
+        }
+
+        [[nodiscard]] inline auto parent_path() const noexcept {
+            return Everything_GetResultPath(i);
+        }
+
+        [[nodiscard]] inline auto extension() const noexcept {
+            return Everything_GetResultExtension(i);
+        }
+
+        [[nodiscard]] inline std::optional<uint64_t> size() const noexcept {
+            LARGE_INTEGER s;
+            if (!Everything_GetResultSize(i, &s)) return std::nullopt;
+            return static_cast<uint64_t>(s.QuadPart); // need to check if valid
+            // return (static_cast<uint64_t>(s.HighPart) << 32) | static_cast<uint32_t>(s.LowPart);
+        }
+
+        [[nodiscard]] inline std::optional<uint64_t> date_created() const noexcept {
+            FILETIME s;
+            if (!Everything_GetResultDateCreated(i, &s)) return std::nullopt;
+            return wil::filetime::to_int64(s);
+        }
+
+        [[nodiscard]] inline std::optional<uint64_t> date_modified() const noexcept {
+            FILETIME s;
+            if (!Everything_GetResultDateModified(i, &s)) return std::nullopt;
+            return wil::filetime::to_int64(s);
+        }
+
+        [[nodiscard]] inline std::optional<uint64_t> date_accessed() const noexcept {
+            FILETIME s;
+            if (!Everything_GetResultDateAccessed(i, &s)) return std::nullopt;
+            return wil::filetime::to_int64(s);
+        }
+
+        [[nodiscard]] inline auto attributes() const noexcept {
+            return Everything_GetResultAttributes(i);
+        }
+
+        [[nodiscard]] inline auto file_list_file_name() const noexcept {
+            return Everything_GetResultFileListFileName(i);
+        }
+
+        [[nodiscard]] inline auto run_count() const noexcept {
+            return Everything_GetResultRunCount(i);
+        }
+
+        [[nodiscard]] inline std::optional<uint64_t> date_run() const noexcept {
+            FILETIME s;
+            if (!Everything_GetResultDateRun(i, &s)) return std::nullopt;
+            return wil::filetime::to_int64(s);
+        }
+
+        [[nodiscard]] inline std::optional<uint64_t> date_recently_changed() const noexcept {
+            FILETIME s;
+            if (!Everything_GetResultDateRecentlyChanged(i, &s)) return std::nullopt;
+            return wil::filetime::to_int64(s);
+        }
+
+        [[nodiscard]] inline auto highlighted_file_name() const noexcept {
+            return Everything_GetResultHighlightedFileName(i);
+        }
+
+        [[nodiscard]] inline auto highlighted_path() const noexcept {
+            return Everything_GetResultHighlightedPath(i);
+        }
+
+        [[nodiscard]] inline auto highlighted_full_path_and_filename() const noexcept {
+            return Everything_GetResultHighlightedFullPathAndFileName(i);
+        }
+    };
+
     namespace EverythingExtra {
         /**
         * Set to the defaults
@@ -32,9 +116,9 @@ namespace usylibpp {
             typename F2 = types::noop_t,
             typename F3 = types::noop_t
         >
-        requires (std::invocable<F1, DWORD> && 
-                std::invocable<F2, DWORD> && 
-                std::invocable<F3, DWORD>)
+        requires (std::invocable<F1, EverythingFile> && 
+                std::invocable<F2, EverythingFile> && 
+                std::invocable<F3, EverythingFile>)
         struct Callbacks {
             F1 on_file{};
             F2 on_directory{};
@@ -256,39 +340,39 @@ namespace usylibpp {
             return LoadStatus::NotRunning;
         }
 
-        [[nodiscard]] static inline auto is_loaded() {
+        [[nodiscard]] static inline auto is_loaded() noexcept {
             return Everything_IsDBLoaded();
         }
 
-        inline void static reset_results() {
+        inline void static reset_results() noexcept {
             Everything_Reset();
         }
 
-        [[nodiscard]] static inline auto query_file_count() {
+        [[nodiscard]] static inline auto query_file_count() noexcept {
             return Everything_GetNumFileResults();
         }
 
-        [[nodiscard]] static inline auto query_folder_count() {
+        [[nodiscard]] static inline auto query_folder_count() noexcept {
             return Everything_GetNumFolderResults();
         }
 
-        [[nodiscard]] static inline auto query_results_count() {
+        [[nodiscard]] static inline auto query_results_count() noexcept {
             return Everything_GetNumResults();
         }
 
-        [[nodiscard]] static inline auto total_file_results() {
+        [[nodiscard]] static inline auto total_file_results() noexcept {
             return Everything_GetTotFileResults();
         }
 
-        [[nodiscard]] static inline auto total_folder_results() {
+        [[nodiscard]] static inline auto total_folder_results() noexcept {
             return Everything_GetTotFolderResults();
         }
 
-        [[nodiscard]] static inline auto total_results() {
+        [[nodiscard]] static inline auto total_results() noexcept {
             return Everything_GetTotResults();
         }
 
-        [[nodiscard]] static inline auto do_query(const std::wstring& query, const EverythingExtra::EverythingSearch& options = {}) {
+        [[nodiscard]] static inline auto do_query(const std::wstring& query, const EverythingExtra::EverythingSearch& options = {}) noexcept {
             Everything_Reset();
 
             Everything_SetMatchPath(options.MatchPath);

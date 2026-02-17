@@ -192,14 +192,14 @@ int main() {
 
                         print::println("File count: {} ; Directory count: {} ; Total results count: {}", everything.query_file_count(), everything.query_folder_count(), everything.query_results_count());
                         everything.walk_results(EverythingExtra::Callbacks{
-                            .on_file = [](const DWORD i) {
-                                print::println("File result filename: {}", windows::to_utf8_or_default(Everything_GetResultFileName(i)));
+                            .on_file = [](const EverythingFile i) {
+                                print::println("File result filename: {}", windows::to_utf8_or_default(i.filename()));
                             },
-                            .on_directory = [](const DWORD i) {
-                                print::println("Directory result filename: {}", windows::to_utf8_or_default(Everything_GetResultFileName(i)));
+                            .on_directory = [](const EverythingFile i) {
+                                print::println("Directory result filename: {}", windows::to_utf8_or_default(i.filename()));
                             },
-                            .on_volume = [](const DWORD i) {
-                                print::println("Volume result filename: {}", windows::to_utf8_or_default(Everything_GetResultFileName(i)));
+                            .on_volume = [](const EverythingFile i) {
+                                print::println("Volume result filename: {}", windows::to_utf8_or_default(i.filename()));
                             }
                         });
                     } else {
