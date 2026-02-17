@@ -209,7 +209,7 @@ This includes windows.h along with various other headers, but enables all of the
                 )
 
                 if (USYLIBPP_ENABLE_LTCG)
-                    target_link_libraries(mohabouje_wintoast PUBLIC lusylibpp_ltcg)
+                    target_link_libraries(mohabouje_wintoast PUBLIC usylibpp_ltcg)
                 endif()
             endif()
 
