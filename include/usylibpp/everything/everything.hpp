@@ -73,6 +73,7 @@ namespace usylibpp::everything {
         std::atomic_bool loaded{false};
         wil::unique_handle hjob;
         std::wstring instance_name;
+        std::wstring everything_path = L"everything.exe";
         
         std::unique_ptr<std::wstring> wndclass;
     
@@ -83,6 +84,17 @@ namespace usylibpp::everything {
         Everything& operator=(Everything&&) = delete;
 
         Everything(struct instance_name _instance_name) : instance_name{_instance_name.get()} {
+            #if __cplusplus >= 202302L
+            if consteval {} else
+            #else
+            if (!std::is_constant_evaluated())
+            #endif
+            {
+                validate_name(instance_name);
+            }
+        }
+
+        Everything(struct instance_name _instance_name, std::wstring _everything_path) : instance_name{_instance_name.get()}, everything_path{std::move(_everything_path)} {
             #if __cplusplus >= 202302L
             if consteval {} else
             #else
@@ -112,7 +124,12 @@ namespace usylibpp::everything {
         template <bool wait_for_completion = true>
         [[nodiscard]] inline auto try_load() {
             return worker.post<wait_for_completion>([this]() -> LoadStatus {
-                if (!windows::exe_exists(L"everything.exe")) {
+                if (everything_path.empty()) {
+                    loaded.store(false);
+                    return LoadStatus::NoExeFound;
+                }
+
+                if (everything_path == L"everything.exe" && !windows::exe_exists(L"everything.exe")) {
                     loaded.store(false);
                     return LoadStatus::NoExeFound;
                 }
@@ -123,7 +140,7 @@ namespace usylibpp::everything {
                     .one_shot_process = true
                 }>(windows::process::process_settings{
                     .commandline = strings::concat_strings( // instance name should always be valid?
-                        L"everything.exe -instance \"", instance_name, L"\" "
+                        everything_path, L" -instance \"", instance_name, L"\" "
                         L"-enable-run-as-admin -noapp-data -disable-update-notification -admin -startup"
                     )
                 });
