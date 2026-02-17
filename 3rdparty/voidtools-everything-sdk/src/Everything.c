@@ -99,6 +99,12 @@ static BOOL (WINAPI *_Everything_pChangeWindowMessageFilterEx)(HWND hWnd,UINT me
 static HANDLE _Everything_user32_hdll = NULL;
 static BOOL _Everything_GotChangeWindowMessageFilterEx = FALSE;
 
+#ifdef UNICODE
+LPCWSTR _Everything_IPC_WndClass = L"EVERYTHING_TASKBAR_NOTIFICATION";
+#else
+LPCSTR _Everything_IPC_WndClass = "EVERYTHING_TASKBAR_NOTIFICATION";
+#endif
+
 static void _Everything_Initialize(void)
 {
 	if (!_Everything_Initialized)
@@ -648,7 +654,7 @@ static DWORD EVERYTHINGAPI _Everything_query_thread_proc(void *param)
 {
 	HWND everything_hwnd;
 
-	everything_hwnd = FindWindow(EVERYTHING_IPC_WNDCLASS,0);
+	everything_hwnd = FindWindow(_Everything_IPC_WndClass,0);
 	if (everything_hwnd)
 	{
 		WNDCLASSEX wcex;
@@ -853,7 +859,7 @@ static BOOL _Everything_SendIPCQuery(void)
 	BOOL ret;
 	
 		// find the everything ipc window.
-	everything_hwnd = FindWindow(EVERYTHING_IPC_WNDCLASS,0);
+	everything_hwnd = FindWindow(_Everything_IPC_WndClass,0);
 	if (everything_hwnd)
 	{
 		_Everything_QueryVersion = 2;
@@ -2846,7 +2852,7 @@ static BOOL _Everything_SendAPIBoolCommand(int command,LPARAM lParam)
 {
 	HWND everything_hwnd;
 	
-	everything_hwnd = FindWindow(EVERYTHING_IPC_WNDCLASS,0);
+	everything_hwnd = FindWindow(_Everything_IPC_WndClass,0);
 	if (everything_hwnd)
 	{
 		_Everything_LastError = 0;
@@ -2876,7 +2882,7 @@ static DWORD _Everything_SendAPIDwordCommand(int command,LPARAM lParam)
 {
 	HWND everything_hwnd;
 	
-	everything_hwnd = FindWindow(EVERYTHING_IPC_WNDCLASS,0);
+	everything_hwnd = FindWindow(_Everything_IPC_WndClass,0);
 	if (everything_hwnd)
 	{
 		_Everything_LastError = 0;
@@ -2976,7 +2982,7 @@ UINT EVERYTHINGAPI Everything_MSIExitAndStopService(void *msihandle)
 	{
 		HWND everything_hwnd;
 		
-		everything_hwnd = FindWindow(EVERYTHING_IPC_WNDCLASS,0);
+		everything_hwnd = FindWindow(_Everything_IPC_WndClass,0);
 		if (everything_hwnd)
 		{
 			DWORD dwProcessId;
@@ -3169,7 +3175,7 @@ static LRESULT _Everything_SendCopyData(int command,const void *data,int size)
 {
 	HWND everything_hwnd;
 	
-	everything_hwnd = FindWindow(EVERYTHING_IPC_WNDCLASS,0);
+	everything_hwnd = FindWindow(_Everything_IPC_WndClass,0);
 	if (everything_hwnd)
 	{
 		COPYDATASTRUCT cds;

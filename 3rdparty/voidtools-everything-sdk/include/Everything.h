@@ -104,6 +104,12 @@ extern "C" {
 #define EVERYTHINGUSERAPI
 #endif
 
+#ifdef UNICODE
+extern LPCWSTR _Everything_IPC_WndClass;
+#else
+extern LPCSTR _Everything_IPC_WndClass;
+#endif
+
 // write search state
 EVERYTHINGUSERAPI void EVERYTHINGAPI Everything_SetSearchW(LPCWSTR lpString);
 EVERYTHINGUSERAPI void EVERYTHINGAPI Everything_SetSearchA(LPCSTR lpString);

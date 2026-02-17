@@ -73,6 +73,8 @@ namespace usylibpp::everything {
         std::atomic_bool loaded{false};
         wil::unique_handle hjob;
         std::wstring instance_name;
+        
+        std::unique_ptr<std::wstring> wndclass;
     
     public:
         Everything(const Everything&) = delete;
@@ -94,6 +96,8 @@ namespace usylibpp::everything {
         ~Everything() {
             Everything_Exit();
             Everything_CleanUp();
+
+            _Everything_IPC_WndClass = EVERYTHING_IPC_WNDCLASS;
         }
 
         enum class LoadStatus {
@@ -136,6 +140,10 @@ namespace usylibpp::everything {
                 while (true) {
                     if (Everything_IsDBLoaded()) {
                         loaded.store(true);
+
+                        wndclass = std::make_unique<std::wstring>(strings::concat_strings(EVERYTHING_IPC_WNDCLASS, L"_(", instance_name, L")"));
+
+                        _Everything_IPC_WndClass = wndclass->c_str();
                         return LoadStatus::Success;
                     } else if (Everything_GetLastError()) {
                         // IPC not running.
