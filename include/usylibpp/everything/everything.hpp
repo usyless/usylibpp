@@ -9,6 +9,7 @@
 #include "../windows/process.hpp"
 #include "../windows/strings.hpp"
 #include "../strings.hpp"
+#include "../windows/char_t.hpp"
 
 #include <Everything.h>
 #include <everything_ipc.h>
@@ -215,12 +216,6 @@ namespace usylibpp {
     struct Everything {
     private:
         #ifdef UNICODE
-        using Char = wchar_t;
-        #else
-        using Char = char;
-        #endif
-
-        #ifdef UNICODE
         std::wstring instance_name;
         std::wstring everything_path = L"everything.exe";
         std::unique_ptr<std::wstring> wndclass;
@@ -235,7 +230,7 @@ namespace usylibpp {
             wndclass.reset();
         }
 
-    static inline constexpr void validate_name(std::basic_string_view<Char> name) {
+    static inline constexpr void validate_name(std::basic_string_view<windows::WIN_CHAR> name) {
         constexpr auto fail = [&](auto&& msg) {
             throw std::invalid_argument(msg);
         };
@@ -248,14 +243,14 @@ namespace usylibpp {
         if (N > 64)
             fail("Instance name too long!");
 
-        if (name.front() == Char(' ') || name.back() == Char(' '))
+        if (name.front() == windows::WIN_CHAR(' ') || name.back() == windows::WIN_CHAR(' '))
             fail("Instance name cannot start or end with whitespace!");
 
-        if (name.back() == Char('.'))
+        if (name.back() == windows::WIN_CHAR('.'))
             fail("Instance name cannot end with a dot!");
 
         for (wchar_t c : name) {
-            if (c == Char('"'))
+            if (c == windows::WIN_CHAR('"'))
                 fail("Instance name cannot have quotes!");
 
             if (c < 0x20)
@@ -274,17 +269,17 @@ namespace usylibpp {
     struct instance_name {
     public:
         template <class T>
-        requires std::convertible_to<const T&, std::basic_string_view<Char>>
+        requires std::convertible_to<const T&, std::basic_string_view<windows::WIN_CHAR>>
         consteval instance_name(const T& str) : _str(str) {
             validate_name(_str);
         }
 
-        [[nodiscard]] constexpr std::basic_string_view<Char> get() const noexcept {
+        [[nodiscard]] constexpr std::basic_string_view<windows::WIN_CHAR> get() const noexcept {
             return _str;
         }
 
     private:
-        std::basic_string_view<Char> _str;
+        std::basic_string_view<windows::WIN_CHAR> _str;
     };
     
     public:
@@ -304,7 +299,7 @@ namespace usylibpp {
             }
         }
 
-        Everything(struct instance_name _instance_name, std::basic_string<Char> _everything_path) : instance_name{_instance_name.get()}, everything_path{std::move(_everything_path)} {
+        Everything(struct instance_name _instance_name, std::basic_string<windows::WIN_CHAR> _everything_path) : instance_name{_instance_name.get()}, everything_path{std::move(_everything_path)} {
             #if __cplusplus >= 202302L
             if consteval {} else
             #else
@@ -421,7 +416,7 @@ namespace usylibpp {
             return Everything_GetTotResults();
         }
 
-        [[nodiscard]] static inline auto do_query(const std::basic_string<Char>& query, const EverythingExtra::EverythingSearch& options = {}) noexcept {
+        [[nodiscard]] static inline auto do_query(const std::basic_string<windows::WIN_CHAR>& query, const EverythingExtra::EverythingSearch& options = {}) noexcept {
             Everything_Reset();
 
             Everything_SetMatchPath(options.MatchPath);
