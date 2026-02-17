@@ -236,7 +236,7 @@ namespace usylibpp::strings {
     requires (std::invocable<F, types::string_view_char_t<SV>> && std::is_same_v<std::invoke_result_t<F, types::string_view_char_t<SV>>, bool>)
     [[nodiscard]] inline constexpr size_t count_if(SV&& str, F&& f) noexcept(noexcept(std::invoke(f, std::declval<types::string_view_char_t<SV>>()))) {
         size_t count = 0;
-        for (const auto a : str) if (std::invoke(f, a)) ++count;
+        for (const auto a : std::basic_string_view<types::string_view_char_t<SV>>{str}) if (std::invoke(f, a)) ++count;
         return count;
     }
 
@@ -244,7 +244,7 @@ namespace usylibpp::strings {
     requires (std::convertible_to<SV, std::basic_string_view<Char>> && std::same_as<types::string_view_char_t<SV>, Char>)
     [[nodiscard]] inline constexpr size_t count_of(SV&& str, const Char c) noexcept {
         size_t count = 0;
-        for (const auto a : str) if (a == c) ++count;
+        for (const auto a : std::basic_string_view<Char>{str}) if (a == c) ++count;
         return count;
     }
 
