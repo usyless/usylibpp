@@ -9,8 +9,41 @@
 #include <Everything.h>
 #include <everything_ipc.h>
 
-namespace usylibpp::everything {
-    constexpr void validate_name(std::wstring_view name) {
+namespace usylibpp {
+    /**
+    * Set to the defaults
+    */
+    struct EverythingSearch {
+        bool MatchPath{false};
+        bool MatchCase{false};
+        bool MatchWholeWord{false};
+        bool Regex{false};
+        DWORD Max{0xffffffff};
+        DWORD Offset{0};
+        // HWND ReplyWindow{nullptr};
+        DWORD ReplyID{0};
+        DWORD Sort{EVERYTHING_SORT_NAME_ASCENDING};
+        DWORD RequestFlags{EVERYTHING_REQUEST_FILE_NAME | EVERYTHING_REQUEST_PATH};
+    };
+
+    /**
+     * Instance name is slightly sanatised. Don't trust it
+     * Compile time error if known at compile time otherwise runtime error
+     * Also only ever have one of these in an app
+     */
+    struct Everything {
+    private:
+        std::wstring instance_name;
+        std::wstring everything_path = L"everything.exe";
+        
+        std::unique_ptr<std::wstring> wndclass;
+
+        void reset_wndclass() {
+            _Everything_IPC_WndClass = EVERYTHING_IPC_WNDCLASS;
+            wndclass.reset();
+        }
+
+    static inline constexpr void validate_name(std::wstring_view name) {
         auto fail = [&](auto&& msg) {
             throw std::invalid_argument(msg);
         };
@@ -56,39 +89,6 @@ namespace usylibpp::everything {
     private:
         std::wstring_view _str;
     };
-
-    /**
-     * Set to the defaults
-     */
-    struct SearchOptions {
-        bool MatchPath{false};
-        bool MatchCase{false};
-        bool MatchWholeWord{false};
-        bool Regex{false};
-        DWORD Max{0xffffffff};
-        DWORD Offset{0};
-        // HWND ReplyWindow{nullptr};
-        DWORD ReplyID{0};
-        DWORD Sort{EVERYTHING_SORT_NAME_ASCENDING};
-        DWORD RequestFlags{EVERYTHING_REQUEST_FILE_NAME | EVERYTHING_REQUEST_PATH};
-    };
-
-    /**
-     * Instance name is slightly sanatised. Don't trust it
-     * Compile time error if known at compile time otherwise runtime error
-     * Also only ever have one of these in an app
-     */
-    struct Everything {
-    private:
-        std::wstring instance_name;
-        std::wstring everything_path = L"everything.exe";
-        
-        std::unique_ptr<std::wstring> wndclass;
-
-        void reset_wndclass() {
-            _Everything_IPC_WndClass = EVERYTHING_IPC_WNDCLASS;
-            wndclass.reset();
-        }
     
     public:
         Everything(const Everything&) = delete;
@@ -216,7 +216,7 @@ namespace usylibpp::everything {
             return Everything_GetTotResults();
         }
 
-        [[nodiscard]] static inline auto do_query(const std::wstring& query, const SearchOptions& options = {}) {
+        [[nodiscard]] static inline auto do_query(const std::wstring& query, const EverythingSearch& options = {}) {
             Everything_Reset();
 
             Everything_SetMatchPath(options.MatchPath);

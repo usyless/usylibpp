@@ -18,7 +18,6 @@ namespace usylibpp {
     namespace types {}
     namespace print {}
     namespace init {}
-    namespace everything {}
 };
 
 namespace ulp = usylibpp;
@@ -28,7 +27,6 @@ namespace usylibpp {
     namespace str = strings;
     namespace fs = files;
     namespace wt = wintoast;
-    namespace et = everything;
 
     namespace windows {
         namespace proc = process;
