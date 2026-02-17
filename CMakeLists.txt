@@ -97,6 +97,9 @@ This includes windows.h along with various other headers, but enables all of the
             if(MSVC)
                 target_compile_options(usylibpp_common INTERFACE /GL)
                 target_link_options(usylibpp_common INTERFACE /LTCG)
+            elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+                target_compile_options(usylibpp_common INTERFACE -flto)
+                target_link_options(usylibpp_common INTERFACE -flto)
             endif()
         endif()
 
@@ -229,6 +232,20 @@ This includes windows.h along with various other headers, but enables all of the
                         /Gy
                     >
                 )
+            elseif (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+                target_compile_options(mohabouje_wintoast PRIVATE
+                    $<$<CONFIG:Debug>:
+                        -g
+                        -O0
+                    >
+
+                    $<$<CONFIG:Release>:
+                        -O3
+                        -ffunction-sections
+                        -fdata-sections
+                        -fomit-frame-pointer
+                    >
+                )
             endif()
 
             target_link_libraries(mohabouje_wintoast PUBLIC usylibpp_common)
@@ -301,6 +318,20 @@ This includes windows.h along with various other headers, but enables all of the
                         /Oi
                         /Oy
                         /Gy
+                    >
+                )
+            elseif (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+                target_compile_options(mohabouje_wintoast PRIVATE
+                    $<$<CONFIG:Debug>:
+                        -g
+                        -O0
+                    >
+
+                    $<$<CONFIG:Release>:
+                        -O3
+                        -ffunction-sections
+                        -fdata-sections
+                        -fomit-frame-pointer
                     >
                 )
             endif()
