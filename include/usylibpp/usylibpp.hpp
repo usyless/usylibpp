@@ -12,6 +12,8 @@
 #include "windows/strings.hpp" // IWYU pragma: export
 #endif
 
+#include "everything/everything.hpp" // IWYU pragma: export
+
 #include "discord.hpp" // IWYU pragma: export
 #include "strings.hpp" // IWYU pragma: export
 #include "files.hpp" // IWYU pragma: export

@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.20)
 project(
     usylibpp 
     VERSION 0.1.2
-    LANGUAGES CXX
+    LANGUAGES C CXX
 )
 
 set(CMAKE_SKIP_INSTALL_ALL_DEPENDENCY ON)
@@ -180,18 +180,21 @@ This includes windows.h along with various other headers, but enables all of the
             endif()
 
             add_library(mohabouje_wintoast STATIC
-                ${mohabouje_wintoast_SOURCE_DIR}/src/wintoastlib.cpp
+                "${mohabouje_wintoast_SOURCE_DIR}/src/wintoastlib.cpp"
             )
 
             target_compile_features(mohabouje_wintoast PRIVATE 
                 cxx_std_20
             )
 
+            target_compile_definitions(mohabouje_wintoast PRIVATE
+                $<$<CONFIG:Release>:NDEBUG>
+            )
+
             if (MSVC)
                 target_compile_options(mohabouje_wintoast PRIVATE
                     /EHsc
                     /Zc:preprocessor
-                    /await:strict
 
                     $<$<CONFIG:Debug>:
                         /RTC1
@@ -207,10 +210,10 @@ This includes windows.h along with various other headers, but enables all of the
                         /Gy
                     >
                 )
+            endif()
 
-                if (USYLIBPP_ENABLE_LTCG)
-                    target_link_libraries(mohabouje_wintoast PUBLIC usylibpp_ltcg)
-                endif()
+            if (USYLIBPP_ENABLE_LTCG)
+                target_link_libraries(mohabouje_wintoast PUBLIC usylibpp_ltcg)
             endif()
 
             target_include_directories(mohabouje_wintoast PUBLIC
@@ -235,6 +238,83 @@ This includes windows.h along with various other headers, but enables all of the
         if(USYLIBPP_ENABLE_WINDOWS_IMAGING)
             target_compile_definitions(usylibpp_usylibpp INTERFACE "USYLIBPP_ENABLE_WINDOWS_IMAGING")
         endif()
+
+        set(USYLIBPP_ENABLE_VOIDTOOLS_EVERYTHING
+            OFF
+            CACHE BOOL
+            "Enable use of the voidtools everything sdk"
+        )
+
+        message(STATUS "Voidtools Everything SDK Support (USYLIBPP_ENABLE_VOIDTOOLS_EVERYTHING): ${USYLIBPP_ENABLE_VOIDTOOLS_EVERYTHING}")
+
+        if(USYLIBPP_ENABLE_VOIDTOOLS_EVERYTHING)
+            target_compile_definitions(usylibpp_usylibpp INTERFACE "USYLIBPP_ENABLE_VOIDTOOLS_EVERYTHING")
+
+            set(USYLIBPP_VOIDTOOLS_EVERYTHING_URL "https://www.voidtools.com/Everything-SDK.zip")
+            set(USYLIBPP_VOIDTOOLS_EVERYTHING_ZIP "${USYLIBPP_DEPS_DIR}/everything.zip")
+            set(USYLIBPP_VOIDTOOLS_EVERYTHING_DIR "${USYLIBPP_DEPS_DIR}/voidtools-everything")
+
+            if(NOT EXISTS "${USYLIBPP_VOIDTOOLS_EVERYTHING_ZIP}")
+                message(STATUS "Downloading everything sdk...")
+                file(DOWNLOAD "${USYLIBPP_VOIDTOOLS_EVERYTHING_URL}" "${USYLIBPP_VOIDTOOLS_EVERYTHING_ZIP}" SHOW_PROGRESS)
+            endif()
+
+            if(NOT EXISTS "${USYLIBPP_VOIDTOOLS_EVERYTHING_DIR}")
+                message(STATUS "Extracting everything sdk...")
+                file(ARCHIVE_EXTRACT
+                    INPUT "${USYLIBPP_VOIDTOOLS_EVERYTHING_ZIP}"
+                    DESTINATION "${USYLIBPP_VOIDTOOLS_EVERYTHING_DIR}"
+                )
+            endif()
+
+            add_library(voidtools_everything STATIC 
+                "${USYLIBPP_VOIDTOOLS_EVERYTHING_DIR}/src/Everything.c"
+            )
+
+            target_compile_features(voidtools_everything PUBLIC 
+                c_std_11
+            )
+
+            target_include_directories(voidtools_everything PUBLIC 
+                "${USYLIBPP_VOIDTOOLS_EVERYTHING_DIR}/include"
+                "${USYLIBPP_VOIDTOOLS_EVERYTHING_DIR}/ipc"
+            )
+
+            target_compile_definitions(voidtools_everything PRIVATE
+                $<$<CONFIG:Debug>:
+                    BZ_NO_STDIO
+                    _DEBUG
+                >
+
+                $<$<CONFIG:Release>:NDEBUG>
+            )
+
+            if (MSVC)
+                target_compile_options(voidtools_everything PRIVATE
+                    /EHsc
+
+                    $<$<CONFIG:Debug>:
+                        /RTC1
+                        /Zi
+                        /Od
+                    >
+
+                    $<$<CONFIG:Release>:
+                        /O2
+                        /Ob2
+                        /Oi
+                        /Oy
+                        /Gy
+                    >
+                )
+            endif()
+
+            if (USYLIBPP_ENABLE_LTCG)
+                target_link_libraries(voidtools_everything PUBLIC usylibpp_ltcg)
+            endif()
+
+            target_link_libraries(usylibpp_usylibpp INTERFACE voidtools_everything)
+        endif()
     endif()
 endif()
 
@@ -250,6 +330,8 @@ if (PROJECT_IS_TOP_LEVEL)
     add_executable(usylibpp_test 
         "${PROJECT_SOURCE_DIR}/src/test.cpp"
     )
+
+    set(USYLIBPP_ENABLE_LTCG ON CACHE BOOL "" FORCE)
 
     target_link_libraries(usylibpp_test PRIVATE 
         usylibpp::usylibpp
