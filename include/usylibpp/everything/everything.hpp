@@ -69,11 +69,15 @@ namespace usylibpp::everything {
             .drain_queue_on_cancel = true,
             .type = util::WorkerType::ReturnDefault
         }> worker{1};
-        std::atomic_bool loaded{false};
         std::wstring instance_name;
         std::wstring everything_path = L"everything.exe";
         
         std::unique_ptr<std::wstring> wndclass;
+
+        void reset_wndclass() {
+            _Everything_IPC_WndClass = EVERYTHING_IPC_WNDCLASS;
+            wndclass.reset();
+        }
     
     public:
         Everything(const Everything&) = delete;
@@ -103,16 +107,18 @@ namespace usylibpp::everything {
             }
         }
 
-        void reset_wndclass() {
-            _Everything_IPC_WndClass = EVERYTHING_IPC_WNDCLASS;
-            wndclass.reset();
+        template <bool wait_for_completion = true>
+        [[nodiscard]] inline auto close_everything() {
+            return worker.post<wait_for_completion>([this]{
+                Everything_Exit();
+                Everything_CleanUp();
+
+                reset_wndclass();
+            });
         }
 
         ~Everything() {
-            Everything_Exit();
-            Everything_CleanUp();
-
-            reset_wndclass();
+            close_everything();
         }
 
         enum class LoadStatus {
@@ -130,7 +136,6 @@ namespace usylibpp::everything {
         [[nodiscard]] inline auto try_load() {
             return worker.post<wait_for_completion>([this]() -> LoadStatus {
                 if (everything_path.empty()) {
-                    loaded.store(false);
                     return LoadStatus::NoExeFound;
                 }
 
@@ -143,7 +148,6 @@ namespace usylibpp::everything {
                 });
 
                 if (status.status != windows::process::admin_process_output::Status::Success) {
-                    loaded.store(false);
                     if (status.status == windows::process::admin_process_output::Status::UACRejected) {
                         return LoadStatus::UACRejected;
                     }
@@ -158,11 +162,9 @@ namespace usylibpp::everything {
 
                 while (true) {
                     if (Everything_IsDBLoaded()) {
-                        loaded.store(true);
                         return LoadStatus::Success;
                     } else if (Everything_GetLastError()) {
                         // IPC not running.
-                        loaded.store(false);
                         reset_wndclass();
                         return LoadStatus::NotRunning;
                     }
@@ -171,7 +173,6 @@ namespace usylibpp::everything {
                     std::this_thread::sleep_for(std::chrono::seconds(1));
                 }
 
-                loaded.store(false);
                 reset_wndclass();
                 return LoadStatus::NotRunning;
             });
