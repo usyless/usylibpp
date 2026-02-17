@@ -217,27 +217,27 @@ namespace usylibpp {
             Everything_Reset();
         }
 
-        [[nodiscard]] static inline auto get_file_resuts_count() {
+        [[nodiscard]] static inline auto query_file_count() {
             return Everything_GetNumFileResults();
         }
 
-        [[nodiscard]] static inline auto get_folder_results_count() {
+        [[nodiscard]] static inline auto query_folder_count() {
             return Everything_GetNumFolderResults();
         }
 
-        [[nodiscard]] static inline auto get_resuts_count() {
+        [[nodiscard]] static inline auto query_results_count() {
             return Everything_GetNumResults();
         }
 
-        [[nodiscard]] static inline auto get_total_file_results() {
+        [[nodiscard]] static inline auto total_file_results() {
             return Everything_GetTotFileResults();
         }
 
-        [[nodiscard]] static inline auto get_total_folder_results() {
+        [[nodiscard]] static inline auto total_folder_results() {
             return Everything_GetTotFolderResults();
         }
 
-        [[nodiscard]] static inline auto get_total_results() {
+        [[nodiscard]] static inline auto total_results() {
             return Everything_GetTotResults();
         }
 
@@ -265,7 +265,7 @@ namespace usylibpp {
          */
         template <EverythingExtra::CallbacksType CB>
         static inline void walk_results(CB&& cb) {
-            const auto results_count = get_resuts_count();
+            const auto results_count = query_results_count();
 
             #pragma push_macro("HANDLE")
             #undef HANDLE
