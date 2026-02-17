@@ -173,5 +173,53 @@ int main() {
     }
     #endif
 
-    everything::Everything test{L"usylibpp_test"};
+    #ifdef USYLIBPP_ENABLE_VOIDTOOLS_EVERYTHING
+    print::println("Everything stuff (make sure to put everything.exe in everything\\everything.exe in the directory of the executable):");
+    {
+        print::println("Everything is loading... this may take a while for the first run");
+        Everything everything{L"usylibpp_test", L"everything\\everything.exe"};
+        switch (everything.try_load()) {
+            case Everything::LoadStatus::Success: {
+                print::println("Successfully loaded everything!");
+                const auto executable_path_opt = windows::current_executable_path();
+                if (executable_path_opt) {
+                    const auto build_folder = executable_path_opt->get().parent_path().parent_path();
+                    const std::wstring query = strings::concat_strings(build_folder.native(), L"\\*");
+                    print::println("Performing query: {}", windows::to_utf8_or_default(query));
+                    if (everything.do_query(query)) {
+                        print::println("Query success!");
+
+                        print::println("File count: {} ; Directory count: {} ; Total results count: {}", everything.query_file_count(), everything.query_folder_count(), everything.query_results_count());
+                    } else {
+                        print::println("Query failed!");
+                    }
+                } else {
+                    print::println("Failed to get executable path! Not testing everything query...");
+                }
+                break;
+            }
+            case Everything::LoadStatus::FailedToLaunchExe: {
+                print::println("Failed to launch everything exe!");
+                break;
+            }
+            case Everything::LoadStatus::NoExeFound: {
+                print::println("Everything exe not found!");
+                break;
+            }
+            case Everything::LoadStatus::NotRunning: {
+                print::println("Everything failed to run (not running)!");
+                break;
+            }
+            case Everything::LoadStatus::OtherError: {
+                print::println("Other error occurred loading everything!");
+                break;
+            }
+            case Everything::LoadStatus::UACRejected: {
+                print::println("UAC Prompt rejected!");
+                break;
+            }
+        }
+        // closed when out of scope
+    }
+    #endif
 }
