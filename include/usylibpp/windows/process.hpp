@@ -9,6 +9,7 @@
 #include <windows.h>
 #include <shellapi.h>
 #include "../types.hpp"
+#include "char_t.hpp"
 
 #include <wil/resource.h>
 #include <wil/com.h>
@@ -287,10 +288,10 @@ namespace usylibpp::windows::process {
     }
 
     struct admin_process_settings {
-        const std::wstring* filename;
-        const std::wstring* args{nullptr};
+        const std::basic_string<WIN_CHAR>* filename;
+        const std::basic_string<WIN_CHAR>* args{nullptr};
 
-        const std::wstring* working_directory{nullptr};
+        const std::basic_string<WIN_CHAR>* working_directory{nullptr};
     };
 
     struct admin_process_options {
@@ -317,17 +318,21 @@ namespace usylibpp::windows::process {
             return { admin_process_output::Status::NoFilename };
         }
 
-        SHELLEXECUTEINFOW sei{};
+        SHELLEXECUTEINFO sei{};
         sei.cbSize = sizeof(sei);
         sei.fMask  = SEE_MASK_NOCLOSEPROCESS;
         sei.hwnd   = nullptr;
+        #ifdef UNICODE
         sei.lpVerb = L"runas";
+        #else
+        sei.lpVerb = "runas";
+        #endif
         sei.lpFile = options.filename->c_str();
         sei.lpParameters = (!options.args || options.args->empty()) ? nullptr : options.args->c_str();
         sei.lpDirectory = (!options.working_directory || options.working_directory->empty()) ? nullptr : options.working_directory->c_str();
         sei.nShow = (opts.allow_visible_windows) ? SW_SHOW : SW_HIDE;
 
-        if (!ShellExecuteExW(&sei)) {
+        if (!ShellExecuteEx(&sei)) {
             if (GetLastError() == ERROR_CANCELLED) {
                 return { admin_process_output::Status::UACRejected };
             }
