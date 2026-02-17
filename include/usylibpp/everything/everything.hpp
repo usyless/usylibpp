@@ -5,7 +5,6 @@
 #include "../aliases.hpp" // IWYU pragma: export
 #include "../util/worker.hpp"
 #include "../windows/process.hpp"
-#include "../windows.hpp"
 #include "../strings.hpp"
 
 #include <Everything.h>
@@ -71,7 +70,6 @@ namespace usylibpp::everything {
             .type = util::WorkerType::ReturnDefault
         }> worker{1};
         std::atomic_bool loaded{false};
-        wil::unique_handle hjob;
         std::wstring instance_name;
         std::wstring everything_path = L"everything.exe";
         
@@ -123,7 +121,9 @@ namespace usylibpp::everything {
 
             NoExeFound,
             FailedToLaunchExe,
-            OtherError
+            OtherError,
+
+            UACRejected
         };
         
         template <bool wait_for_completion = true>
@@ -134,30 +134,23 @@ namespace usylibpp::everything {
                     return LoadStatus::NoExeFound;
                 }
 
-                if (everything_path == L"everything.exe" && !windows::exe_exists(L"everything.exe")) {
-                    loaded.store(false);
-                    return LoadStatus::NoExeFound;
-                }
-
-                auto status = windows::process::run_process<windows::process::process_options{
-                    .allow_visible_windows = false,
-                    .set_lifetime_of_subprocess_to_this_process = true,
-                    .one_shot_process = true
-                }>(windows::process::process_settings{
-                    .commandline = strings::concat_strings( // instance name should always be valid?
-                        everything_path, L" -instance \"", instance_name, L"\" "
-                        L"-enable-run-as-admin -noapp-data -disable-update-notification -admin -startup"
-                    )
+                const auto args = strings::concat_strings(L"-instance \"", instance_name, L"\" -admin -startup -is-run-as");
+                auto status = windows::process::run_admin_process<{
+                    .allow_visible_windows = true,
+                }>({
+                    .filename = &everything_path,
+                    .args = &args
                 });
 
-                if (status.status != 0) {
+                if (status.status != windows::process::admin_process_output::Status::Success) {
                     loaded.store(false);
+                    if (status.status == windows::process::admin_process_output::Status::UACRejected) {
+                        return LoadStatus::UACRejected;
+                    }
                     return LoadStatus::OtherError;
                 }
 
-                hjob = std::move(status.hJob);
-
-                std::this_thread::sleep_for(std::chrono::seconds(3));
+                std::this_thread::sleep_for(std::chrono::seconds(1));
 
                 wndclass = std::make_unique<std::wstring>(strings::concat_strings(EVERYTHING_IPC_WNDCLASS, L"_(", instance_name, L")"));
 
