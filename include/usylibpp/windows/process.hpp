@@ -74,6 +74,11 @@ namespace usylibpp::windows::process {
         std::string stderr_{};
     };
 
+    struct one_shot_process_output {
+        int status = -1; // 0 if no early error
+        wil::unique_handle hJob;
+    };
+
     template <
         typename F1 = types::noop_t,
         typename F2 = types::noop_t
@@ -106,6 +111,7 @@ namespace usylibpp::windows::process {
         bool set_lifetime_of_subprocess_to_this_process = true;
         bool on_stdout_line_call_on_lines = true; // otherwise only call on buffer full
         bool on_stderr_line_call_on_lines = true;
+        bool one_shot_process = false; // returns -1 as the status code
     };
 
     /**
@@ -113,7 +119,7 @@ namespace usylibpp::windows::process {
         * Blocks until the process exits
         */
     template <process_options opts = {}, process_settings_type settings>
-    inline process_output run_process(settings&& options) {
+    inline std::conditional_t<opts.one_shot_process, one_shot_process_output, process_output> run_process(settings&& options) {
         if (options.commandline.empty()) {
             return { -1 };
         }
@@ -131,53 +137,53 @@ namespace usylibpp::windows::process {
         wil::unique_handle hStdErrRead = NULL, hStdErrWrite = NULL;
         wil::unique_handle hStdInRead = NULL, hStdInWrite = NULL;
 
-        {
-        HANDLE hReadOut = NULL, hWriteOut = NULL;
-        HANDLE hReadErr = NULL, hWriteErr = NULL;
-        HANDLE hInRead = NULL, hInWrite = NULL;
-        
-        if constexpr (opts.capture_stdout || !IS_NOOP(on_stdout_line)) {
-            if (!CreatePipe(&hReadOut, &hWriteOut, &saAttr, 0)) {
-                return { -1 };
-            }
-        }
-
-        hStdOutRead.reset(hReadOut);
-        hStdOutWrite.reset(hWriteOut);
-
-        if constexpr (opts.capture_stdout || !IS_NOOP(on_stdout_line)) {
-            if (!SetHandleInformation(hStdOutRead.get(), HANDLE_FLAG_INHERIT, 0)) {
-                return { -1 };
-            }
-        }
-
-        if constexpr (opts.capture_stderr || !IS_NOOP(on_stderr_line)) {
-            if (!CreatePipe(&hReadErr, &hWriteErr, &saAttr, 0)) {
-                return { -1 };
-            }
-        }
-
-        hStdErrRead.reset(hReadErr);
-        hStdErrWrite.reset(hWriteErr);
-
-        if constexpr (opts.capture_stderr || !IS_NOOP(on_stderr_line)) {
-            if (!SetHandleInformation(hStdErrRead.get(), HANDLE_FLAG_INHERIT, 0)) {
-                return { -1 };
-            }
-        }
-
-        if (!options.input.empty()) {
-            if (!CreatePipe(&hInRead, &hInWrite, &saAttr, 0)) {
-                return { -1 };
-            }
+        if constexpr (!opts.one_shot_process) {
+            HANDLE hReadOut = NULL, hWriteOut = NULL;
+            HANDLE hReadErr = NULL, hWriteErr = NULL;
+            HANDLE hInRead = NULL, hInWrite = NULL;
             
-            hStdInRead.reset(hInRead);
-            hStdInWrite.reset(hInWrite);
-
-            if (!SetHandleInformation(hStdInWrite.get(), HANDLE_FLAG_INHERIT, 0)) {
-                return { -1 };
+            if constexpr (opts.capture_stdout || !IS_NOOP(on_stdout_line)) {
+                if (!CreatePipe(&hReadOut, &hWriteOut, &saAttr, 0)) {
+                    return { -1 };
+                }
             }
-        }
+
+            hStdOutRead.reset(hReadOut);
+            hStdOutWrite.reset(hWriteOut);
+
+            if constexpr (opts.capture_stdout || !IS_NOOP(on_stdout_line)) {
+                if (!SetHandleInformation(hStdOutRead.get(), HANDLE_FLAG_INHERIT, 0)) {
+                    return { -1 };
+                }
+            }
+
+            if constexpr (opts.capture_stderr || !IS_NOOP(on_stderr_line)) {
+                if (!CreatePipe(&hReadErr, &hWriteErr, &saAttr, 0)) {
+                    return { -1 };
+                }
+            }
+
+            hStdErrRead.reset(hReadErr);
+            hStdErrWrite.reset(hWriteErr);
+
+            if constexpr (opts.capture_stderr || !IS_NOOP(on_stderr_line)) {
+                if (!SetHandleInformation(hStdErrRead.get(), HANDLE_FLAG_INHERIT, 0)) {
+                    return { -1 };
+                }
+            }
+
+            if (!options.input.empty()) {
+                if (!CreatePipe(&hInRead, &hInWrite, &saAttr, 0)) {
+                    return { -1 };
+                }
+                
+                hStdInRead.reset(hInRead);
+                hStdInWrite.reset(hInWrite);
+
+                if (!SetHandleInformation(hStdInWrite.get(), HANDLE_FLAG_INHERIT, 0)) {
+                    return { -1 };
+                }
+            }
         }
 
         STARTUPINFO si{};
@@ -239,41 +245,43 @@ namespace usylibpp::windows::process {
             }
         }
 
-        std::string stdoutOutput;
-        std::string stderrOutput;
+        if constexpr (!opts.one_shot_process) {
+            std::string stdoutOutput;
+            std::string stderrOutput;
 
-        {
-        std::jthread stdoutThread;
-        if constexpr (opts.capture_stdout || !IS_NOOP(on_stdout_line)) {
-            stdoutThread = std::jthread([&stdoutOutput, hStdOutRead = hStdOutRead.get(), &options](std::stop_token st) {
-                stdoutOutput = internal::read_from_pipe<opts.capture_stdout, opts.on_stdout_line_call_on_lines>(st, hStdOutRead, options.on_stdout_line);
-            });
+            std::jthread stdoutThread;
+            if constexpr (opts.capture_stdout || !IS_NOOP(on_stdout_line)) {
+                stdoutThread = std::jthread([&stdoutOutput, hStdOutRead = hStdOutRead.get(), &options](std::stop_token st) {
+                    stdoutOutput = internal::read_from_pipe<opts.capture_stdout, opts.on_stdout_line_call_on_lines>(st, hStdOutRead, options.on_stdout_line);
+                });
+            }
+
+            std::jthread stderrThread;
+            if constexpr (opts.capture_stderr || !IS_NOOP(on_stderr_line)) {
+                stderrThread = std::jthread([&stderrOutput, hStdErrRead = hStdErrRead.get(), &options](std::stop_token st) {
+                    stderrOutput = internal::read_from_pipe<opts.capture_stderr, opts.on_stderr_line_call_on_lines>(st, hStdErrRead, options.on_stderr_line);
+                });
+            }
+
+            DWORD result = WaitForSingleObject(process.get(), options.wait_for_ms);
+
+            if (result == WAIT_TIMEOUT) { 
+                TerminateProcess(process.get(), 1); 
+                WaitForSingleObject(process.get(), INFINITE);
+
+                if (stdoutThread.joinable()) stdoutThread.request_stop();
+                if (stderrThread.joinable()) stderrThread.request_stop();
+            }
+
+            DWORD exitCode = 0;
+            GetExitCodeProcess(process.get(), &exitCode);
+
+            #pragma pop_macro("IS_NOOP")
+
+            return process_output{ static_cast<int>(exitCode), stdoutOutput, stderrOutput };
+        } else {
+            return one_shot_process_output{ 0, std::move(hJob) };
         }
-
-        std::jthread stderrThread;
-        if constexpr (opts.capture_stderr || !IS_NOOP(on_stderr_line)) {
-            stderrThread = std::jthread([&stderrOutput, hStdErrRead = hStdErrRead.get(), &options](std::stop_token st) {
-                stderrOutput = internal::read_from_pipe<opts.capture_stderr, opts.on_stderr_line_call_on_lines>(st, hStdErrRead, options.on_stderr_line);
-            });
-        }
-
-        DWORD result = WaitForSingleObject(process.get(), options.wait_for_ms);
-
-        if (result == WAIT_TIMEOUT) { 
-            TerminateProcess(process.get(), 1); 
-            WaitForSingleObject(process.get(), INFINITE);
-
-            if (stdoutThread.joinable()) stdoutThread.request_stop();
-            if (stderrThread.joinable()) stderrThread.request_stop();
-        }
-        }
-
-        DWORD exitCode = 0;
-        GetExitCodeProcess(process.get(), &exitCode);
-
-        #pragma pop_macro("IS_NOOP")
-
-        return { static_cast<int>(exitCode), stdoutOutput, stderrOutput };
     }
 }
 #endif
