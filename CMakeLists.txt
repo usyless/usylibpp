@@ -69,6 +69,21 @@ This includes windows.h along with various other headers, but enables all of the
             )
         endif()
 
+        add_library(usylibpp_ltcg INTERFACE)
+
+        if (MSVC)
+            target_compile_options(usylibpp_ltcg INTERFACE /GL)
+            target_link_options(usylibpp_ltcg INTERFACE /LTCG)
+        endif()
+
+        set(USYLIBPP_ENABLE_LTCG
+            ON
+            CACHE BOOL
+            "Enable LTCG for any dependencies that need compilation"
+        )
+
+        message(STATUS "Using LTCG for compiled dependencies: (USYLIBPP_ENABLE_LTCG): ${USYLIBPP_ENABLE_LTCG}")
+
         set(USYLIBPP_ENABLE_TASK_DIALOG_DARK_MODE
             ON
             CACHE BOOL
@@ -171,6 +186,32 @@ This includes windows.h along with various other headers, but enables all of the
             target_compile_features(mohabouje_wintoast PRIVATE 
                 cxx_std_20
             )
+
+            if (MSVC)
+                target_compile_options(mohabouje_wintoast PRIVATE
+                    /EHsc
+                    /Zc:preprocessor
+                    /await:strict
+
+                    $<$<CONFIG:Debug>:
+                        /RTC1
+                        /Zi
+                        /Od
+                    >
+
+                    $<$<CONFIG:Release>:
+                        /O2
+                        /Ob2
+                        /Oi
+                        /Oy
+                        /Gy
+                    >
+                )
+
+                if (USYLIBPP_ENABLE_LTCG)
+                    target_link_libraries(mohabouje_wintoast PUBLIC lusylibpp_ltcg)
+                endif()
+            endif()
 
             target_include_directories(mohabouje_wintoast PUBLIC
                 ${mohabouje_wintoast_SOURCE_DIR}/include
