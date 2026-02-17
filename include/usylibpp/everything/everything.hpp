@@ -202,6 +202,13 @@ namespace usylibpp::everything {
         }
 
         template <bool wait_for_completion = true>
+        [[nodiscard]] inline auto reset_results() {
+            return worker.post<wait_for_completion>([]{
+                Everything_Reset();
+            });
+        }
+
+        template <bool wait_for_completion = true>
         [[nodiscard]] inline auto do_query(const std::wstring& query, const SearchOptions& options = {}) {
             constexpr auto do_query = [](const std::wstring& query, const SearchOptions& options) {
                 Everything_Reset();
@@ -222,11 +229,11 @@ namespace usylibpp::everything {
                 return Everything_Query(TRUE);
             };
             if constexpr (wait_for_completion) {
-                return worker.post<wait_for_completion>([&query, &options]() {
+                return worker.post<wait_for_completion>([&query, &options]{
                     return do_query(query, options);
                 });
             } else {
-                return worker.post<wait_for_completion>([query, options]() {
+                return worker.post<wait_for_completion>([query, options]{
                     return do_query(query, options);
                 });
             }
