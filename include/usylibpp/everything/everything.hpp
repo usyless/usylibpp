@@ -10,21 +10,46 @@
 #include <everything_ipc.h>
 
 namespace usylibpp {
-    /**
-    * Set to the defaults
-    */
-    struct EverythingSearch {
-        bool MatchPath{false};
-        bool MatchCase{false};
-        bool MatchWholeWord{false};
-        bool Regex{false};
-        DWORD Max{0xffffffff};
-        DWORD Offset{0};
-        // HWND ReplyWindow{nullptr};
-        DWORD ReplyID{0};
-        DWORD Sort{EVERYTHING_SORT_NAME_ASCENDING};
-        DWORD RequestFlags{EVERYTHING_REQUEST_FILE_NAME | EVERYTHING_REQUEST_PATH};
-    };
+    namespace EverythingExtra {
+        /**
+        * Set to the defaults
+        */
+        struct EverythingSearch {
+            bool MatchPath{false};
+            bool MatchCase{false};
+            bool MatchWholeWord{false};
+            bool Regex{false};
+            DWORD Max{0xffffffff};
+            DWORD Offset{0};
+            // HWND ReplyWindow{nullptr};
+            DWORD ReplyID{0};
+            DWORD Sort{EVERYTHING_SORT_NAME_ASCENDING};
+            DWORD RequestFlags{EVERYTHING_REQUEST_FILE_NAME | EVERYTHING_REQUEST_PATH};
+        };
+
+        template <
+            typename F1 = types::noop_t,
+            typename F2 = types::noop_t,
+            typename F3 = types::noop_t
+        >
+        requires (std::invocable<F1, DWORD> && 
+                std::invocable<F2, DWORD> && 
+                std::invocable<F3, DWORD>)
+        struct Callbacks {
+            F1 on_file{};
+            F2 on_directory{};
+            F3 on_volume{};
+        };
+
+        template <typename>
+        struct is_callbacks : std::false_type {};
+
+        template <typename F1, typename F2, typename F3>
+        struct is_callbacks<Callbacks<F1, F2, F3>> : std::true_type {};
+
+        template <typename T>
+        concept CallbacksType = is_callbacks<std::remove_cvref_t<T>>::value;
+    }
 
     /**
      * Instance name is slightly sanatised. Don't trust it
@@ -216,7 +241,7 @@ namespace usylibpp {
             return Everything_GetTotResults();
         }
 
-        [[nodiscard]] static inline auto do_query(const std::wstring& query, const EverythingSearch& options = {}) {
+        [[nodiscard]] static inline auto do_query(const std::wstring& query, const EverythingExtra::EverythingSearch& options = {}) {
             Everything_Reset();
 
             Everything_SetMatchPath(options.MatchPath);
@@ -233,6 +258,36 @@ namespace usylibpp {
             Everything_SetSearch(query.c_str());
 
             return Everything_Query(TRUE);
+        }
+
+        /**
+         * Use the Everything_Get... functions using the index to get the require data
+         */
+        template <EverythingExtra::CallbacksType CB>
+        static inline void walk_results(CB&& cb) {
+            const auto results_count = get_resuts_count();
+
+            #pragma push_macro("HANDLE")
+            #undef HANDLE
+            #define HANDLE(checkresult, func) \
+            if constexpr (!std::is_same_v<decltype(std::declval<CB>().func), types::noop_t>) { \
+                if (checkresult(i)) { \
+                    if constexpr (std::is_same_v<std::invoke_result_t<decltype(std::declval<CB>().func), DWORD>, bool>) { \
+                        if (!std::invoke(cb.func, i)) break; \
+                    } else { \
+                        std::invoke(cb.func, i); \
+                    } \
+                    continue; \
+                } \
+            }
+
+            for (DWORD i = 0; i < results_count; ++i) {
+                HANDLE(Everything_IsFileResult, on_file);
+                HANDLE(Everything_IsFolderResult, on_directory);
+                HANDLE(Everything_IsVolumeResult, on_volume);
+            }
+
+            #pragma pop_macro("HANDLE")
         }
     };
 }
