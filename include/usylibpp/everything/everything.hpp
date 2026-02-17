@@ -44,7 +44,7 @@ namespace usylibpp {
         }
 
     static inline constexpr void validate_name(std::wstring_view name) {
-        auto fail = [&](auto&& msg) {
+        constexpr auto fail = [&](auto&& msg) {
             throw std::invalid_argument(msg);
         };
 
