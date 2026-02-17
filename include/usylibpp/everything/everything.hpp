@@ -59,6 +59,22 @@ namespace usylibpp::everything {
     };
 
     /**
+     * Set to the defaults
+     */
+    struct SearchOptions {
+        bool MatchPath{false};
+        bool MatchCase{false};
+        bool MatchWholeWord{false};
+        bool Regex{false};
+        DWORD Max{0xffffffff};
+        DWORD Offset{0};
+        // HWND ReplyWindow{nullptr};
+        DWORD ReplyID{0};
+        DWORD Sort{EVERYTHING_SORT_NAME_ASCENDING};
+        DWORD RequestFlags{EVERYTHING_REQUEST_FILE_NAME | EVERYTHING_REQUEST_PATH};
+    };
+
+    /**
      * Instance name is slightly sanatised. Don't trust it
      * Compile time error if known at compile time otherwise runtime error
      * Also only ever have one of these in an app
@@ -183,6 +199,37 @@ namespace usylibpp::everything {
             return worker.post<wait_for_completion>([]() -> bool {
                 return Everything_IsDBLoaded();
             });
+        }
+
+        template <bool wait_for_completion = true>
+        [[nodiscard]] inline auto do_query(const std::wstring& query, const SearchOptions& options = {}) {
+            constexpr auto do_query = [](const std::wstring& query, const SearchOptions& options) {
+                Everything_Reset();
+
+                Everything_SetMatchPath(options.MatchPath);
+                Everything_SetMatchCase(options.MatchCase);
+                Everything_SetMatchWholeWord(options.MatchWholeWord);
+                Everything_SetRegex(options.Regex);
+                Everything_SetMax(options.Max);
+                Everything_SetOffset(options.Offset);
+                // Everything_SetReplyWindow(options.ReplyWindow);
+                Everything_SetReplyID(options.ReplyID);
+                Everything_SetSort(options.Sort);
+                Everything_SetRequestFlags(options.RequestFlags);
+
+                Everything_SetSearch(query.c_str());
+
+                return Everything_Query(TRUE);
+            };
+            if constexpr (wait_for_completion) {
+                return worker.post<wait_for_completion>([&query, &options]() {
+                    return do_query(query, options);
+                });
+            } else {
+                return worker.post<wait_for_completion>([query, options]() {
+                    return do_query(query, options);
+                });
+            }
         }
     };
 }
