@@ -53,13 +53,6 @@ This includes windows.h along with various other headers, but enables all of the
     if (USYLIBPP_ENABLE_WINDOWS)
         target_compile_definitions(usylibpp_usylibpp INTERFACE "USYLIBPP_ENABLE_WINDOWS")
 
-        add_library(usylibpp_unicode INTERFACE)
-
-        target_compile_definitions(usylibpp_unicode INTERFACE 
-            "_UNICODE"
-            "UNICODE"
-        )
-
         set(USYLIBPP_ENABLE_WINDOWS_UNICODE
             ON
             CACHE BOOL
@@ -67,10 +60,6 @@ This includes windows.h along with various other headers, but enables all of the
         )
 
         message(STATUS "Using unicode defines: (USYLIBPP_ENABLE_WINDOWS_UNICODE): ${USYLIBPP_ENABLE_WINDOWS_UNICODE}")
-
-        if(USYLIBPP_ENABLE_WINDOWS_UNICODE)
-            target_link_libraries(usylibpp_usylibpp INTERFACE usylibpp_unicode)
-        endif()
 
         set(USYLIBPP_ENABLE_BASIC_WINDOWS_DEFINES
             ON
@@ -87,13 +76,6 @@ This includes windows.h along with various other headers, but enables all of the
             )
         endif()
 
-        add_library(usylibpp_ltcg INTERFACE)
-
-        if (MSVC)
-            target_compile_options(usylibpp_ltcg INTERFACE /GL)
-            target_link_options(usylibpp_ltcg INTERFACE /LTCG)
-        endif()
-
         set(USYLIBPP_ENABLE_LTCG
             ON
             CACHE BOOL
@@ -101,6 +83,29 @@ This includes windows.h along with various other headers, but enables all of the
         )
 
         message(STATUS "Using LTCG for compiled dependencies: (USYLIBPP_ENABLE_LTCG): ${USYLIBPP_ENABLE_LTCG}")
+
+        add_library(usylibpp_common INTERFACE)
+
+        if(USYLIBPP_ENABLE_WINDOWS_UNICODE)
+            target_compile_definitions(usylibpp_common INTERFACE 
+                "_UNICODE"
+                "UNICODE"
+            )
+        endif()
+
+        if(USYLIBPP_ENABLE_LTCG)
+            if(MSVC)
+                target_compile_options(usylibpp_common INTERFACE /GL)
+                target_link_options(usylibpp_common INTERFACE /LTCG)
+            endif()
+        endif()
+
+        target_compile_definitions(usylibpp_common INTERFACE
+            $<$<CONFIG:Debug>:_DEBUG>
+            $<$<CONFIG:Release>:NDEBUG>
+        )
+
+        target_link_libraries(usylibpp_usylibpp INTERFACE usylibpp_common)
 
         set(USYLIBPP_ENABLE_TASK_DIALOG_DARK_MODE
             ON
@@ -205,10 +210,6 @@ This includes windows.h along with various other headers, but enables all of the
                 cxx_std_20
             )
 
-            target_compile_definitions(mohabouje_wintoast PRIVATE
-                $<$<CONFIG:Release>:NDEBUG>
-            )
-
             if (MSVC)
                 target_compile_options(mohabouje_wintoast PRIVATE
                     /EHsc
@@ -230,13 +231,7 @@ This includes windows.h along with various other headers, but enables all of the
                 )
             endif()
 
-            if (USYLIBPP_ENABLE_LTCG)
-                target_link_libraries(mohabouje_wintoast PUBLIC usylibpp_ltcg)
-            endif()
-
-            if(USYLIBPP_ENABLE_WINDOWS_UNICODE)
-                target_link_libraries(mohabouje_wintoast INTERFACE usylibpp_unicode)
-            endif()
+            target_link_libraries(mohabouje_wintoast PUBLIC usylibpp_common)
 
             target_include_directories(mohabouje_wintoast PUBLIC
                 ${mohabouje_wintoast_SOURCE_DIR}/include
@@ -279,7 +274,7 @@ This includes windows.h along with various other headers, but enables all of the
             )
 
             target_compile_features(voidtools_everything PRIVATE 
-                c_std_11
+                c_std_17
             )
 
             target_include_directories(voidtools_everything PUBLIC 
@@ -287,12 +282,7 @@ This includes windows.h along with various other headers, but enables all of the
             )
 
             target_compile_definitions(voidtools_everything PRIVATE
-                $<$<CONFIG:Debug>:
-                    BZ_NO_STDIO
-                    _DEBUG
-                >
-
-                $<$<CONFIG:Release>:NDEBUG>
+                $<$<CONFIG:Debug>:BZ_NO_STDIO>
             )
 
             if (MSVC)
@@ -315,14 +305,7 @@ This includes windows.h along with various other headers, but enables all of the
                 )
             endif()
 
-            if (USYLIBPP_ENABLE_LTCG)
-                target_link_libraries(voidtools_everything PUBLIC usylibpp_ltcg)
-            endif()
-
-            if(USYLIBPP_ENABLE_WINDOWS_UNICODE)
-                target_link_libraries(voidtools_everything INTERFACE usylibpp_unicode)
-            endif()
-
+            target_link_libraries(voidtools_everything PUBLIC usylibpp_common)
             target_link_libraries(usylibpp_usylibpp INTERFACE voidtools_everything)
         endif()
     endif()

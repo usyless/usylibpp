@@ -1152,8 +1152,7 @@ static DWORD _Everything_GetNumResults(void)
 			ret = ((EVERYTHING_IPC_LISTA *)_Everything_List)->numitems;
 		}
 	}
-	else
-	if (_Everything_List2)
+	else if (_Everything_List2)
 	{
 		ret = _Everything_List2->numitems;
 	}
@@ -1255,8 +1254,7 @@ DWORD EVERYTHINGAPI Everything_GetTotResults(void)
 			ret = ((EVERYTHING_IPC_LISTA *)_Everything_List)->totitems;
 		}
 	}
-	else
-	if (_Everything_List2)
+	else if (_Everything_List2)
 	{
 		ret = _Everything_List2->totitems;
 	}
@@ -1298,8 +1296,7 @@ BOOL EVERYTHINGAPI Everything_IsVolumeResult(DWORD dwIndex)
 			ret = FALSE;
 		}
 	}
-	else
-	if (_Everything_List2)
+	else if (_Everything_List2)
 	{
 		if (_Everything_IsValidResultIndex(dwIndex))
 		{
@@ -1350,8 +1347,7 @@ BOOL EVERYTHINGAPI Everything_IsFolderResult(DWORD dwIndex)
 			ret = FALSE;
 		}
 	}
-	else
-	if (_Everything_List2)
+	else if (_Everything_List2)
 	{
 		if (_Everything_IsValidResultIndex(dwIndex))
 		{
@@ -1402,8 +1398,7 @@ BOOL EVERYTHINGAPI Everything_IsFileResult(DWORD dwIndex)
 			ret = FALSE;
 		}
 	}
-	else
-	if (_Everything_List2)
+	else if (_Everything_List2)
 	{
 		if (_Everything_IsValidResultIndex(dwIndex))
 		{
@@ -1447,8 +1442,7 @@ LPCWSTR EVERYTHINGAPI Everything_GetResultFileNameW(DWORD dwIndex)
 			ret = NULL;
 		}
 	}
-	else
-	if ((_Everything_List2) && (_Everything_IsUnicodeQuery))
+	else if ((_Everything_List2) && (_Everything_IsUnicodeQuery))
 	{
 		if (_Everything_IsValidResultIndex(dwIndex))
 		{
@@ -1502,8 +1496,7 @@ LPCSTR EVERYTHINGAPI Everything_GetResultFileNameA(DWORD dwIndex)
 			ret = NULL;
 		}
 	}
-	else
-	if ((_Everything_List2) && (!_Everything_IsUnicodeQuery))
+	else if ((_Everything_List2) && (!_Everything_IsUnicodeQuery))
 	{
 		if (_Everything_IsValidResultIndex(dwIndex))
 		{
@@ -1557,8 +1550,7 @@ LPCWSTR EVERYTHINGAPI Everything_GetResultPathW(DWORD dwIndex)
 			ret = NULL;
 		}
 	}
-	else
-	if ((_Everything_List2) && (_Everything_IsUnicodeQuery))
+	else if ((_Everything_List2) && (_Everything_IsUnicodeQuery))
 	{
 		if (_Everything_IsValidResultIndex(dwIndex))
 		{
@@ -1612,8 +1604,7 @@ LPCSTR EVERYTHINGAPI Everything_GetResultPathA(DWORD dwIndex)
 			ret = NULL;
 		}
 	}
-	else
-	if ((_Everything_List2) && (!_Everything_IsUnicodeQuery))
+	else if ((_Everything_List2) && (!_Everything_IsUnicodeQuery))
 	{
 		if (_Everything_IsValidResultIndex(dwIndex))
 		{
@@ -1833,8 +1824,7 @@ DWORD EVERYTHINGAPI Everything_GetResultFullPathNameW(DWORD dwIndex,LPWSTR wbuf,
 			len = _Everything_CopyW(wbuf,wbuf_size_in_wchars,0,L"");
 		}
 	}
-	else
-	if (_Everything_List2)
+	else if (_Everything_List2)
 	{
 		if (_Everything_IsValidResultIndex(dwIndex))
 		{
@@ -1981,8 +1971,7 @@ DWORD EVERYTHINGAPI Everything_GetResultFullPathNameA(DWORD dwIndex,LPSTR buf,DW
 			len = _Everything_CopyA(buf,bufsize,0,"");
 		}
 	}
-	else
-	if (_Everything_List2)
+	else if (_Everything_List2)
 	{
 		if (_Everything_IsValidResultIndex(dwIndex))
 		{
