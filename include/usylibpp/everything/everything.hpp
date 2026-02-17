@@ -105,11 +105,16 @@ namespace usylibpp::everything {
             }
         }
 
+        void reset_wndclass() {
+            _Everything_IPC_WndClass = EVERYTHING_IPC_WNDCLASS;
+            wndclass.reset();
+        }
+
         ~Everything() {
             Everything_Exit();
             Everything_CleanUp();
 
-            _Everything_IPC_WndClass = EVERYTHING_IPC_WNDCLASS;
+            reset_wndclass();
         }
 
         enum class LoadStatus {
@@ -154,17 +159,18 @@ namespace usylibpp::everything {
 
                 std::this_thread::sleep_for(std::chrono::seconds(3));
 
+                wndclass = std::make_unique<std::wstring>(strings::concat_strings(EVERYTHING_IPC_WNDCLASS, L"_(", instance_name, L")"));
+
+                _Everything_IPC_WndClass = wndclass->c_str();
+
                 while (true) {
                     if (Everything_IsDBLoaded()) {
                         loaded.store(true);
-
-                        wndclass = std::make_unique<std::wstring>(strings::concat_strings(EVERYTHING_IPC_WNDCLASS, L"_(", instance_name, L")"));
-
-                        _Everything_IPC_WndClass = wndclass->c_str();
                         return LoadStatus::Success;
                     } else if (Everything_GetLastError()) {
                         // IPC not running.
                         loaded.store(false);
+                        reset_wndclass();
                         return LoadStatus::NotRunning;
                     }
                     
@@ -173,6 +179,7 @@ namespace usylibpp::everything {
                 }
 
                 loaded.store(false);
+                reset_wndclass();
                 return LoadStatus::NotRunning;
             });
         }
