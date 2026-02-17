@@ -69,7 +69,7 @@ namespace usylibpp::windows::process {
     }
 
     struct process_output {
-        int status = 0;
+        int status = -1;
         std::string stdout_{};
         std::string stderr_{};
     };
