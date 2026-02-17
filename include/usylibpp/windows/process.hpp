@@ -7,6 +7,7 @@
 #include <functional>
 #include <filesystem>
 #include <windows.h>
+#include <shellapi.h>
 #include "../types.hpp"
 
 #include <wil/resource.h>
@@ -283,6 +284,57 @@ namespace usylibpp::windows::process {
         } else {
             return one_shot_process_output{ 0, std::move(hJob) };
         }
+    }
+
+    struct admin_process_settings {
+        const std::wstring* filename;
+        const std::wstring* args{nullptr};
+
+        const std::wstring* working_directory{nullptr};
+    };
+
+    struct admin_process_options {
+        bool allow_visible_windows = true;
+    };
+
+    struct admin_process_output {
+        enum class Status {
+            Success,
+
+            NoFilename,
+            UACRejected,
+            OtherError
+        };
+        Status status = Status::UACRejected;
+    };
+
+    /**
+     * This will ignore most options passed in
+     */
+    template <admin_process_options opts = {}>
+    inline admin_process_output run_admin_process(const admin_process_settings& options) {
+        if (!options.filename || options.filename->empty()) {
+            return { admin_process_output::Status::NoFilename };
+        }
+
+        SHELLEXECUTEINFOW sei{};
+        sei.cbSize = sizeof(sei);
+        sei.fMask  = SEE_MASK_NOCLOSEPROCESS;
+        sei.hwnd   = nullptr;
+        sei.lpVerb = L"runas";
+        sei.lpFile = options.filename->c_str();
+        sei.lpParameters = (!options.args || options.args->empty()) ? nullptr : options.args->c_str();
+        sei.lpDirectory = (!options.working_directory || options.working_directory->empty()) ? nullptr : options.working_directory->c_str();
+        sei.nShow = (opts.allow_visible_windows) ? SW_SHOW : SW_HIDE;
+
+        if (!ShellExecuteExW(&sei)) {
+            if (GetLastError() == ERROR_CANCELLED) {
+                return { admin_process_output::Status::UACRejected };
+            }
+            return { admin_process_output::Status::OtherError };
+        }
+        wil::unique_handle hProcess{sei.hProcess};
+        return { admin_process_output::Status::Success };
     }
 }
 #endif
