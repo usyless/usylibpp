@@ -156,10 +156,10 @@ int main() {
         print::println("All files in current folder:");
         windows::fs::walk_directory<windows::fs::WalkOpts{.recursive = true}>(L"..", windows::fs::Callbacks{
             .on_file = [](const std::wstring& parent, const windows::fs::FindDataWrapper& data) {
-                print::println("File - Parent: {} ; Filename: {} ; Last Write time: {}", windows::to_utf8_or_default(parent), data.filename_utf8_or_default(), data.date_modified());
+                print::println("File - Parent: {} ; Filename: {} ; Last Write time: {} ; Size: {}", windows::to_utf8_or_default(parent), data.filename_utf8_or_default(), data.date_modified(), data.file_size());
             },
             .on_directory = [](const std::wstring& parent, const windows::fs::FindDataWrapper& data) {
-                print::println("Directory - Parent: {} ; Filename: {} ; Last Write time: {}", windows::to_utf8_or_default(parent), data.filename_utf8_or_default(), data.date_modified());
+                print::println("Directory - Parent: {} ; Filename: {} ; Last Write time: {} ; Size: {}", windows::to_utf8_or_default(parent), data.filename_utf8_or_default(), data.date_modified(), data.file_size());
 
                 auto filename = data.filename_view();
                 if (filename == L".cmake" || filename == L"_deps" || filename == L".cache" || filename == L"CMakeFiles") return false;
@@ -187,19 +187,19 @@ int main() {
                     const auto query1 = EverythingExtra::Query::from_directory_absolute(build_folder.native());
 
                     print::println("Performing query: {}", windows::to_utf8_or_default(query1.get()));
-                    if (everything.do_query(query1.get())) {
+                    if (everything.do_query(query1.get(), {.RequestFlags = EverythingExtra::RequestFlags{}.date_modified().size()})) {
                         print::println("Query success!");
 
                         print::println("File count: {} ; Directory count: {} ; Total results count: {}", everything.query_file_count(), everything.query_folder_count(), everything.query_results_count());
                         everything.walk_results(EverythingExtra::Callbacks{
                             .on_file = [](const EverythingFile i) {
-                                print::println("File result filename: {}", windows::to_utf8_or_default(i.filename()));
+                                print::println("File - Parent: {} ; Filename : {} ; Last Write time: {} ; Size: {}", i.parent_path_utf8_or_default(), i.filename_utf8_or_default(), i.date_modified_or_default(), i.size_or_default());
                             },
                             .on_directory = [](const EverythingFile i) {
-                                print::println("Directory result filename: {}", windows::to_utf8_or_default(i.filename()));
+                                print::println("Directory - Parent: {} ; Filename : {} ; Last Write time: {} ; Size: {}", i.parent_path_utf8_or_default(), i.filename_utf8_or_default(), i.date_modified_or_default(), i.size_or_default());
                             },
                             .on_volume = [](const EverythingFile i) {
-                                print::println("Volume result filename: {}", windows::to_utf8_or_default(i.filename()));
+                                print::println("Volume - Parent: {} ; Filename : {} ; Last Write time: {} ; Size: {}", i.parent_path_utf8_or_default(), i.filename_utf8_or_default(), i.date_modified_or_default(), i.size_or_default());
                             }
                         });
                     } else {
@@ -216,19 +216,19 @@ int main() {
                         .exclude_directory_any(L"CMakeFiles");
 
                     print::println("Performing query: {}", windows::to_utf8_or_default(query2.get()));
-                    if (everything.do_query(query2.get())) {
+                    if (everything.do_query(query2.get(), {.RequestFlags = EverythingExtra::RequestFlags{}.date_modified().size()})) {
                         print::println("Query success!");
 
                         print::println("File count: {} ; Directory count: {} ; Total results count: {}", everything.query_file_count(), everything.query_folder_count(), everything.query_results_count());
                         everything.walk_results(EverythingExtra::Callbacks{
                             .on_file = [](const EverythingFile i) {
-                                print::println("File result filename: {}", windows::to_utf8_or_default(i.filename()));
+                                print::println("File - Parent: {} ; Filename : {} ; Last Write time: {} ; Size: {}", i.parent_path_utf8_or_default(), i.filename_utf8_or_default(), i.date_modified_or_default(), i.size_or_default());
                             },
                             .on_directory = [](const EverythingFile i) {
-                                print::println("Directory result filename: {}", windows::to_utf8_or_default(i.filename()));
+                                print::println("Directory - Parent: {} ; Filename : {} ; Last Write time: {} ; Size: {}", i.parent_path_utf8_or_default(), i.filename_utf8_or_default(), i.date_modified_or_default(), i.size_or_default());
                             },
                             .on_volume = [](const EverythingFile i) {
-                                print::println("Volume result filename: {}", windows::to_utf8_or_default(i.filename()));
+                                print::println("Volume - Parent: {} ; Filename : {} ; Last Write time: {} ; Size: {}", i.parent_path_utf8_or_default(), i.filename_utf8_or_default(), i.date_modified_or_default(), i.size_or_default());
                             }
                         });
                     } else {
