@@ -207,11 +207,11 @@ namespace usylibpp {
                 return query;
             }
 
-            const std::wstring get() const & noexcept {
+            const std::wstring& get() const & noexcept {
                 return q;
             }
 
-            const std::wstring get() && noexcept {
+            std::wstring&& get() && noexcept {
                 return std::move(q);
             }
         };
