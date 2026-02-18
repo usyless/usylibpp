@@ -126,16 +126,26 @@ namespace usylibpp {
 
             constexpr RequestFlags(DWORD flags = EVERYTHING_REQUEST_FILE_NAME | EVERYTHING_REQUEST_PATH) noexcept : flags{flags} {}
 
-            constexpr void clear() noexcept {
+            constexpr inline RequestFlags& clear() noexcept {
                 flags = 0;
+                return *this;
+            }
+
+            constexpr inline RequestFlags& add_flag(const DWORD flag) noexcept {
+                flags |= flag;
+                return *this;
+            }
+
+            constexpr inline RequestFlags& remove_flag(const DWORD flag) noexcept {
+                flags &= ~flag;
+                return *this;
             }
 
             #pragma push_macro("HANDLE")
             #undef HANDLE
             #define HANDLE(func_name, flag) \
-            constexpr RequestFlags& func_name() noexcept { \
-                flags |= flag; \
-                return *this; \
+            constexpr inline RequestFlags& func_name() noexcept { \
+                return add_flag(flag); \
             }
 
             HANDLE(file_name, EVERYTHING_REQUEST_FILE_NAME)
