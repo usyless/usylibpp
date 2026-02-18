@@ -168,14 +168,11 @@ namespace usylibpp {
             HANDLE(highlighted_file_name, HIGHLIGHTED_FILE_NAME)
             HANDLE(highlighted_path, HIGHLIGHTED_PATH)
             HANDLE(highlighted_full_path_and_file_name, HIGHLIGHTED_FULL_PATH_AND_FILE_NAME)
-
-            #pragma pop_macro("HANDLE")
         };
 
         struct SortFlags : public FlagsBase<DWORD, SortFlags> {
             constexpr SortFlags(DWORD _flags = EVERYTHING_SORT_NAME_ASCENDING) noexcept : FlagsBase{_flags} {}
 
-            #pragma push_macro("HANDLE")
             #undef HANDLE
             #define HANDLE(func_name, flag) \
             constexpr inline SortFlags& func_name##_ascending() noexcept { return add_flag(EVERYTHING_SORT_##flag##_ASCENDING); } \
