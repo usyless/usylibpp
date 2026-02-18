@@ -384,9 +384,14 @@ namespace usylibpp {
 
     struct instance_name {
     public:
-        template <class T>
+        template <size_t N>
+        consteval instance_name(const windows::WIN_CHAR (&str)[N]) : _str(str) {
+            validate_name(_str);
+        }
+
+        template <typename T>
         requires std::convertible_to<const T&, std::basic_string_view<windows::WIN_CHAR>>
-        consteval instance_name(const T& str) : _str(str) {
+        instance_name(const T& str) : _str(str) {
             validate_name(_str);
         }
 
@@ -404,27 +409,9 @@ namespace usylibpp {
         Everything(Everything&&) = delete;
         Everything& operator=(Everything&&) = delete;
 
-        Everything(struct instance_name _instance_name) : instance_name{_instance_name.get()} {
-            #if __cplusplus >= 202302L
-            if consteval {} else
-            #else
-            if (!std::is_constant_evaluated())
-            #endif
-            {
-                validate_name(instance_name);
-            }
-        }
+        Everything(struct instance_name _instance_name) : instance_name{_instance_name.get()} {}
 
-        Everything(struct instance_name _instance_name, std::basic_string<windows::WIN_CHAR> _everything_path) : instance_name{_instance_name.get()}, everything_path{std::move(_everything_path)} {
-            #if __cplusplus >= 202302L
-            if consteval {} else
-            #else
-            if (!std::is_constant_evaluated())
-            #endif
-            {
-                validate_name(instance_name);
-            }
-        }
+        Everything(struct instance_name _instance_name, std::basic_string<windows::WIN_CHAR> _everything_path) : instance_name{_instance_name.get()}, everything_path{std::move(_everything_path)} {}
 
         template <bool wait_for_completion = true>
         [[nodiscard]] inline auto close_everything() {
