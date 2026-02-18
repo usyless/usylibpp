@@ -437,7 +437,7 @@ namespace usylibpp {
         };
         
         template <typename F = types::noop_t>
-        requires (std::invocable<const F&, void>)
+        requires (std::invocable<const F&>)
         [[nodiscard]] inline LoadStatus try_load(const F& on_uac_success = {}) {
             if (everything_path.empty()) {
                 return LoadStatus::NoExeFound;
