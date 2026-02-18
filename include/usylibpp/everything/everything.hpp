@@ -249,9 +249,9 @@ namespace usylibpp {
             typename F2 = types::noop_t,
             typename F3 = types::noop_t
         >
-        requires (std::invocable<F1, File> && 
-                std::invocable<F2, File> && 
-                std::invocable<F3, File>)
+        requires (std::invocable<F1&, File> && 
+                std::invocable<F2&, File> && 
+                std::invocable<F3&, File>)
         struct Callbacks {
             F1 on_file{};
             F2 on_directory{};
