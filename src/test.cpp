@@ -222,7 +222,7 @@ int main() {
                         print::println("Query success!");
 
                         print::println("File count: {} ; Directory count: {} ; Total results count: {}", everything.query_file_count(), everything.query_folder_count(), everything.query_results_count());
-                        everything.walk_results(everything::Callbacks{
+                        everything.walk_results<request_flags>(everything::Callbacks{
                             .on_file = [](const auto& i) {
                                 print::println("File - Parent: {} ; Filename : {} ; Last Write time: {} ; Size: {}", i.parent_path_utf8_or_default(), i.filename_utf8_or_default(), i.date_modified_or_default(), i.size_or_default());
                             },

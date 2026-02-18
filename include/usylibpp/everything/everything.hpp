@@ -41,8 +41,12 @@ namespace usylibpp {
                 return flags;
             }
 
-            constexpr bool has_flag(const T flag) const noexcept {
+            constexpr inline bool has_flag(const T flag) const noexcept {
                 return flags & flag;
+            }
+
+            friend constexpr inline bool operator==(const C& lhs, const C& rhs) noexcept {
+                return lhs.flags == rhs.flags;
             }
         };
 
@@ -556,6 +560,9 @@ namespace usylibpp {
             return Everything_Query(TRUE);
         }
 
+        [[deprecated("Warning: Try to use compile time known flags with usylibpp::Everything::walk_results")]] 
+        static consteval void warn_condition_not_met() noexcept {}
+
         /**
          * Use the Everything_Get... functions using the index to get the require data
          */
@@ -567,6 +574,10 @@ namespace usylibpp {
         )
         static inline void walk_results(CB&& cb) {
             const auto results_count = query_results_count();
+
+            if constexpr (flags == everything::RequestFlags{0xffffffff}) {
+                warn_condition_not_met();
+            }
 
             #pragma push_macro("HANDLE")
             #undef HANDLE
