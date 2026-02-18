@@ -554,7 +554,7 @@ namespace usylibpp {
             #define HANDLE(checkresult, func) \
             if constexpr (!std::is_same_v<decltype(std::declval<CB>().func), types::noop_t>) { \
                 if (checkresult(i)) { \
-                    if constexpr (std::is_same_v<std::invoke_result_t<decltype(std::declval<CB>().func), DWORD>, bool>) { \
+                    if constexpr (std::is_convertible_v<std::invoke_result_t<decltype(std::declval<CB>().func), DWORD>, bool>) { \
                         if (!std::invoke(cb.func, i)) break; \
                     } else { \
                         std::invoke(cb.func, i); \
