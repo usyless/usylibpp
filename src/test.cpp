@@ -184,10 +184,39 @@ int main() {
                 const auto executable_path_opt = windows::current_executable_path();
                 if (executable_path_opt) {
                     const auto build_folder = executable_path_opt->get().parent_path().parent_path();
-                    const auto query = EverythingExtra::Query::from_directory_absolute(build_folder.native());
+                    const auto query1 = EverythingExtra::Query::from_directory_absolute(build_folder.native());
 
-                    print::println("Performing query: {}", windows::to_utf8_or_default(query.get()));
-                    if (everything.do_query(query.get())) {
+                    print::println("Performing query: {}", windows::to_utf8_or_default(query1.get()));
+                    if (everything.do_query(query1.get())) {
+                        print::println("Query success!");
+
+                        print::println("File count: {} ; Directory count: {} ; Total results count: {}", everything.query_file_count(), everything.query_folder_count(), everything.query_results_count());
+                        everything.walk_results(EverythingExtra::Callbacks{
+                            .on_file = [](const EverythingFile i) {
+                                print::println("File result filename: {}", windows::to_utf8_or_default(i.filename()));
+                            },
+                            .on_directory = [](const EverythingFile i) {
+                                print::println("Directory result filename: {}", windows::to_utf8_or_default(i.filename()));
+                            },
+                            .on_volume = [](const EverythingFile i) {
+                                print::println("Volume result filename: {}", windows::to_utf8_or_default(i.filename()));
+                            }
+                        });
+                    } else {
+                        print::println("Query failed!");
+                    }
+
+                    print::println();
+
+                    const auto query2 = 
+                        EverythingExtra::Query(build_folder.native())
+                        .exclude_directory_any(L".cmake")
+                        .exclude_directory_any(L"_deps")
+                        .exclude_directory_any(L".cache")
+                        .exclude_directory_any(L"CMakeFiles");
+
+                    print::println("Performing query: {}", windows::to_utf8_or_default(query2.get()));
+                    if (everything.do_query(query2.get())) {
                         print::println("Query success!");
 
                         print::println("File count: {} ; Directory count: {} ; Total results count: {}", everything.query_file_count(), everything.query_folder_count(), everything.query_results_count());

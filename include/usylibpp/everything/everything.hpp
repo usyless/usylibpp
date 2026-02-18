@@ -165,13 +165,15 @@ namespace usylibpp {
          * Can add a recursive directory and then exclude any amount of directories from it
          */
         struct Query {
+            std::wstring base_dir;
             std::wstring q;
 
-            constexpr explicit Query(std::wstring_view dir) {
+            constexpr explicit Query(std::wstring_view dir) : base_dir{dir} {
+                if (!base_dir.ends_with(L'\\')) base_dir.push_back(L'\\');
+
                 if (!q.empty()) q.push_back(L' ');
                 q += L"path:\"";
-                q += dir;
-                if (!dir.ends_with(L'\\')) q.push_back(L'\\');
+                q += base_dir;
                 q.push_back(L'\"');
             }
 
@@ -185,9 +187,9 @@ namespace usylibpp {
                 return *this;
             }
 
-            constexpr inline Query& exclude_directory_any(std::wstring_view base_dir, std::wstring_view dir) {
-                exclude_directory_absolute(base_dir.ends_with(L'\\') ? strings::concat_strings(base_dir, dir) : strings::concat_strings(base_dir, L"\\", dir));
-                exclude_directory_absolute(base_dir.ends_with(L'\\') ? strings::concat_strings(base_dir, L"*\\", dir) : strings::concat_strings(base_dir, L"\\*\\", dir));
+            constexpr inline Query& exclude_directory_any(std::wstring_view dir) {
+                exclude_directory_absolute(strings::concat_strings(base_dir, dir));
+                exclude_directory_absolute(strings::concat_strings(base_dir, L"*\\", dir));
 
                 return *this;
             }
