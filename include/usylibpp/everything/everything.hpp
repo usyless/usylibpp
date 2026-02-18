@@ -462,7 +462,9 @@ namespace usylibpp {
                 return LoadStatus::OtherError;
             }
 
-            std::invoke(on_uac_success);
+            if constexpr (!std::is_same_v<F, types::noop_t>) {
+                std::invoke(on_uac_success);
+            }
 
             std::this_thread::sleep_for(std::chrono::seconds(1));
 
