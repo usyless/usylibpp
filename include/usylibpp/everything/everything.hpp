@@ -17,7 +17,7 @@
 #include <wil/resource.h>
 
 namespace usylibpp {
-    namespace EverythingExtra {
+    namespace everything {
         template <typename T, typename C>
         struct FlagsBase {
             T flags{0};
@@ -519,7 +519,7 @@ namespace usylibpp {
             return Everything_GetTotResults();
         }
 
-        [[nodiscard]] static inline auto do_query(const std::basic_string<windows::WIN_CHAR>& query, const EverythingExtra::EverythingSearch& options = {}) noexcept {
+        [[nodiscard]] static inline auto do_query(const std::basic_string<windows::WIN_CHAR>& query, const everything::EverythingSearch& options = {}) noexcept {
             Everything_Reset();
 
             Everything_SetMatchPath(options.MatchPath);
@@ -541,7 +541,7 @@ namespace usylibpp {
         /**
          * Use the Everything_Get... functions using the index to get the require data
          */
-        template <EverythingExtra::CallbacksType CB>
+        template <everything::CallbacksType CB>
         static inline void walk_results(CB&& cb) {
             const auto results_count = query_results_count();
 
