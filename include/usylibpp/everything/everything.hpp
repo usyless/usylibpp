@@ -436,7 +436,9 @@ namespace usylibpp {
             UACRejected
         };
         
-        [[nodiscard]] inline LoadStatus try_load() {
+        template <typename F = types::noop_t>
+        requires (std::invocable<const F&, void>)
+        [[nodiscard]] inline LoadStatus try_load(const F& on_uac_success = {}) {
             if (everything_path.empty()) {
                 return LoadStatus::NoExeFound;
             }
@@ -459,6 +461,8 @@ namespace usylibpp {
                 }
                 return LoadStatus::OtherError;
             }
+
+            std::invoke(on_uac_success);
 
             std::this_thread::sleep_for(std::chrono::seconds(1));
 
