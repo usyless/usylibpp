@@ -6,6 +6,8 @@
 
 
 ## Basically: Don't use this library it's just for my convenience
+- But it has some cool stuff like the windows imaging component wrapper, wintoast wrapper, and the voidtools everything wrapper!
+- Probably some more but this readme isn't being kept up to date...
 
 # Installation/Usage
 
@@ -54,3 +56,5 @@ These are printed when configuring, which will be more up to date probably
 
 - `USYLIBPP_ENABLE_WINTOAST` (BOOL, Default: OFF) - Includes WinToast in the project and enables the helpers for it
 - `USYLIBPP_WINTOAST_GIT_TAG` (STRING, Default: "v1.3.2")
+
+- `USYLIBPP_ENABLE_VOIDTOOLS_EVERYTHING` (BOOL, Default: OFF) - Includes a basic c++ wrapper + helpers for voidtools everything
