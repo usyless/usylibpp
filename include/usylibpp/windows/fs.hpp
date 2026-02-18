@@ -60,9 +60,9 @@ template <
     typename F2 = types::noop_t,
     typename F3 = types::noop_t
 >
-requires (std::invocable<F1, wstring_arg, data_arg> && 
-          std::invocable<F2, wstring_arg, data_arg> && 
-          std::invocable<F3, wstring_arg, data_arg>)
+requires (std::invocable<F1&, wstring_arg, data_arg> && 
+          std::invocable<F2&, wstring_arg, data_arg> && 
+          std::invocable<F3&, wstring_arg, data_arg>)
 struct Callbacks {
     F1 on_file{};
     F2 on_directory{};
@@ -128,7 +128,7 @@ inline void _walk_directory(std::wstring&& root, CB&& cb, FindDataWrapper& wrapp
         #undef HANDLE
         #define HANDLE(func) \
         if constexpr (!std::is_same_v<decltype(std::declval<CB>().func), types::noop_t>) { \
-            if constexpr (std::is_convertible_v<std::invoke_result_t<decltype(std::declval<CB>().func), wstring_arg, data_arg>, bool>) { \
+            if constexpr (std::is_convertible_v<std::invoke_result_t<decltype((std::declval<CB>().func)), wstring_arg, data_arg>, bool>) { \
                 if (!std::invoke(cb.func, root, wrapper)) break; \
             } else { \
                 std::invoke(cb.func, root, wrapper); \
@@ -150,7 +150,7 @@ inline void _walk_directory(std::wstring&& root, CB&& cb, FindDataWrapper& wrapp
                         _walk_directory<opts>(strings::concat_strings(root, L"\\", filename), cb, wrapper); \
                     }
 
-                    if constexpr (std::is_convertible_v<std::invoke_result_t<decltype(std::declval<CB>().on_directory), wstring_arg, data_arg>, bool>) {
+                    if constexpr (std::is_convertible_v<std::invoke_result_t<decltype((std::declval<CB>().on_directory)), wstring_arg, data_arg>, bool>) {
                         if (std::invoke(cb.on_directory, root, wrapper)) {
                             recurse
                         }

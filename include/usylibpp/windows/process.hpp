@@ -20,7 +20,7 @@ namespace usylibpp::windows::process {
          * The callback is a function which takes one argument of std::string_view
          */
         template <bool with_output = true, bool break_line = true, typename Callback = types::noop_t>
-        requires (std::invocable<Callback, std::string_view>)
+        requires (std::invocable<Callback&, std::string_view>)
         inline std::string read_from_pipe(std::stop_token stop, HANDLE pipe, Callback&& on_line = {}) {
             std::string output;
             char buffer[4096];
@@ -85,7 +85,7 @@ namespace usylibpp::windows::process {
         typename F1 = types::noop_t,
         typename F2 = types::noop_t
     >
-    requires (std::invocable<F1, std::string_view> && std::invocable<F2, std::string_view>)
+    requires (std::invocable<F1&, std::string_view> && std::invocable<F2&, std::string_view>)
     struct process_settings {
         std::wstring_view commandline;
         std::string_view input = "";

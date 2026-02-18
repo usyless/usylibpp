@@ -189,7 +189,7 @@ namespace usylibpp::strings {
      * Stop looping early if false returned from function
      */
     template <types::CharOrWChar Char, typename F, types::is_basic_string_view SV>
-    requires (std::invocable<F, std::basic_string_view<Char>> && std::same_as<types::string_view_char_t<SV>, Char>)
+    requires (std::invocable<F&, std::basic_string_view<Char>> && std::same_as<types::string_view_char_t<SV>, Char>)
     inline constexpr void split_by_for_each(SV&& _input, const Char split_by, F&& f) noexcept(noexcept(std::invoke(f, _input))) {
         std::basic_string_view<Char> input{_input};
         
@@ -201,7 +201,7 @@ namespace usylibpp::strings {
                 std::invoke(f, input.substr(start));
                 return;
             } else {
-                if constexpr (std::is_convertible_v<std::invoke_result_t<F, std::basic_string_view<Char>>, bool>) {
+                if constexpr (std::is_convertible_v<std::invoke_result_t<F&, std::basic_string_view<Char>>, bool>) {
                     if (!std::invoke(f, input.substr(start, end - start))) return;
                 } else {
                     std::invoke(f, input.substr(start, end - start));
@@ -222,7 +222,7 @@ namespace usylibpp::strings {
     }
 
     template <types::is_basic_string_view SV, typename F>
-    requires (std::invocable<F, std::basic_string_view<types::string_view_char_t<SV>>>)
+    requires (std::invocable<F&, std::basic_string_view<types::string_view_char_t<SV>>>)
     inline constexpr void for_each_line(SV&& input, F&& f) noexcept(noexcept(split_by_for_each(std::forward<SV>(input), types::string_view_char_t<SV>('\n'), std::forward<F>(f)))) {
         split_by_for_each(std::forward<SV>(input), types::string_view_char_t<SV>('\n'), std::forward<F>(f));
     }
@@ -233,7 +233,7 @@ namespace usylibpp::strings {
     }
 
     template <types::is_basic_string_view SV, typename F>
-    requires (std::invocable<F, types::string_view_char_t<SV>> && std::is_convertible_v<std::invoke_result_t<F, types::string_view_char_t<SV>>, bool>)
+    requires (std::invocable<F&, types::string_view_char_t<SV>> && std::is_convertible_v<std::invoke_result_t<F&, types::string_view_char_t<SV>>, bool>)
     [[nodiscard]] inline constexpr size_t count_if(SV&& str, F&& f) noexcept(noexcept(std::invoke(f, std::declval<types::string_view_char_t<SV>>()))) {
         size_t count = 0;
         for (const auto a : std::basic_string_view<types::string_view_char_t<SV>>{str}) if (std::invoke(f, a)) ++count;
