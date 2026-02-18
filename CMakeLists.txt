@@ -321,7 +321,7 @@ This includes windows.h along with various other headers, but enables all of the
                     >
                 )
             elseif (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
-                target_compile_options(mohabouje_wintoast PRIVATE
+                target_compile_options(voidtools_everything PRIVATE
                     $<$<CONFIG:Debug>:
                         -g
                         -O0
