@@ -396,5 +396,23 @@ if (PROJECT_IS_TOP_LEVEL)
                 "/OPT:REF"
             >
         )
+    elseif (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+        target_compile_options(usylibpp_test PRIVATE
+            $<$<CONFIG:Debug>:
+                -g
+                -O0
+            >
+
+            $<$<CONFIG:Release>:
+                -O3
+                -ffunction-sections
+                -fdata-sections
+                -fomit-frame-pointer
+            >
+        )
+
+        target_link_options(usylibpp_test PRIVATE 
+            $<$<CONFIG:Release>:-Wl,--gc-sections>
+        )
     endif()
 endif()
