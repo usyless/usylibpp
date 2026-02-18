@@ -570,9 +570,9 @@ namespace usylibpp {
                 static_assert(std::invocable<decltype((std::declval<CB>().func)), everything::File<flags>>, "Must be invocable with file with correct flags!"); \
                 if (checkresult(i)) { \
                     if constexpr (std::is_convertible_v<std::invoke_result_t<decltype((std::declval<CB>().func)), everything::File<flags>>, bool>) { \
-                        if (!std::invoke(cb.func, i)) break; \
+                        if (!std::invoke(cb.func, everything::File<flags>{i})) break; \
                     } else { \
-                        std::invoke(cb.func, i); \
+                        std::invoke(cb.func, everything::File<flags>{i}); \
                     } \
                     continue; \
                 } \
