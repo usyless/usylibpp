@@ -150,24 +150,24 @@ namespace usylibpp {
 
             #pragma push_macro("HANDLE")
             #undef HANDLE
-            #define HANDLE(func_name, flag) constexpr inline RequestFlags& func_name() noexcept { return add_flag(flag); }
+            #define HANDLE(func_name, flag) constexpr inline RequestFlags& func_name() noexcept { return add_flag(EVERYTHING_REQUEST_##flag); }
 
-            HANDLE(file_name, EVERYTHING_REQUEST_FILE_NAME)
-            HANDLE(path, EVERYTHING_REQUEST_PATH)
-            HANDLE(full_path_and_file_name, EVERYTHING_REQUEST_FULL_PATH_AND_FILE_NAME)
-            HANDLE(extension, EVERYTHING_REQUEST_EXTENSION)
-            HANDLE(size, EVERYTHING_REQUEST_SIZE)
-            HANDLE(date_created, EVERYTHING_REQUEST_DATE_CREATED)
-            HANDLE(date_modified, EVERYTHING_REQUEST_DATE_MODIFIED)
-            HANDLE(date_accessed, EVERYTHING_REQUEST_DATE_ACCESSED)
-            HANDLE(attributes, EVERYTHING_REQUEST_ATTRIBUTES)
-            HANDLE(file_list_file_name, EVERYTHING_REQUEST_FILE_LIST_FILE_NAME)
-            HANDLE(run_count, EVERYTHING_REQUEST_RUN_COUNT)
-            HANDLE(date_run, EVERYTHING_REQUEST_DATE_RUN)
-            HANDLE(recently_changed, EVERYTHING_REQUEST_DATE_RECENTLY_CHANGED)
-            HANDLE(highlighted_file_name, EVERYTHING_REQUEST_HIGHLIGHTED_FILE_NAME)
-            HANDLE(highlighted_path, EVERYTHING_REQUEST_HIGHLIGHTED_PATH)
-            HANDLE(highlighted_full_path_and_file_name, EVERYTHING_REQUEST_HIGHLIGHTED_FULL_PATH_AND_FILE_NAME)
+            HANDLE(file_name, FILE_NAME)
+            HANDLE(path, PATH)
+            HANDLE(full_path_and_file_name, FULL_PATH_AND_FILE_NAME)
+            HANDLE(extension, EXTENSION)
+            HANDLE(size, SIZE)
+            HANDLE(date_created, DATE_CREATED)
+            HANDLE(date_modified, DATE_MODIFIED)
+            HANDLE(date_accessed, DATE_ACCESSED)
+            HANDLE(attributes, ATTRIBUTES)
+            HANDLE(file_list_file_name, FILE_LIST_FILE_NAME)
+            HANDLE(run_count, RUN_COUNT)
+            HANDLE(date_run, DATE_RUN)
+            HANDLE(recently_changed, DATE_RECENTLY_CHANGED)
+            HANDLE(highlighted_file_name, HIGHLIGHTED_FILE_NAME)
+            HANDLE(highlighted_path, HIGHLIGHTED_PATH)
+            HANDLE(highlighted_full_path_and_file_name, HIGHLIGHTED_FULL_PATH_AND_FILE_NAME)
 
             #pragma pop_macro("HANDLE")
         };
@@ -178,22 +178,22 @@ namespace usylibpp {
             #pragma push_macro("HANDLE")
             #undef HANDLE
             #define HANDLE(func_name, flag) \
-            constexpr inline SortFlags& func_name##_acending() noexcept { return add_flag(flag##_ASCENDING); } \
-            constexpr inline SortFlags& func_name##_descending() noexcept { return add_flag(flag##_DESCENDING); }
+            constexpr inline SortFlags& func_name##_ascending() noexcept { return add_flag(EVERYTHING_SORT_##flag##_ASCENDING); } \
+            constexpr inline SortFlags& func_name##_descending() noexcept { return add_flag(EVERYTHING_SORT_##flag##_DESCENDING); }
 
-            HANDLE(name, EVERYTHING_SORT_NAME)
-            HANDLE(path, EVERYTHING_SORT_PATH)
-            HANDLE(size, EVERYTHING_SORT_SIZE)
-            HANDLE(extension, EVERYTHING_SORT_EXTENSION)
-            HANDLE(type_name, EVERYTHING_SORT_TYPE_NAME)
-            HANDLE(date_created, EVERYTHING_SORT_DATE_CREATED)
-            HANDLE(date_modified, EVERYTHING_SORT_DATE_MODIFIED)
-            HANDLE(attributes, EVERYTHING_SORT_ATTRIBUTES)
-            HANDLE(file_list_filename, EVERYTHING_SORT_FILE_LIST_FILENAME)
-            HANDLE(run_count, EVERYTHING_SORT_RUN_COUNT)
-            HANDLE(date_recently_changed, EVERYTHING_SORT_DATE_RECENTLY_CHANGED)
-            HANDLE(date_accessed, EVERYTHING_SORT_DATE_ACCESSED)
-            HANDLE(date_run, EVERYTHING_SORT_DATE_RUN)
+            HANDLE(name, NAME)
+            HANDLE(path, PATH)
+            HANDLE(size, SIZE)
+            HANDLE(extension, EXTENSION)
+            HANDLE(type_name, TYPE_NAME)
+            HANDLE(date_created, DATE_CREATED)
+            HANDLE(date_modified, DATE_MODIFIED)
+            HANDLE(attributes, ATTRIBUTES)
+            HANDLE(file_list_filename, FILE_LIST_FILENAME)
+            HANDLE(run_count, RUN_COUNT)
+            HANDLE(date_recently_changed, DATE_RECENTLY_CHANGED)
+            HANDLE(date_accessed, DATE_ACCESSED)
+            HANDLE(date_run, DATE_RUN)
 
             #pragma pop_macro("HANDLE")
         };
