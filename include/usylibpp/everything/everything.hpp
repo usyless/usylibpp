@@ -34,14 +34,23 @@ namespace usylibpp {
             return filename_utf8().value_or(std::string{});
         }
 
+        /**
+         * Does not have a trailing \
+         */
         [[nodiscard]] inline auto parent_path() const noexcept {
             return Everything_GetResultPath(i);
         }
 
+        /**
+         * Does not have a trailing \
+         */
         [[nodiscard]] inline auto parent_path_utf8() const {
             return windows::to_utf8(parent_path());
         }
 
+        /**
+         * Does not have a trailing \
+         */
         [[nodiscard]] inline auto parent_path_utf8_or_default() const {
             return parent_path_utf8().value_or(std::string{});
         }
