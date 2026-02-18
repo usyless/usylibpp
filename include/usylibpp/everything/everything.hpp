@@ -40,6 +40,10 @@ namespace usylibpp {
             constexpr inline T get() const noexcept {
                 return flags;
             }
+
+            constexpr bool has_flag(const T flag) const noexcept {
+                return flags & flag;
+            }
         };
 
         struct RequestFlags : public FlagsBase<DWORD, RequestFlags> {
@@ -92,140 +96,147 @@ namespace usylibpp {
             #pragma pop_macro("HANDLE")
         };
 
+        template <RequestFlags flags = RequestFlags{0xffffffff}>
         struct File {
             const DWORD i;
 
-            File(DWORD _i) : i{_i} {}
+            constexpr File(const DWORD _i) noexcept : i{_i} {}
 
-            [[nodiscard]] inline auto filename() const noexcept {
+            #pragma push_macro("REQUIRES")
+            #undef REQUIRES
+            #define REQUIRES(flag) requires (flags.has_flag(EVERYTHING_REQUEST_##flag))
+
+            [[nodiscard]] inline auto filename() const noexcept REQUIRES(FILE_NAME) {
                 return Everything_GetResultFileName(i);
             }
 
-            [[nodiscard]] inline auto filename_utf8() const {
+            [[nodiscard]] inline auto filename_utf8() const REQUIRES(FILE_NAME) {
                 return windows::to_utf8(filename());
             }
 
-            [[nodiscard]] inline auto filename_utf8_or_default() const {
+            [[nodiscard]] inline auto filename_utf8_or_default() const REQUIRES(FILE_NAME) {
                 return filename_utf8().value_or(std::string{});
             }
 
             /**
             * Does not have a trailing \
             */
-            [[nodiscard]] inline auto parent_path() const noexcept {
+            [[nodiscard]] inline auto parent_path() const noexcept REQUIRES(PATH) {
                 return Everything_GetResultPath(i);
             }
 
             /**
             * Does not have a trailing \
             */
-            [[nodiscard]] inline auto parent_path_utf8() const {
+            [[nodiscard]] inline auto parent_path_utf8() const REQUIRES(PATH) {
                 return windows::to_utf8(parent_path());
             }
 
             /**
             * Does not have a trailing \
             */
-            [[nodiscard]] inline auto parent_path_utf8_or_default() const {
+            [[nodiscard]] inline auto parent_path_utf8_or_default() const REQUIRES(PATH) {
                 return parent_path_utf8().value_or(std::string{});
             }
 
-            [[nodiscard]] inline auto extension() const noexcept {
+            [[nodiscard]] inline auto extension() const noexcept REQUIRES(EXTENSION) {
                 return Everything_GetResultExtension(i);
             }
 
-            [[nodiscard]] inline auto extension_utf8() const {
+            [[nodiscard]] inline auto extension_utf8() const REQUIRES(EXTENSION) {
                 return windows::to_utf8(extension());
             }
 
-            [[nodiscard]] inline auto extension_utf8_or_default() const {
+            [[nodiscard]] inline auto extension_utf8_or_default() const REQUIRES(EXTENSION) {
                 return extension_utf8().value_or(std::string{});
             }
 
-            [[nodiscard]] inline std::optional<uint64_t> size() const noexcept {
+            [[nodiscard]] inline std::optional<uint64_t> size() const noexcept REQUIRES(SIZE) {
                 LARGE_INTEGER s{};
                 if (!Everything_GetResultSize(i, &s)) return std::nullopt;
                 return static_cast<uint64_t>(s.QuadPart); // need to check if valid
                 // return (static_cast<uint64_t>(s.HighPart) << 32) | static_cast<uint32_t>(s.LowPart);
             }
 
-            [[nodiscard]] inline uint64_t size_or_default() const noexcept {
+            [[nodiscard]] inline uint64_t size_or_default() const noexcept REQUIRES(SIZE) {
                 return size().value_or(0);
             }
 
-            [[nodiscard]] inline std::optional<uint64_t> date_created() const noexcept {
+            [[nodiscard]] inline std::optional<uint64_t> date_created() const noexcept REQUIRES(DATE_CREATED) {
                 FILETIME s{};
                 if (!Everything_GetResultDateCreated(i, &s)) return std::nullopt;
                 return wil::filetime::to_int64(s);
             }
 
-            [[nodiscard]] inline uint64_t date_created_or_default() const noexcept {
+            [[nodiscard]] inline uint64_t date_created_or_default() const noexcept REQUIRES(DATE_CREATED) {
                 return date_created().value_or(0);
             }
 
-            [[nodiscard]] inline std::optional<uint64_t> date_modified() const noexcept {
+            [[nodiscard]] inline std::optional<uint64_t> date_modified() const noexcept REQUIRES(DATE_MODIFIED) {
                 FILETIME s{};
                 if (!Everything_GetResultDateModified(i, &s)) return std::nullopt;
                 return wil::filetime::to_int64(s);
             }
 
-            [[nodiscard]] inline uint64_t date_modified_or_default() const noexcept {
+            [[nodiscard]] inline uint64_t date_modified_or_default() const noexcept REQUIRES(DATE_MODIFIED) {
                 return date_modified().value_or(0);
             }
 
-            [[nodiscard]] inline std::optional<uint64_t> date_accessed() const noexcept {
+            [[nodiscard]] inline std::optional<uint64_t> date_accessed() const noexcept REQUIRES(DATE_ACCESSED) {
                 FILETIME s{};
                 if (!Everything_GetResultDateAccessed(i, &s)) return std::nullopt;
                 return wil::filetime::to_int64(s);
             }
 
-            [[nodiscard]] inline uint64_t date_accessed_or_default() const noexcept {
+            [[nodiscard]] inline uint64_t date_accessed_or_default() const noexcept REQUIRES(DATE_ACCESSED) {
                 return date_accessed().value_or(0);
             }
 
-            [[nodiscard]] inline auto attributes() const noexcept {
+            [[nodiscard]] inline auto attributes() const noexcept REQUIRES(ATTRIBUTES) {
                 return Everything_GetResultAttributes(i);
             }
 
-            [[nodiscard]] inline auto file_list_file_name() const noexcept {
+            [[nodiscard]] inline auto file_list_file_name() const noexcept REQUIRES(FILE_LIST_FILE_NAME) {
                 return Everything_GetResultFileListFileName(i);
             }
 
-            [[nodiscard]] inline auto run_count() const noexcept {
+            [[nodiscard]] inline auto run_count() const noexcept REQUIRES(RUN_COUNT) {
                 return Everything_GetResultRunCount(i);
             }
 
-            [[nodiscard]] inline std::optional<uint64_t> date_run() const noexcept {
+            [[nodiscard]] inline std::optional<uint64_t> date_run() const noexcept REQUIRES(DATE_RUN) {
                 FILETIME s{};
                 if (!Everything_GetResultDateRun(i, &s)) return std::nullopt;
                 return wil::filetime::to_int64(s);
             }
 
-            [[nodiscard]] inline uint64_t date_run_or_default() const noexcept {
+            [[nodiscard]] inline uint64_t date_run_or_default() const noexcept REQUIRES(DATE_RUN) {
                 return date_run().value_or(0);
             }
 
-            [[nodiscard]] inline std::optional<uint64_t> date_recently_changed() const noexcept {
+            [[nodiscard]] inline std::optional<uint64_t> date_recently_changed() const noexcept REQUIRES(DATE_RECENTLY_CHANGED) {
                 FILETIME s{};
                 if (!Everything_GetResultDateRecentlyChanged(i, &s)) return std::nullopt;
                 return wil::filetime::to_int64(s);
             }
 
-            [[nodiscard]] inline uint64_t date_recently_changed_or_default() const noexcept {
+            [[nodiscard]] inline uint64_t date_recently_changed_or_default() const noexcept REQUIRES(DATE_RECENTLY_CHANGED) {
                 return date_recently_changed().value_or(0);
             }
 
-            [[nodiscard]] inline auto highlighted_file_name() const noexcept {
+            [[nodiscard]] inline auto highlighted_file_name() const noexcept REQUIRES(HIGHLIGHTED_FILE_NAME) {
                 return Everything_GetResultHighlightedFileName(i);
             }
 
-            [[nodiscard]] inline auto highlighted_path() const noexcept {
+            [[nodiscard]] inline auto highlighted_path() const noexcept REQUIRES(HIGHLIGHTED_PATH) {
                 return Everything_GetResultHighlightedPath(i);
             }
 
-            [[nodiscard]] inline auto highlighted_full_path_and_filename() const noexcept {
+            [[nodiscard]] inline auto highlighted_full_path_and_filename() const noexcept REQUIRES(HIGHLIGHTED_FULL_PATH_AND_FILE_NAME) {
                 return Everything_GetResultHighlightedFullPathAndFileName(i);
             }
+
+            #pragma pop_macro("REQUIRES")
         };
 
         /**
@@ -245,13 +256,14 @@ namespace usylibpp {
         };
 
         template <
+            // RequestFlags flags,
             typename F1 = types::noop_t,
             typename F2 = types::noop_t,
             typename F3 = types::noop_t
         >
-        requires (std::invocable<F1&, File> && 
-                std::invocable<F2&, File> && 
-                std::invocable<F3&, File>)
+        // requires (std::invocable<F1&, File<flags>> && 
+        //         std::invocable<F2&, File<flags>> && 
+        //         std::invocable<F3&, File<flags>>)
         struct Callbacks {
             F1 on_file{};
             F2 on_directory{};
@@ -547,7 +559,7 @@ namespace usylibpp {
         /**
          * Use the Everything_Get... functions using the index to get the require data
          */
-        template <everything::CallbacksType CB>
+        template <everything::RequestFlags flags = everything::RequestFlags{0xffffffff}, everything::CallbacksType CB>
         static inline void walk_results(CB&& cb) {
             const auto results_count = query_results_count();
 
@@ -555,8 +567,9 @@ namespace usylibpp {
             #undef HANDLE
             #define HANDLE(checkresult, func) \
             if constexpr (!std::is_same_v<decltype(std::declval<CB>().func), types::noop_t>) { \
+                static_assert(std::invocable<decltype((std::declval<CB>().func)), everything::File<flags>>, "Must be invocable with file with correct flags!"); \
                 if (checkresult(i)) { \
-                    if constexpr (std::is_convertible_v<std::invoke_result_t<decltype((std::declval<CB>().func)), DWORD>, bool>) { \
+                    if constexpr (std::is_convertible_v<std::invoke_result_t<decltype((std::declval<CB>().func)), everything::File<flags>>, bool>) { \
                         if (!std::invoke(cb.func, i)) break; \
                     } else { \
                         std::invoke(cb.func, i); \

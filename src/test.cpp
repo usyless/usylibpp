@@ -186,19 +186,21 @@ int main() {
                     const auto build_folder = executable_path_opt->get().parent_path().parent_path();
                     const auto query1 = everything::Query::from_directory_absolute(build_folder.native());
 
+                    static constexpr auto request_flags = everything::RequestFlags{}.date_modified().size();
+
                     print::println("Performing query: {}", windows::to_utf8_or_default(query1.get()));
-                    if (everything.do_query(query1.get(), {.RequestFlags = everything::RequestFlags{}.date_modified().size()})) {
+                    if (everything.do_query(query1.get(), {.RequestFlags = request_flags})) {
                         print::println("Query success!");
 
                         print::println("File count: {} ; Directory count: {} ; Total results count: {}", everything.query_file_count(), everything.query_folder_count(), everything.query_results_count());
-                        everything.walk_results(everything::Callbacks{
-                            .on_file = [](const everything::File i) {
+                        everything.walk_results<request_flags>(everything::Callbacks{
+                            .on_file = [](const everything::File<request_flags> i) {
                                 print::println("File - Parent: {} ; Filename : {} ; Last Write time: {} ; Size: {}", i.parent_path_utf8_or_default(), i.filename_utf8_or_default(), i.date_modified_or_default(), i.size_or_default());
                             },
-                            .on_directory = [](const everything::File i) {
+                            .on_directory = [](const everything::File<request_flags> i) {
                                 print::println("Directory - Parent: {} ; Filename : {} ; Last Write time: {} ; Size: {}", i.parent_path_utf8_or_default(), i.filename_utf8_or_default(), i.date_modified_or_default(), i.size_or_default());
                             },
-                            .on_volume = [](const everything::File i) {
+                            .on_volume = [](const everything::File<request_flags> i) {
                                 print::println("Volume - Parent: {} ; Filename : {} ; Last Write time: {} ; Size: {}", i.parent_path_utf8_or_default(), i.filename_utf8_or_default(), i.date_modified_or_default(), i.size_or_default());
                             }
                         });
@@ -216,18 +218,18 @@ int main() {
                         .exclude_directory_any(L"CMakeFiles");
 
                     print::println("Performing query: {}", windows::to_utf8_or_default(query2.get()));
-                    if (everything.do_query(query2.get(), {.RequestFlags = everything::RequestFlags{}.date_modified().size()})) {
+                    if (everything.do_query(query2.get(), {.RequestFlags = request_flags})) {
                         print::println("Query success!");
 
                         print::println("File count: {} ; Directory count: {} ; Total results count: {}", everything.query_file_count(), everything.query_folder_count(), everything.query_results_count());
                         everything.walk_results(everything::Callbacks{
-                            .on_file = [](const everything::File i) {
+                            .on_file = [](const everything::File<> i) {
                                 print::println("File - Parent: {} ; Filename : {} ; Last Write time: {} ; Size: {}", i.parent_path_utf8_or_default(), i.filename_utf8_or_default(), i.date_modified_or_default(), i.size_or_default());
                             },
-                            .on_directory = [](const everything::File i) {
+                            .on_directory = [](const everything::File<> i) {
                                 print::println("Directory - Parent: {} ; Filename : {} ; Last Write time: {} ; Size: {}", i.parent_path_utf8_or_default(), i.filename_utf8_or_default(), i.date_modified_or_default(), i.size_or_default());
                             },
-                            .on_volume = [](const everything::File i) {
+                            .on_volume = [](const everything::File<> i) {
                                 print::println("Volume - Parent: {} ; Filename : {} ; Last Write time: {} ; Size: {}", i.parent_path_utf8_or_default(), i.filename_utf8_or_default(), i.date_modified_or_default(), i.size_or_default());
                             }
                         });
