@@ -185,6 +185,13 @@ namespace usylibpp {
                 return *this;
             }
 
+            constexpr inline Query& exclude_directory_any(std::wstring_view base_dir, std::wstring_view dir) {
+                exclude_directory_absolute(base_dir.ends_with(L'\\') ? strings::concat_strings(base_dir, dir) : strings::concat_strings(base_dir, L"\\", dir));
+                exclude_directory_absolute(base_dir.ends_with(L'\\') ? strings::concat_strings(base_dir, L"*\\", dir) : strings::concat_strings(base_dir, L"\\*\\", dir));
+
+                return *this;
+            }
+
             /**
              * Can't perform any other operations on this query
              */
