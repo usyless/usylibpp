@@ -412,7 +412,10 @@ if (PROJECT_IS_TOP_LEVEL)
         )
 
         target_link_options(usylibpp_test PRIVATE 
-            $<$<CONFIG:Release>:-Wl,--gc-sections>
+            $<$<CONFIG:Release>:
+                -Wl,--gc-sections
+                -s
+            >
         )
     endif()
 endif()
