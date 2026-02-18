@@ -121,32 +121,36 @@ namespace usylibpp {
     };
 
     namespace EverythingExtra {
-        struct RequestFlags {
-            DWORD flags{0};
+        template <typename T, typename C>
+        struct FlagsBase {
+            T flags{0};
 
-            constexpr RequestFlags(DWORD flags = EVERYTHING_REQUEST_FILE_NAME | EVERYTHING_REQUEST_PATH) noexcept : flags{flags} {}
-
-            constexpr inline RequestFlags& clear() noexcept {
+            constexpr inline C& clear() noexcept {
                 flags = 0;
-                return *this;
+                return static_cast<C&>(*this);
             }
 
-            constexpr inline RequestFlags& add_flag(const DWORD flag) noexcept {
+            constexpr inline C& add_flag(const T flag) noexcept {
                 flags |= flag;
-                return *this;
+                return static_cast<C&>(*this);
             }
 
-            constexpr inline RequestFlags& remove_flag(const DWORD flag) noexcept {
+            constexpr inline C& remove_flag(const T flag) noexcept {
                 flags &= ~flag;
-                return *this;
+                return static_cast<C&>(*this);
             }
+
+            constexpr inline T get() const noexcept {
+                return flags;
+            }
+        };
+
+        struct RequestFlags : public FlagsBase<DWORD, RequestFlags> {
+            constexpr RequestFlags(DWORD _flags = EVERYTHING_REQUEST_FILE_NAME | EVERYTHING_REQUEST_PATH) noexcept : FlagsBase{_flags} {}
 
             #pragma push_macro("HANDLE")
             #undef HANDLE
-            #define HANDLE(func_name, flag) \
-            constexpr inline RequestFlags& func_name() noexcept { \
-                return add_flag(flag); \
-            }
+            #define HANDLE(func_name, flag) constexpr inline RequestFlags& func_name() noexcept { return add_flag(flag); }
 
             HANDLE(file_name, EVERYTHING_REQUEST_FILE_NAME)
             HANDLE(path, EVERYTHING_REQUEST_PATH)
@@ -166,11 +170,34 @@ namespace usylibpp {
             HANDLE(highlighted_full_path_and_file_name, EVERYTHING_REQUEST_HIGHLIGHTED_FULL_PATH_AND_FILE_NAME)
 
             #pragma pop_macro("HANDLE")
-
-            constexpr inline DWORD get() const noexcept {
-                return flags;
-            }
         };
+
+        struct SortFlags : public FlagsBase<DWORD, SortFlags> {
+            constexpr SortFlags(DWORD _flags = EVERYTHING_SORT_NAME_ASCENDING) noexcept : FlagsBase{_flags} {}
+
+            #pragma push_macro("HANDLE")
+            #undef HANDLE
+            #define HANDLE(func_name, flag) \
+            constexpr inline SortFlags& func_name##_acending() noexcept { return add_flag(flag##_ASCENDING); } \
+            constexpr inline SortFlags& func_name##_descending() noexcept { return add_flag(flag##_DESCENDING); }
+
+            HANDLE(name, EVERYTHING_SORT_NAME)
+            HANDLE(path, EVERYTHING_SORT_PATH)
+            HANDLE(size, EVERYTHING_SORT_SIZE)
+            HANDLE(extension, EVERYTHING_SORT_EXTENSION)
+            HANDLE(type_name, EVERYTHING_SORT_TYPE_NAME)
+            HANDLE(date_created, EVERYTHING_SORT_DATE_CREATED)
+            HANDLE(date_modified, EVERYTHING_SORT_DATE_MODIFIED)
+            HANDLE(attributes, EVERYTHING_SORT_ATTRIBUTES)
+            HANDLE(file_list_filename, EVERYTHING_SORT_FILE_LIST_FILENAME)
+            HANDLE(run_count, EVERYTHING_SORT_RUN_COUNT)
+            HANDLE(date_recently_changed, EVERYTHING_SORT_DATE_RECENTLY_CHANGED)
+            HANDLE(date_accessed, EVERYTHING_SORT_DATE_ACCESSED)
+            HANDLE(date_run, EVERYTHING_SORT_DATE_RUN)
+
+            #pragma pop_macro("HANDLE")
+        };
+
         /**
         * Set to the defaults
         */
@@ -183,7 +210,7 @@ namespace usylibpp {
             DWORD Offset{0};
             // HWND ReplyWindow{nullptr};
             DWORD ReplyID{0};
-            DWORD Sort{EVERYTHING_SORT_NAME_ASCENDING};
+            SortFlags Sort{};
             RequestFlags RequestFlags{};
         };
 
@@ -486,7 +513,7 @@ namespace usylibpp {
             Everything_SetOffset(options.Offset);
             // Everything_SetReplyWindow(options.ReplyWindow);
             Everything_SetReplyID(options.ReplyID);
-            Everything_SetSort(options.Sort);
+            Everything_SetSort(options.Sort.get());
             Everything_SetRequestFlags(options.RequestFlags.get());
 
             Everything_SetSearch(query.c_str());
