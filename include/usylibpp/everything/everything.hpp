@@ -121,6 +121,46 @@ namespace usylibpp {
     };
 
     namespace EverythingExtra {
+        struct RequestFlags {
+            DWORD flags{0};
+
+            constexpr RequestFlags(DWORD flags = EVERYTHING_REQUEST_FILE_NAME | EVERYTHING_REQUEST_PATH) noexcept : flags{flags} {}
+
+            constexpr void clear() noexcept {
+                flags = 0;
+            }
+
+            #pragma push_macro("HANDLE")
+            #undef HANDLE
+            #define HANDLE(func_name, flag) \
+            constexpr RequestFlags& func_name() noexcept { \
+                flags |= flag; \
+                return *this; \
+            }
+
+            HANDLE(file_name, EVERYTHING_REQUEST_FILE_NAME)
+            HANDLE(path, EVERYTHING_REQUEST_PATH)
+            HANDLE(full_path_and_file_name, EVERYTHING_REQUEST_FULL_PATH_AND_FILE_NAME)
+            HANDLE(extension, EVERYTHING_REQUEST_EXTENSION)
+            HANDLE(size, EVERYTHING_REQUEST_SIZE)
+            HANDLE(date_created, EVERYTHING_REQUEST_DATE_CREATED)
+            HANDLE(date_modified, EVERYTHING_REQUEST_DATE_MODIFIED)
+            HANDLE(date_accessed, EVERYTHING_REQUEST_DATE_ACCESSED)
+            HANDLE(attributes, EVERYTHING_REQUEST_ATTRIBUTES)
+            HANDLE(file_list_file_name, EVERYTHING_REQUEST_FILE_LIST_FILE_NAME)
+            HANDLE(run_count, EVERYTHING_REQUEST_RUN_COUNT)
+            HANDLE(date_run, EVERYTHING_REQUEST_DATE_RUN)
+            HANDLE(recently_changed, EVERYTHING_REQUEST_DATE_RECENTLY_CHANGED)
+            HANDLE(highlighted_file_name, EVERYTHING_REQUEST_HIGHLIGHTED_FILE_NAME)
+            HANDLE(highlighted_path, EVERYTHING_REQUEST_HIGHLIGHTED_PATH)
+            HANDLE(highlighted_full_path_and_file_name, EVERYTHING_REQUEST_HIGHLIGHTED_FULL_PATH_AND_FILE_NAME)
+
+            #pragma pop_macro("HANDLE")
+
+            constexpr inline DWORD get() const noexcept {
+                return flags;
+            }
+        };
         /**
         * Set to the defaults
         */
@@ -134,7 +174,7 @@ namespace usylibpp {
             // HWND ReplyWindow{nullptr};
             DWORD ReplyID{0};
             DWORD Sort{EVERYTHING_SORT_NAME_ASCENDING};
-            DWORD RequestFlags{EVERYTHING_REQUEST_FILE_NAME | EVERYTHING_REQUEST_PATH};
+            RequestFlags RequestFlags{};
         };
 
         template <
@@ -207,11 +247,11 @@ namespace usylibpp {
                 return query;
             }
 
-            const std::wstring& get() const & noexcept {
+            constexpr const std::wstring& get() const & noexcept {
                 return q;
             }
 
-            std::wstring&& get() && noexcept {
+            constexpr std::wstring&& get() && noexcept {
                 return std::move(q);
             }
         };
@@ -437,7 +477,7 @@ namespace usylibpp {
             // Everything_SetReplyWindow(options.ReplyWindow);
             Everything_SetReplyID(options.ReplyID);
             Everything_SetSort(options.Sort);
-            Everything_SetRequestFlags(options.RequestFlags);
+            Everything_SetRequestFlags(options.RequestFlags.get());
 
             Everything_SetSearch(query.c_str());
 
