@@ -487,15 +487,15 @@ namespace usylibpp {
             return Everything_GetNumResults();
         }
 
-        [[nodiscard]] static inline auto total_file_results() noexcept {
+        [[nodiscard]] static inline auto total_file_results_count() noexcept {
             return Everything_GetTotFileResults();
         }
 
-        [[nodiscard]] static inline auto total_folder_results() noexcept {
+        [[nodiscard]] static inline auto total_folder_results_count() noexcept {
             return Everything_GetTotFolderResults();
         }
 
-        [[nodiscard]] static inline auto total_results() noexcept {
+        [[nodiscard]] static inline auto total_results_count() noexcept {
             return Everything_GetTotResults();
         }
 
