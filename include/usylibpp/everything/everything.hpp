@@ -186,7 +186,7 @@ namespace usylibpp {
             #define HANDLE(func_name, flag) constexpr inline RequestFlags& func_name() noexcept { return add_flag(EVERYTHING_REQUEST_##flag); }
 
             HANDLE(file_name, FILE_NAME)
-            HANDLE(path, PATH)
+            HANDLE(parent_path, PATH)
             HANDLE(full_path_and_file_name, FULL_PATH_AND_FILE_NAME)
             HANDLE(extension, EXTENSION)
             HANDLE(size, SIZE)
