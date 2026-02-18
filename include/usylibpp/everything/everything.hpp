@@ -59,28 +59,44 @@ namespace usylibpp {
         }
 
         [[nodiscard]] inline std::optional<uint64_t> size() const noexcept {
-            LARGE_INTEGER s;
+            LARGE_INTEGER s{};
             if (!Everything_GetResultSize(i, &s)) return std::nullopt;
             return static_cast<uint64_t>(s.QuadPart); // need to check if valid
             // return (static_cast<uint64_t>(s.HighPart) << 32) | static_cast<uint32_t>(s.LowPart);
         }
 
+        [[nodiscard]] inline uint64_t size_or_default() const noexcept {
+            return size().value_or(0);
+        }
+
         [[nodiscard]] inline std::optional<uint64_t> date_created() const noexcept {
-            FILETIME s;
+            FILETIME s{};
             if (!Everything_GetResultDateCreated(i, &s)) return std::nullopt;
             return wil::filetime::to_int64(s);
         }
 
+        [[nodiscard]] inline uint64_t date_created_or_default() const noexcept {
+            return date_created().value_or(0);
+        }
+
         [[nodiscard]] inline std::optional<uint64_t> date_modified() const noexcept {
-            FILETIME s;
+            FILETIME s{};
             if (!Everything_GetResultDateModified(i, &s)) return std::nullopt;
             return wil::filetime::to_int64(s);
         }
 
+        [[nodiscard]] inline uint64_t date_modified_or_default() const noexcept {
+            return date_modified().value_or(0);
+        }
+
         [[nodiscard]] inline std::optional<uint64_t> date_accessed() const noexcept {
-            FILETIME s;
+            FILETIME s{};
             if (!Everything_GetResultDateAccessed(i, &s)) return std::nullopt;
             return wil::filetime::to_int64(s);
+        }
+
+        [[nodiscard]] inline uint64_t date_accessed_or_default() const noexcept {
+            return date_accessed().value_or(0);
         }
 
         [[nodiscard]] inline auto attributes() const noexcept {
@@ -96,15 +112,23 @@ namespace usylibpp {
         }
 
         [[nodiscard]] inline std::optional<uint64_t> date_run() const noexcept {
-            FILETIME s;
+            FILETIME s{};
             if (!Everything_GetResultDateRun(i, &s)) return std::nullopt;
             return wil::filetime::to_int64(s);
         }
 
+        [[nodiscard]] inline uint64_t date_run_or_default() const noexcept {
+            return date_run().value_or(0);
+        }
+
         [[nodiscard]] inline std::optional<uint64_t> date_recently_changed() const noexcept {
-            FILETIME s;
+            FILETIME s{};
             if (!Everything_GetResultDateRecentlyChanged(i, &s)) return std::nullopt;
             return wil::filetime::to_int64(s);
+        }
+
+        [[nodiscard]] inline uint64_t date_recently_changed_or_default() const noexcept {
+            return date_recently_changed().value_or(0);
         }
 
         [[nodiscard]] inline auto highlighted_file_name() const noexcept {
