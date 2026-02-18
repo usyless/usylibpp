@@ -560,6 +560,11 @@ namespace usylibpp {
          * Use the Everything_Get... functions using the index to get the require data
          */
         template <everything::RequestFlags flags = everything::RequestFlags{0xffffffff}, everything::CallbacksType CB>
+        requires (
+            (std::is_same_v<decltype(std::declval<CB>().on_file), types::noop_t> || std::invocable<decltype((std::declval<CB>().on_file)), everything::File<flags>>) &&
+            (std::is_same_v<decltype(std::declval<CB>().on_directory), types::noop_t> || std::invocable<decltype((std::declval<CB>().on_directory)), everything::File<flags>>) &&
+            (std::is_same_v<decltype(std::declval<CB>().on_volume), types::noop_t> || std::invocable<decltype((std::declval<CB>().on_volume)), everything::File<flags>>)
+        )
         static inline void walk_results(CB&& cb) {
             const auto results_count = query_results_count();
 
@@ -567,7 +572,6 @@ namespace usylibpp {
             #undef HANDLE
             #define HANDLE(checkresult, func) \
             if constexpr (!std::is_same_v<decltype(std::declval<CB>().func), types::noop_t>) { \
-                static_assert(std::invocable<decltype((std::declval<CB>().func)), everything::File<flags>>, "Must be invocable with file with correct flags!"); \
                 if (checkresult(i)) { \
                     if constexpr (std::is_convertible_v<std::invoke_result_t<decltype((std::declval<CB>().func)), everything::File<flags>>, bool>) { \
                         if (!std::invoke(cb.func, everything::File<flags>{i})) break; \
