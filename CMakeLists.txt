@@ -284,10 +284,32 @@ This includes windows.h along with various other headers, but enables all of the
         if(USYLIBPP_ENABLE_VOIDTOOLS_EVERYTHING)
             target_compile_definitions(usylibpp_usylibpp INTERFACE "USYLIBPP_ENABLE_VOIDTOOLS_EVERYTHING")
 
-            set(USYLIBPP_VOIDTOOLS_EVERYTHING_DIR "${USYLIBPP_3RD_PARTY_DIR}/voidtools-everything-sdk")
+            set(USYLIBPP_VOIDTOOLS_EVERYTHING_SDK_GIT_TAG
+                "main"
+                CACHE STRING
+                "Git tag to use when checking out the voidtools everything sdk"
+            )
+
+            message(STATUS "Everything SDK git tag (USYLIBPP_VOIDTOOLS_EVERYTHING_SDK_GIT_TAG): ${USYLIBPP_VOIDTOOLS_EVERYTHING_SDK_GIT_TAG}")
+
+            include(FetchContent)
+
+            cmake_policy(SET CMP0169 OLD)
+
+            FetchContent_Declare(
+                voidtools_everything
+                GIT_REPOSITORY https://github.com/voidtools/everything_sdk3.git
+                GIT_TAG ${USYLIBPP_VOIDTOOLS_EVERYTHING_SDK_GIT_TAG}
+                GIT_SHALLOW TRUE
+            )
+
+            FetchContent_GetProperties(voidtools_everything)
+            if(NOT voidtools_everything_POPULATED)
+                FetchContent_Populate(voidtools_everything)
+            endif()
 
             add_library(voidtools_everything STATIC 
-                "${USYLIBPP_VOIDTOOLS_EVERYTHING_DIR}/src/Everything.c"
+                "${voidtools_everything_SOURCE_DIR}/src/Everything3.c"
             )
 
             target_compile_features(voidtools_everything PRIVATE 
@@ -295,16 +317,22 @@ This includes windows.h along with various other headers, but enables all of the
             )
 
             target_include_directories(voidtools_everything PUBLIC 
-                "${USYLIBPP_VOIDTOOLS_EVERYTHING_DIR}/include"
+                "${voidtools_everything_SOURCE_DIR}/include"
             )
 
             target_compile_definitions(voidtools_everything PRIVATE
+                EVERYTHING3_LIB
+                _WINDOWS
+                WIN32
+
                 $<$<CONFIG:Debug>:BZ_NO_STDIO>
             )
 
             if (MSVC)
                 target_compile_options(voidtools_everything PRIVATE
                     /EHsc
+                    /TC # CompileAs C
+                    /W3
 
                     $<$<CONFIG:Debug>:
                         /RTC1
@@ -315,9 +343,12 @@ This includes windows.h along with various other headers, but enables all of the
                     $<$<CONFIG:Release>:
                         /O2
                         /Ob2
-                        /Oi
-                        /Oy
+                        /Oi # IntrinsicFunctions
+                        /Ot # Favor speed
+                        /GF # StringPooling
+                        /Oy- # OmitFramePointers = false
                         /Gy
+                        /fp:fast
                     >
                 )
             elseif (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")

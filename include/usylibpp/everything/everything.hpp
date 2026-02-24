@@ -11,8 +11,7 @@
 #include "../strings.hpp"
 #include "../windows/char_t.hpp"
 
-#include <Everything.h>
-#include <everything_ipc.h>
+#include <Everything3.h>
 
 #include <wil/resource.h>
 
@@ -51,28 +50,26 @@ namespace usylibpp {
         };
 
         struct RequestFlags : public FlagsBase<DWORD, RequestFlags> {
-            constexpr RequestFlags(DWORD _flags = EVERYTHING_REQUEST_FILE_NAME | EVERYTHING_REQUEST_PATH) noexcept : FlagsBase{_flags} {}
+            constexpr RequestFlags(DWORD _flags = EVERYTHING3_PROPERTY_ID_NAME | EVERYTHING3_PROPERTY_ID_PATH) noexcept : FlagsBase{_flags} {}
 
             #pragma push_macro("HANDLE")
             #undef HANDLE
-            #define HANDLE(func_name, flag) constexpr inline RequestFlags& func_name() noexcept { return add_flag(EVERYTHING_REQUEST_##flag); }
+            #define HANDLE(func_name, flag) constexpr inline RequestFlags& func_name() noexcept { return add_flag( EVERYTHING3_PROPERTY_ID_##flag); }
 
-            HANDLE(file_name, FILE_NAME)
+            HANDLE(file_name, NAME)
             HANDLE(parent_path, PATH)
-            HANDLE(full_path_and_file_name, FULL_PATH_AND_FILE_NAME)
+            HANDLE(full_path_and_file_name, PATH_AND_NAME)
             HANDLE(extension, EXTENSION)
             HANDLE(size, SIZE)
+            HANDLE(type, TYPE)
             HANDLE(date_created, DATE_CREATED)
             HANDLE(date_modified, DATE_MODIFIED)
             HANDLE(date_accessed, DATE_ACCESSED)
             HANDLE(attributes, ATTRIBUTES)
-            HANDLE(file_list_file_name, FILE_LIST_FILE_NAME)
+            HANDLE(file_list_name, FILE_LIST_NAME)
             HANDLE(run_count, RUN_COUNT)
             HANDLE(date_run, DATE_RUN)
             HANDLE(recently_changed, DATE_RECENTLY_CHANGED)
-            HANDLE(highlighted_file_name, HIGHLIGHTED_FILE_NAME)
-            HANDLE(highlighted_path, HIGHLIGHTED_PATH)
-            HANDLE(highlighted_full_path_and_file_name, HIGHLIGHTED_FULL_PATH_AND_FILE_NAME)
         };
 
         struct SortFlags : public FlagsBase<DWORD, SortFlags> {
