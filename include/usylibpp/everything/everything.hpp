@@ -456,10 +456,13 @@ namespace usylibpp {
                 return LoadStatus::NoExeFound;
             }
 
+            // look into -add-volumes C:;D:
+            // -no-db
+
             #ifdef UNICODE
-            const auto args = strings::concat_strings(L"-instance \"", instance_name, L"\" -admin -startup -is-run-as");
+            const auto args = strings::concat_strings(L"-instance \"", instance_name, L"\" -index-as-admin -startup -is-run-as");
             #else
-            const auto args = strings::concat_strings("-instance \"", instance_name, "\" -admin -startup -is-run-as");
+            const auto args = strings::concat_strings("-instance \"", instance_name, "\" -index-as-admin -startup -is-run-as");
             #endif
             auto status = windows::process::run_admin_process<{
                 .allow_visible_windows = true,
