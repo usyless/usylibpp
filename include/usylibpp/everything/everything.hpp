@@ -454,15 +454,22 @@ namespace usylibpp {
         
         template <typename F = types::noop_t>
         requires (std::invocable<F&>)
-        [[nodiscard]] inline LoadStatus try_load(F&& on_uac_success = {}) {
+        [[nodiscard]] inline LoadStatus try_load(
+            std::basic_string_view<windows::WIN_CHAR> extra_args =
+            #ifdef UNICODE
+            L""
+            #else
+            ""
+            #endif
+            , F&& on_uac_success = {}) {
             if (everything_path.empty()) {
                 return LoadStatus::NoExeFound;
             }
 
             #ifdef UNICODE
-            const auto args = strings::concat_strings(L"-instance \"", instance_name, L"\" -admin -startup -is-run-as");
+            const auto args = strings::concat_strings(L"-instance \"", instance_name, L"\" -admin -startup -is-run-as", (extra_args.empty()) ? "" : " ", extra_args);
             #else
-            const auto args = strings::concat_strings("-instance \"", instance_name, "\" -admin -startup -is-run-as");
+            const auto args = strings::concat_strings("-instance \"", instance_name, "\" -admin -startup -is-run-as", (extra_args.empty()) ? "" : " ", extra_args);
             #endif
             auto status = windows::process::run_admin_process<{
                 .allow_visible_windows = true,
