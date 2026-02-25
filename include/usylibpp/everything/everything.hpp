@@ -467,7 +467,7 @@ namespace usylibpp {
             }
 
             #ifdef UNICODE
-            const auto args = strings::concat_strings(L"-instance \"", instance_name, L"\" -admin -startup -is-run-as", (extra_args.empty()) ? "" : " ", extra_args);
+            const auto args = strings::concat_strings(L"-instance \"", instance_name, L"\" -admin -startup -is-run-as", (extra_args.empty()) ? L"" : L" ", extra_args);
             #else
             const auto args = strings::concat_strings("-instance \"", instance_name, "\" -admin -startup -is-run-as", (extra_args.empty()) ? "" : " ", extra_args);
             #endif
