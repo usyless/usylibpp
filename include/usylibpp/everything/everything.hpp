@@ -451,6 +451,20 @@ namespace usylibpp {
 
             UACRejected
         };
+
+        [[nodiscard]] inline bool wait_for_load() {
+            while (true) {
+                if (Everything_IsDBLoaded()) {
+                    return true;
+                } else if (Everything_GetLastError()) {
+                    // IPC not running.
+                    return false;
+                }
+                
+                // wait for database to load..
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+            }
+        }
         
         template <typename F = types::noop_t>
         requires (std::invocable<F&>)
@@ -499,17 +513,11 @@ namespace usylibpp {
 
             _Everything_IPC_WndClass = wndclass->c_str();
 
-            while (true) {
-                if (Everything_IsDBLoaded()) {
-                    return LoadStatus::Success;
-                } else if (Everything_GetLastError()) {
-                    // IPC not running.
-                    reset_wndclass();
-                    return LoadStatus::NotRunning;
-                }
-                
-                // wait for database to load..
-                std::this_thread::sleep_for(std::chrono::seconds(1));
+            if (wait_for_load()) {
+                return LoadStatus::Success;
+            } else {
+                reset_wndclass();
+                return LoadStatus::NotRunning;
             }
 
             reset_wndclass();
