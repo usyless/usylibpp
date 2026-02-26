@@ -7,12 +7,12 @@
 namespace usylibpp::util {
 class Timer {
 private:
-    const std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+    const std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
     bool ended{false};
 public:
     inline void end() noexcept {
         ended = true;
-        const auto end = std::chrono::high_resolution_clock::now();
+        const auto end = std::chrono::steady_clock::now();
         const auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
         const auto duration_us = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
         const std::chrono::duration<double> duration = end - start;
