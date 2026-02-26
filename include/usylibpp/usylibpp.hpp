@@ -22,7 +22,8 @@
 #include "print.hpp" // IWYU pragma: export
 #include "util/worker.hpp" // IWYU pragma: export
 #include "util/timer.hpp" // IWYU pragma: export
-#include <usylibppconfig.hpp>
+#include "util/interval.hpp" // IWYU pragma: export
+#include <usylibppconfig.hpp> // IWYU pragma: export
 
 #ifdef USYLIBPP_ENABLE_WINTOAST
 #include <wintoastlib.h>
