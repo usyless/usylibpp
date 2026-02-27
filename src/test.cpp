@@ -171,6 +171,13 @@ int main() {
             },
         });
     }
+    print::println("Windows compression api stuff:");
+    {
+        print::println("Compressing \"test.png\" to \"test_compressed.png\"");
+        const auto comp = windows::Compressor(windows::CompressAlgorithm::LZMS);
+        const auto result = comp.compress_to_from(L"test.png", L"test_compressed.png");
+        print::println("Compress success: {}", result);
+    }
     #endif
 
     #ifdef USYLIBPP_ENABLE_VOIDTOOLS_EVERYTHING
