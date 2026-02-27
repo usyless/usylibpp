@@ -55,16 +55,17 @@ public:
         return compress(std::span<const char>{data->data(), data->size()});
     }
 
-    [[nodiscard]] inline bool compress_to_file(std::span<const char> input, const std::filesystem::path& output_path) const {
+    [[nodiscard]] inline std::optional<size_t> compress_to_file(std::span<const char> input, const std::filesystem::path& output_path) const {
         const auto data = compress(input);
-        if (!data) return false;
+        if (!data) return std::nullopt;
+        if (!files::write(output_path, *data)) return std::nullopt;
 
-        return files::write(output_path, *data);
+        return data->size();
     }
 
-    [[nodiscard]] inline bool compress_to_from(const std::filesystem::path& input_path, const std::filesystem::path& output_path) const {
+    [[nodiscard]] inline std::optional<size_t> compress_to_from(const std::filesystem::path& input_path, const std::filesystem::path& output_path) const {
         const auto data = compress_from_file(input_path);
-        if (!data) return false;
+        if (!data) return std::nullopt;
 
         return compress_to_file(*data, output_path);
     }
