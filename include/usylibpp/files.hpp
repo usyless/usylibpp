@@ -2,6 +2,7 @@
 
 #include "aliases.hpp" // IWYU pragma: export
 #include "macros.hpp"
+#include <span>
 #include <string>
 #include <filesystem>
 #include <fstream>
@@ -36,11 +37,18 @@ namespace usylibpp::files {
     /**
      * Write data to a file
      */
-    [[nodiscard]] inline bool write(const std::filesystem::path& path, const std::string_view data) {
+    [[nodiscard]] inline bool write(const std::filesystem::path& path, std::span<const char> data) {
         std::ofstream file(path, std::ios::binary);
         if (!file) return false;
 
         file.write(data.data(), static_cast<std::streamsize>(data.size()));
         return file.good();
+    }
+
+    /**
+     * Write data to a file
+     */
+    [[nodiscard]] inline bool write(const std::filesystem::path& path, std::string_view data) {
+        return write(path, std::span<const char>{data.data(), data.size()});
     }
 }

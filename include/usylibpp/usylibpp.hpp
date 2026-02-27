@@ -10,6 +10,7 @@
 #include "windows/fs.hpp" // IWYU pragma: export
 #include "windows/process.hpp" // IWYU pragma: export
 #include "windows/strings.hpp" // IWYU pragma: export
+#include "windows/compression.hpp" // IWYU pragma: export
 #endif
 
 #include "everything/everything.hpp" // IWYU pragma: export
