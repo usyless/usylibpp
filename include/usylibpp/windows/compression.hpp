@@ -95,6 +95,15 @@ public:
         return output;
     }
 
+    [[nodiscard]] inline std::optional<size_t> decompress_to_file(std::span<const char> input, SIZE_T expectedSize, const std::filesystem::path& output_path) const {
+        const auto result = decompress(input, expectedSize);
+        if (!result) return std::nullopt;
+
+        if (!files::write(output_path, *result)) return std::nullopt;
+
+        return result->size();
+    }
+
 private:
     wil::unique_any<DECOMPRESSOR_HANDLE, decltype(&CloseDecompressor), CloseDecompressor> decompressor_;
 };
