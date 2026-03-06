@@ -3,17 +3,16 @@
 #include "aliases.hpp" // IWYU pragma: exports
 #if __cplusplus >= 202302L && __has_include(<print>)
 #include <print>
+
+namespace usylibpp::print {
+    using std::println;
+    using std::print;
+}
 #elif __has_include(<format>)
 #include <iostream>
 #include <format>
-#endif
 
-#if __has_include(<print>) || __has_include(<format>) 
 namespace usylibpp::print {
-    #if __cplusplus >= 202302L
-    using std::println;
-    using std::print;
-    #else
     template<typename... Ts>
     inline auto& print(const std::format_string<Ts...>& fmt, Ts&&... args) {
         std::cout << std::vformat(fmt.get(), std::make_format_args(args...));
@@ -39,6 +38,5 @@ namespace usylibpp::print {
     inline void println() {
         std::cout << '\n';
     }
-    #endif
 }
 #endif
