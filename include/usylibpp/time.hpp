@@ -20,15 +20,16 @@ namespace usylibpp::time {
         return cur_tm;
     }
 
-    [[nodiscard]] inline auto datetime_stream(const ::tm& tm) {
-        return std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
+    [[nodiscard]] inline auto datetime_stream(const ::tm& tm, const char* fmt = "%Y-%m-%d %H:%M:%S") {
+        return std::put_time(&tm, fmt);
     }
     inline auto datetime_stream(const ::tm&&) = delete;
+    inline auto datetime_stream(::tm&) = delete;
 
-    [[nodiscard]] inline std::string datetime_string(::time_t time = std::time(nullptr)) {
+    [[nodiscard]] inline std::string datetime_string(::time_t time = std::time(nullptr), const char* fmt = "%Y-%m-%d %H:%M:%S") {
         std::stringstream ss;
         const auto tm = tm_safe(time);
-        ss << datetime_stream(tm);
+        ss << datetime_stream(tm, fmt);
         return ss.str();
     }
 }
