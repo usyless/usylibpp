@@ -23,14 +23,12 @@ namespace usylibpp::time {
     [[nodiscard]] inline auto datetime_stream(const ::tm& tm) {
         return std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
     }
-
-    [[nodiscard]] inline auto datetime_stream(::time_t time = std::time(nullptr)) {
-        return datetime_stream(tm_safe(time));
-    }
+    inline auto datetime_stream(const ::tm&&) = delete;
 
     [[nodiscard]] inline std::string datetime_string(::time_t time = std::time(nullptr)) {
         std::stringstream ss;
-        ss << datetime_stream(time);
+        const auto tm = tm_safe(time);
+        ss << datetime_stream(tm);
         return ss.str();
     }
 }
