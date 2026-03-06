@@ -11,6 +11,8 @@
 #include "../strings.hpp"
 #include "../windows/char_t.hpp"
 
+#include <functional>
+
 #include <Everything.h>
 #include <everything_ipc.h>
 

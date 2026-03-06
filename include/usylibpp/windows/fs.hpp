@@ -9,6 +9,7 @@
 #include <windows.h>
 #include <wil/resource.h>
 #include <string>
+#include <functional>
 
 namespace usylibpp::windows::fs {
 struct FindDataWrapper {

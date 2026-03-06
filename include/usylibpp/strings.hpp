@@ -8,6 +8,7 @@
 #include <string_view>
 #include <cstring>
 #include <charconv>
+#include <functional>
 #include "types.hpp"
 
 namespace usylibpp::strings {
