@@ -20,4 +20,4 @@ requires (true) \
 [[nodiscard]] inline constexpr auto function##_or_default(Call&&... args) \
     noexcept(noexcept(function(std::forward<Call>(args)...).value_or(default_value))) { \
     return function(std::forward<Call>(args)...).value_or(default_value); \
-} \
+}
