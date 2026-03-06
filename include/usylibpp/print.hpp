@@ -3,11 +3,12 @@
 #include "aliases.hpp" // IWYU pragma: exports
 #if __cplusplus >= 202302L && __has_include(<print>)
 #include <print>
-#else
+#elif __has_include(<format>)
 #include <iostream>
 #include <format>
 #endif
 
+#if __has_include(<print>) || __has_include(<format>) 
 namespace usylibpp::print {
     #if __cplusplus >= 202302L
     using std::println;
@@ -40,3 +41,4 @@ namespace usylibpp::print {
     }
     #endif
 }
+#endif
