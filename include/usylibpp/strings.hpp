@@ -9,6 +9,7 @@
 #include <cstring>
 #include <charconv>
 #include <functional>
+#include <optional>
 #include "types.hpp"
 
 namespace usylibpp::strings {
