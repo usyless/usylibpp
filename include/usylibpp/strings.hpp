@@ -259,6 +259,16 @@ namespace usylibpp::strings {
     }
 
     /**
+     * Includes the null terminator
+     */
+    template<types::CharOrWChar Char>
+    [[nodiscard]] inline consteval std::size_t constexpr_strlen(const Char* str) {
+        size_t len = 1;
+        while (str[len] != '\0') ++len;
+        return len;
+    }
+
+    /**
      * Straight up url encodes a string
      * No url sensitivity, for that use encode_full_urls
      */
