@@ -250,16 +250,9 @@ namespace usylibpp::strings {
         return count;
     }
 
-    template<types::CharOrWChar Char, std::size_t N>
-    [[nodiscard]] inline consteval std::size_t strlen(const Char (&)[N]) noexcept {
-        return N - 1;
-    }
-
-    template<types::CharOrWChar Char>
-    [[nodiscard]] inline consteval std::size_t strlen(const Char* str) {
-        size_t len = 0;
-        while (str[len] != Char('\0')) ++len;
-        return len;
+    template<types::is_basic_string_view SV>
+    [[nodiscard]] inline consteval std::size_t strlen(SV&& str) {
+        return std::basic_string_view<types::string_view_char_t<SV>>{str}.size();
     }
 
     /**
