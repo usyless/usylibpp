@@ -250,21 +250,15 @@ namespace usylibpp::strings {
         return count;
     }
 
-    /**
-     * Includes the null terminator
-     */
     template<types::CharOrWChar Char, std::size_t N>
-    [[nodiscard]] inline consteval std::size_t constexpr_strlen(const Char (&)[N]) noexcept {
-        return N;
+    [[nodiscard]] inline consteval std::size_t strlen(const Char (&)[N]) noexcept {
+        return N - 1;
     }
 
-    /**
-     * Includes the null terminator
-     */
     template<types::CharOrWChar Char>
-    [[nodiscard]] inline consteval std::size_t constexpr_strlen(const Char* str) {
-        size_t len = 1;
-        while (str[len] != '\0') ++len;
+    [[nodiscard]] inline consteval std::size_t strlen(const Char* str) {
+        size_t len = 0;
+        while (str[len] != Char('\0')) ++len;
         return len;
     }
 
