@@ -365,6 +365,9 @@ namespace usylibpp::windows::process {
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <fcntl.h>
+#if defined(__linux__)
+    #include <sys/prctl.h>
+#endif
 
 namespace usylibpp::windows::process {
     namespace internal {
@@ -516,8 +519,7 @@ namespace usylibpp::windows::process {
 #if defined(__linux__)
             if constexpr (opts.set_lifetime_of_subprocess_to_this_process) {
                 // Best-effort: kill child if parent dies (Linux-specific)
-                #include <sys/prctl.h>
-                ::prctl(PR_SET_PDEATHSIG, SIGKILL);
+                (void)::prctl(PR_SET_PDEATHSIG, SIGKILL);
             }
 #endif
 
