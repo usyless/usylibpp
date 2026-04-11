@@ -176,7 +176,7 @@ int main() {
         print::println("Compressing \"test.png\" to \"test_compressed.png\"");
         const auto comp = windows::Compressor(windows::CompressAlgorithm::LZMS);
         const auto result = comp.compress_to_from(L"test.png", L"test_compressed.png");
-        print::println("Compress success: {}", result);
+        print::println("Compress success: {}", result.value_or(0));
     }
     #endif
 
