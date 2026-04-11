@@ -1,5 +1,28 @@
 #pragma once
 
+#include "../types.hpp"
+
+namespace usylibpp::windows::process {
+    struct process_output {
+        int status = -1;
+        std::string stdout_{};
+        std::string stderr_{};
+    };
+
+    struct process_options {
+        bool allow_visible_windows = true;
+        bool capture_stdout = true;
+        bool capture_stderr = true;
+        bool set_lifetime_of_subprocess_to_this_process = true;
+        bool on_stdout_line_call_on_lines = true; // otherwise only call on buffer full
+        bool on_stderr_line_call_on_lines = true;
+
+        bool one_shot_process = false; // no stdout or stderr
+    };
+}
+
+// only true if windows
+// linux at the end of the file
 #ifdef USYLIBPP_ENABLE_WIL
 #include "../aliases.hpp" // IWYU pragma: export
 #include <string>
@@ -8,7 +31,6 @@
 #include <filesystem>
 #include <windows.h>
 #include <shellapi.h>
-#include "../types.hpp"
 #include "char_t.hpp"
 
 #include <wil/resource.h>
@@ -70,12 +92,6 @@ namespace usylibpp::windows::process {
         }
     }
 
-    struct process_output {
-        int status = -1;
-        std::string stdout_{};
-        std::string stderr_{};
-    };
-
     struct one_shot_process_output {
         int status = -1; // 0 if no early error
         wil::unique_handle hJob;
@@ -105,17 +121,6 @@ namespace usylibpp::windows::process {
 
     template <typename T>
     concept process_settings_type = is_process_settings<std::remove_cvref_t<T>>::value;
-
-    struct process_options {
-        bool allow_visible_windows = true;
-        bool capture_stdout = true;
-        bool capture_stderr = true;
-        bool set_lifetime_of_subprocess_to_this_process = true;
-        bool on_stdout_line_call_on_lines = true; // otherwise only call on buffer full
-        bool on_stderr_line_call_on_lines = true;
-
-        bool one_shot_process = false; // no stdout or stderr
-    };
 
     /**
         * Run a process and either capture its output or dont
@@ -342,4 +347,272 @@ namespace usylibpp::windows::process {
         return { admin_process_output::Status::Success };
     }
 }
+#endif
+
+#ifdef USYLIBPP_ENABLE_LINUX
+#include <atomic>
+#include <cerrno>
+#include <csignal>
+#include <concepts>
+#include <cstring>
+#include <filesystem>
+#include <functional>
+#include <string>
+#include <string_view>
+#include <thread>
+#include <type_traits>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <fcntl.h>
+
+namespace usylibpp::windows::process {
+    namespace internal {
+        template <bool with_output = true, bool break_line = true, typename Callback = types::noop_t>
+        requires (std::invocable<Callback&, std::string_view>)
+        inline std::string read_from_fd(std::stop_token stop, int fd, Callback&& on_line = {}) {
+            std::string output;
+            char buffer[4096];
+            std::string partialLine;
+
+            while (!stop.stop_requested()) {
+                ssize_t n = ::read(fd, buffer, sizeof(buffer));
+                if (n == 0) break;                 // EOF
+                if (n < 0) {
+                    if (errno == EINTR) continue;  // interrupted syscall
+                    break;
+                }
+
+                if constexpr (with_output) output.append(buffer, static_cast<size_t>(n));
+
+                if constexpr (!std::is_same_v<std::remove_cvref_t<Callback>, types::noop_t>) {
+                    if constexpr (!break_line) {
+                        std::invoke(on_line, std::string_view{buffer, static_cast<size_t>(n)});
+                    } else {
+                        partialLine.append(buffer, static_cast<size_t>(n));
+
+                        size_t start = 0;
+                        size_t pos = 0;
+                        while ((pos = partialLine.find('\n', pos)) != std::string::npos) {
+                            size_t end = pos;
+                            if (end > start && partialLine[end - 1] == '\r') --end;
+
+                            std::invoke(on_line, std::string_view{partialLine.data() + start, end - start});
+                            start = ++pos;
+                        }
+                        partialLine.erase(0, start);
+                    }
+                }
+            }
+
+            if constexpr (!std::is_same_v<std::remove_cvref_t<Callback>, types::noop_t> && break_line) {
+                if (!partialLine.empty()) std::invoke(on_line, std::string_view{partialLine});
+            }
+
+            return output;
+        }
+
+        inline int make_pipe_cloexec(int fds[2]) {
+#if defined(__linux__)
+            if (::pipe2(fds, O_CLOEXEC) == 0) return 0;
+            if (errno != ENOSYS) return -1;
+#endif
+            if (::pipe(fds) != 0) return -1;
+            ::fcntl(fds[0], F_SETFD, FD_CLOEXEC);
+            ::fcntl(fds[1], F_SETFD, FD_CLOEXEC);
+            return 0;
+        }
+    }
+
+    struct one_shot_process_output {
+        int status = -1;      // 0 on successful spawn
+        pid_t pid = -1;
+    };
+
+    template <typename F1 = types::noop_t, typename F2 = types::noop_t>
+    requires (std::invocable<F1&, std::string_view> && std::invocable<F2&, std::string_view>)
+    struct process_settings {
+        std::string_view commandline;
+        std::string_view input = "";
+        std::filesystem::path* working_directory = nullptr;
+
+        F1 on_stdout_line{};
+        F2 on_stderr_line{};
+
+        uint32_t wait_for_ms = 0xFFFFFFFFu; // INFINITE-like
+    };
+
+    template <typename>
+    struct is_process_settings : std::false_type {};
+
+    template <typename F1, typename F2>
+    struct is_process_settings<process_settings<F1, F2>> : std::true_type {};
+
+    template <typename T>
+    concept process_settings_type = is_process_settings<std::remove_cvref_t<T>>::value;
+
+    template <process_options opts = {}, process_settings_type settings>
+    inline std::conditional_t<opts.one_shot_process, one_shot_process_output, process_output>
+    run_process(settings&& options) {
+        if (options.commandline.empty()) return { -1 };
+
+        constexpr bool need_stdout = opts.capture_stdout || !std::is_same_v<decltype(options.on_stdout_line), types::noop_t>;
+        constexpr bool need_stderr = opts.capture_stderr || !std::is_same_v<decltype(options.on_stderr_line), types::noop_t>;
+        const bool need_stdin = !options.input.empty();
+
+        int out_pipe[2]{-1, -1};
+        int err_pipe[2]{-1, -1};
+        int in_pipe[2]{-1, -1};
+
+        if constexpr (!opts.one_shot_process) {
+            if constexpr (need_stdout) {
+                if (internal::make_pipe_cloexec(out_pipe) != 0) return { -1 };
+            }
+            if constexpr (need_stderr) {
+                if (internal::make_pipe_cloexec(err_pipe) != 0) {
+                    if (out_pipe[0] != -1) { ::close(out_pipe[0]); ::close(out_pipe[1]); }
+                    return { -1 };
+                }
+            }
+            if (need_stdin) {
+                if (internal::make_pipe_cloexec(in_pipe) != 0) {
+                    if (out_pipe[0] != -1) { ::close(out_pipe[0]); ::close(out_pipe[1]); }
+                    if (err_pipe[0] != -1) { ::close(err_pipe[0]); ::close(err_pipe[1]); }
+                    return { -1 };
+                }
+            }
+        }
+
+        pid_t pid = ::fork();
+        if (pid < 0) {
+            if (out_pipe[0] != -1) { ::close(out_pipe[0]); ::close(out_pipe[1]); }
+            if (err_pipe[0] != -1) { ::close(err_pipe[0]); ::close(err_pipe[1]); }
+            if (in_pipe[0] != -1) { ::close(in_pipe[0]); ::close(in_pipe[1]); }
+            return { -1 };
+        }
+
+        if (pid == 0) {
+            // Child
+            if constexpr (!opts.one_shot_process) {
+                if constexpr (need_stdout) {
+                    ::dup2(out_pipe[1], STDOUT_FILENO);
+                }
+                if constexpr (need_stderr) {
+                    ::dup2(err_pipe[1], STDERR_FILENO);
+                }
+                if (need_stdin) {
+                    ::dup2(in_pipe[0], STDIN_FILENO);
+                }
+            }
+
+            if (out_pipe[0] != -1) { ::close(out_pipe[0]); ::close(out_pipe[1]); }
+            if (err_pipe[0] != -1) { ::close(err_pipe[0]); ::close(err_pipe[1]); }
+            if (in_pipe[0] != -1) { ::close(in_pipe[0]); ::close(in_pipe[1]); }
+
+            if (options.working_directory && !options.working_directory->empty()) {
+                (void)::chdir(options.working_directory->c_str());
+            }
+
+#if defined(__linux__)
+            if constexpr (opts.set_lifetime_of_subprocess_to_this_process) {
+                // Best-effort: kill child if parent dies (Linux-specific)
+                #include <sys/prctl.h>
+                ::prctl(PR_SET_PDEATHSIG, SIGKILL);
+            }
+#endif
+
+            std::string cmd{options.commandline};
+            ::execl("/bin/sh", "sh", "-c", cmd.c_str(), (char*)nullptr);
+            _exit(127);
+        }
+
+        // Parent
+        if constexpr (!opts.one_shot_process) {
+            if (out_pipe[1] != -1) ::close(out_pipe[1]);
+            if (err_pipe[1] != -1) ::close(err_pipe[1]);
+            if (in_pipe[0] != -1) ::close(in_pipe[0]);
+        }
+
+        if constexpr (opts.one_shot_process) {
+            return one_shot_process_output{ 0, pid };
+        } else {
+            if (need_stdin && in_pipe[1] != -1) {
+                ssize_t total = 0;
+                const char* data = options.input.data();
+                ssize_t len = static_cast<ssize_t>(options.input.size());
+                while (total < len) {
+                    ssize_t w = ::write(in_pipe[1], data + total, static_cast<size_t>(len - total));
+                    if (w < 0) {
+                        if (errno == EINTR) continue;
+                        break;
+                    }
+                    total += w;
+                }
+                ::close(in_pipe[1]);
+            }
+
+            std::string stdoutOutput;
+            std::string stderrOutput;
+
+            std::jthread stdoutThread;
+            if constexpr (need_stdout) {
+                stdoutThread = std::jthread([&](std::stop_token st) {
+                    stdoutOutput = internal::read_from_fd<opts.capture_stdout, opts.on_stdout_line_call_on_lines>(
+                        st, out_pipe[0], options.on_stdout_line
+                    );
+                    ::close(out_pipe[0]);
+                });
+            }
+
+            std::jthread stderrThread;
+            if constexpr (need_stderr) {
+                stderrThread = std::jthread([&](std::stop_token st) {
+                    stderrOutput = internal::read_from_fd<opts.capture_stderr, opts.on_stderr_line_call_on_lines>(
+                        st, err_pipe[0], options.on_stderr_line
+                    );
+                    ::close(err_pipe[0]);
+                });
+            }
+
+            int status_raw = 0;
+            int exit_code = -1;
+
+            if (options.wait_for_ms == 0xFFFFFFFFu) {
+                if (::waitpid(pid, &status_raw, 0) < 0) exit_code = -1;
+                else if (WIFEXITED(status_raw)) exit_code = WEXITSTATUS(status_raw);
+                else if (WIFSIGNALED(status_raw)) exit_code = 128 + WTERMSIG(status_raw);
+            } else {
+                const uint32_t step_ms = 10;
+                uint32_t waited = 0;
+                bool done = false;
+
+                while (waited < options.wait_for_ms) {
+                    pid_t r = ::waitpid(pid, &status_raw, WNOHANG);
+                    if (r == pid) { done = true; break; }
+                    if (r < 0 && errno != EINTR) break;
+                    std::this_thread::sleep_for(std::chrono::milliseconds(step_ms));
+                    waited += step_ms;
+                }
+
+                if (!done) {
+                    ::kill(pid, SIGTERM);
+                    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                    if (::waitpid(pid, &status_raw, WNOHANG) == 0) {
+                        ::kill(pid, SIGKILL);
+                    }
+                    ::waitpid(pid, &status_raw, 0);
+                }
+
+                if (WIFEXITED(status_raw)) exit_code = WEXITSTATUS(status_raw);
+                else if (WIFSIGNALED(status_raw)) exit_code = 128 + WTERMSIG(status_raw);
+            }
+
+            if (stdoutThread.joinable()) stdoutThread.request_stop();
+            if (stderrThread.joinable()) stderrThread.request_stop();
+
+            return process_output{ exit_code, std::move(stdoutOutput), std::move(stderrOutput) };
+        }
+    }
+}
+
 #endif

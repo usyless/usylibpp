@@ -39,6 +39,33 @@ target_include_directories(usylibpp_usylibpp INTERFACE
     "${CMAKE_CURRENT_BINARY_DIR}/usylibpp_config"
 )
 
+set(USYLIBPP_ENABLE_LTCG
+    ON
+    CACHE BOOL
+    "Enable LTCG for any dependencies that need compilation"
+)
+
+message(STATUS "Using LTCG for compiled dependencies: (USYLIBPP_ENABLE_LTCG): ${USYLIBPP_ENABLE_LTCG}")
+
+add_library(usylibpp_common INTERFACE)
+
+if(USYLIBPP_ENABLE_LTCG)
+    if(MSVC)
+        target_compile_options(usylibpp_common INTERFACE /GL)
+        target_link_options(usylibpp_common INTERFACE /LTCG)
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(usylibpp_common INTERFACE -flto)
+        target_link_options(usylibpp_common INTERFACE -flto)
+    endif()
+endif()
+
+target_compile_definitions(usylibpp_common INTERFACE
+    $<$<CONFIG:Debug>:_DEBUG>
+    $<$<CONFIG:Release>:NDEBUG>
+)
+
+target_link_libraries(usylibpp_usylibpp INTERFACE usylibpp_common)
+
 if (WIN32)
     set(USYLIBPP_ENABLE_WINDOWS
         ON
@@ -76,39 +103,12 @@ This includes windows.h along with various other headers, but enables all of the
             )
         endif()
 
-        set(USYLIBPP_ENABLE_LTCG
-            ON
-            CACHE BOOL
-            "Enable LTCG for any dependencies that need compilation"
-        )
-
-        message(STATUS "Using LTCG for compiled dependencies: (USYLIBPP_ENABLE_LTCG): ${USYLIBPP_ENABLE_LTCG}")
-
-        add_library(usylibpp_common INTERFACE)
-
         if(USYLIBPP_ENABLE_WINDOWS_UNICODE)
             target_compile_definitions(usylibpp_common INTERFACE 
                 "_UNICODE"
                 "UNICODE"
             )
         endif()
-
-        if(USYLIBPP_ENABLE_LTCG)
-            if(MSVC)
-                target_compile_options(usylibpp_common INTERFACE /GL)
-                target_link_options(usylibpp_common INTERFACE /LTCG)
-            elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-                target_compile_options(usylibpp_common INTERFACE -flto)
-                target_link_options(usylibpp_common INTERFACE -flto)
-            endif()
-        endif()
-
-        target_compile_definitions(usylibpp_common INTERFACE
-            $<$<CONFIG:Debug>:_DEBUG>
-            $<$<CONFIG:Release>:NDEBUG>
-        )
-
-        target_link_libraries(usylibpp_usylibpp INTERFACE usylibpp_common)
 
         set(USYLIBPP_ENABLE_TASK_DIALOG_DARK_MODE
             ON
@@ -339,6 +339,22 @@ This includes windows.h along with various other headers, but enables all of the
             target_link_libraries(voidtools_everything PUBLIC usylibpp_common)
             target_link_libraries(usylibpp_usylibpp INTERFACE voidtools_everything)
         endif()
+    endif()
+endif()
+
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set(USYLIBPP_ENABLE_LINUX
+        ON
+        CACHE BOOL
+        "Enable Linux Functions.
+        
+Will likely be a very small subset of the windows wrappers that I've needed"
+    )
+
+    message(STATUS "Linux support (USYLIBPP_ENABLE_LINUX): ${USYLIBPP_ENABLE_LINUX}")
+
+    if (USYLIBPP_ENABLE_LINUX)
+        target_compile_definitions(usylibpp_usylibpp INTERFACE "USYLIBPP_ENABLE_LINUX")
     endif()
 endif()
 

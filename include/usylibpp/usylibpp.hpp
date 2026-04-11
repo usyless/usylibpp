@@ -13,6 +13,10 @@
 #include "windows/compression.hpp" // IWYU pragma: export
 #endif
 
+#ifdef USYLIBPP_ENABLE_LINUX
+#include "windows/process.hpp" // IWYU pragma: export
+#endif
+
 #include "everything/everything.hpp" // IWYU pragma: export
 
 #include "discord.hpp" // IWYU pragma: export

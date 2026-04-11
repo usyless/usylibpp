@@ -58,3 +58,6 @@ These are printed when configuring, which will be more up to date probably
 - `USYLIBPP_WINTOAST_GIT_TAG` (STRING, Default: "v1.3.2")
 
 - `USYLIBPP_ENABLE_VOIDTOOLS_EVERYTHING` (BOOL, Default: OFF) - Includes a basic c++ wrapper + helpers for voidtools everything
+
+### Linux Specific (Not very tested)
+- `USYLIBPP_ENABLE_LINUX` (BOOL, Default: ON) - Enables the basic windows wrapper stuff that I've also made for linux
