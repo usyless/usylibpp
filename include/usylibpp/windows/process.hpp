@@ -290,6 +290,7 @@ namespace usylibpp::windows::process {
                 TerminateProcess(process.get(), 1); 
                 WaitForSingleObject(process.get(), INFINITE);
 
+                if (stdinThread.joinable()) stdinThread.request_stop();
                 if (stdoutThread.joinable()) stdoutThread.request_stop();
                 if (stderrThread.joinable()) stderrThread.request_stop();
             }
