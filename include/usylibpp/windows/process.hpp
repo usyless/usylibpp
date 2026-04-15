@@ -226,12 +226,6 @@ namespace usylibpp::windows::process {
             return { -1 };
         }
 
-        if (!options.input.empty() and hStdInWrite.is_valid()) {
-            DWORD written;
-            WriteFile(hStdInWrite.get(), options.input.data(), static_cast<DWORD>(options.input.size()), &written, NULL);
-            hStdInWrite.reset();
-        }
-
         wil::unique_handle process{pi.hProcess};
         wil::unique_handle thread{pi.hThread};
 
@@ -270,6 +264,25 @@ namespace usylibpp::windows::process {
                     stderrOutput = internal::read_from_pipe<opts.capture_stderr, opts.on_stderr_line_call_on_lines>(st, hStdErrRead, options.on_stderr_line);
                 });
             }
+
+            std::jthread stdinThread;
+            if (!options.input.empty() && hStdInWrite.is_valid()) {
+                stdinThread = std::jthread([h = hStdInWrite.get(), &options](std::stop_token st) {
+                    const char* p = options.input.data();
+                    size_t remaining = options.input.size();
+
+                    while (remaining > 0 && !st.stop_requested()) {
+                        DWORD chunk = static_cast<DWORD>(std::min<size_t>(remaining, 64 * 1024));
+                        DWORD written = 0;
+                        if (!WriteFile(h, p, chunk, &written, NULL) || written == 0) {
+                            break;
+                        }
+                        p += written;
+                        remaining -= written;
+                    }
+                });
+            }
+            hStdInWrite.reset();
 
             DWORD result = WaitForSingleObject(process.get(), options.wait_for_ms);
 
@@ -538,24 +551,10 @@ namespace usylibpp::windows::process {
         if constexpr (opts.one_shot_process) {
             return one_shot_process_output{ 0, pid };
         } else {
-            if (need_stdin && in_pipe[1] != -1) {
-                ssize_t total = 0;
-                const char* data = options.input.data();
-                ssize_t len = static_cast<ssize_t>(options.input.size());
-                while (total < len) {
-                    ssize_t w = ::write(in_pipe[1], data + total, static_cast<size_t>(len - total));
-                    if (w < 0) {
-                        if (errno == EINTR) continue;
-                        break;
-                    }
-                    total += w;
-                }
-                ::close(in_pipe[1]);
-            }
-
             std::string stdoutOutput;
             std::string stderrOutput;
 
+            // Start draining stdout/stderr first to avoid pipe deadlocks.
             std::jthread stdoutThread;
             if constexpr (need_stdout) {
                 stdoutThread = std::jthread([&](std::stop_token st) {
@@ -574,6 +573,31 @@ namespace usylibpp::windows::process {
                     );
                     ::close(err_pipe[0]);
                 });
+            }
+
+            // Write stdin concurrently (instead of blocking main thread before readers start).
+            std::jthread stdinThread;
+            if (need_stdin && in_pipe[1] != -1) {
+                stdinThread = std::jthread([&](std::stop_token st) {
+                    const char* p = options.input.data();
+                    size_t remaining = options.input.size();
+
+                    while (remaining > 0 && !st.stop_requested()) {
+                        size_t chunk = std::min<size_t>(remaining, 64 * 1024);
+                        ssize_t w = ::write(in_pipe[1], p, chunk);
+                        if (w < 0) {
+                            if (errno == EINTR) continue;
+                            break;
+                        }
+                        if (w == 0) break;
+                        p += static_cast<size_t>(w);
+                        remaining -= static_cast<size_t>(w);
+                    }
+
+                    ::close(in_pipe[1]);
+                });
+            } else if (in_pipe[1] != -1) {
+                ::close(in_pipe[1]);
             }
 
             int status_raw = 0;
@@ -609,6 +633,7 @@ namespace usylibpp::windows::process {
                 else if (WIFSIGNALED(status_raw)) exit_code = 128 + WTERMSIG(status_raw);
             }
 
+            if (stdinThread.joinable())  stdinThread.request_stop();
             if (stdoutThread.joinable()) stdoutThread.request_stop();
             if (stderrThread.joinable()) stderrThread.request_stop();
 
