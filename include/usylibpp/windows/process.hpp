@@ -267,7 +267,8 @@ namespace usylibpp::windows::process {
 
             std::jthread stdinThread;
             if (!options.input.empty() && hStdInWrite.is_valid()) {
-                stdinThread = std::jthread([h = hStdInWrite.get(), &options](std::stop_token st) {
+                stdinThread = std::jthread([&hStdInWrite, &options](std::stop_token st) {
+                    const auto h = hStdInWrite.get();
                     const char* p = options.input.data();
                     size_t remaining = options.input.size();
 
@@ -280,9 +281,12 @@ namespace usylibpp::windows::process {
                         p += written;
                         remaining -= written;
                     }
+
+                    hStdInWrite.reset();
                 });
+            } else {
+                hStdInWrite.reset();
             }
-            hStdInWrite.reset();
 
             DWORD result = WaitForSingleObject(process.get(), options.wait_for_ms);
 
