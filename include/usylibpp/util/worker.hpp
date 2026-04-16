@@ -94,8 +94,8 @@ namespace usylibpp::util {
         using conditional_return = std::conditional_t<wait_for_completion, Ret, std::future<Ret>>;
 
         /**
-         * First template is return type
-         * Second template is whether to wait for the completion of the function
+         * First template is whether to wait for the completion of the function
+         * Second template is return type
          * Returns a future if not waiting for completion
          * If cancelled, either throws, or returns a default value/future
          */
