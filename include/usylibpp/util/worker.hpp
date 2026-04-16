@@ -99,10 +99,13 @@ namespace usylibpp::util {
          * Returns a future if not waiting for completion
          * If cancelled, either throws, or returns a default value/future
          */
-        template<bool wait_for_completion, std::invocable Fn>
-        inline auto post(Fn&& fn) -> conditional_return<std::invoke_result_t<Fn&>, wait_for_completion> {
-            using Ret = std::invoke_result_t<Fn&>;
+        template<bool wait_for_completion, typename Fn, typename... Args>
+        requires std::invocable<Fn&, Args...>
+        inline auto post(Fn&& fn, Args&&... args) -> conditional_return<std::invoke_result_t<Fn&, Args...>, wait_for_completion> {
+            using Ret = std::invoke_result_t<Fn&, Args...>;
 
+            #pragma push_macro("check_cancelled")
+            #undef check_cancelled
             #define check_cancelled \
             if (cancelled()) { \
                 if constexpr (opts.type == WorkerType::ThrowError) { \
@@ -127,7 +130,11 @@ namespace usylibpp::util {
 
             check_cancelled
 
-            auto call = std::make_unique<Call<Fn, Ret>>(std::forward<Fn>(fn));
+            auto bound = [f = std::forward<Fn>(fn), ...as = std::forward<Args>(args)]() mutable -> Ret {
+                return std::invoke(f, std::move(as)...);
+            };
+
+            auto call = std::make_unique<Call<decltype(bound), Ret>>(std::move(bound));
             [[maybe_unused]] auto fut = call->result.get_future();
 
             {
@@ -139,6 +146,8 @@ namespace usylibpp::util {
 
             if constexpr (wait_for_completion) return fut.get();
             else return fut;
+
+            #pragma pop_macro("check_cancelled")
         }
         
         /**
