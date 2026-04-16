@@ -43,10 +43,10 @@ namespace usylibpp::util {
             void execute() noexcept override final {
                 try {
                     if constexpr (std::is_void_v<Ret>) {
-                        fn();
+                        std::invoke(fn);
                         result.set_value();
                     } else {
-                        result.set_value(fn());
+                        result.set_value(std::invoke(fn));
                     }
                 } catch (...) {
                     try {
