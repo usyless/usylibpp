@@ -368,10 +368,13 @@ namespace usylibpp::windows::process {
 #endif
 
 #ifdef USYLIBPP_ENABLE_LINUX
+#include <algorithm>
 #include <atomic>
 #include <cerrno>
+#include <chrono>
 #include <csignal>
 #include <concepts>
+#include <cstdint>
 #include <cstring>
 #include <filesystem>
 #include <functional>
@@ -379,12 +382,13 @@ namespace usylibpp::windows::process {
 #include <string_view>
 #include <thread>
 #include <type_traits>
+
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <fcntl.h>
 #if defined(__linux__)
-    #include <sys/prctl.h>
+#include <sys/prctl.h>
 #endif
 
 namespace usylibpp::windows::process {
@@ -433,20 +437,41 @@ namespace usylibpp::windows::process {
             return output;
         }
 
+        inline int set_cloexec(int fd) {
+            int flags = ::fcntl(fd, F_GETFD);
+            if (flags < 0) return -1;
+            if (::fcntl(fd, F_SETFD, flags | FD_CLOEXEC) < 0) return -1;
+            return 0;
+        }
+
         inline int make_pipe_cloexec(int fds[2]) {
 #if defined(__linux__)
             if (::pipe2(fds, O_CLOEXEC) == 0) return 0;
             if (errno != ENOSYS) return -1;
 #endif
             if (::pipe(fds) != 0) return -1;
-            ::fcntl(fds[0], F_SETFD, FD_CLOEXEC);
-            ::fcntl(fds[1], F_SETFD, FD_CLOEXEC);
+            if (set_cloexec(fds[0]) != 0 || set_cloexec(fds[1]) != 0) {
+                ::close(fds[0]);
+                ::close(fds[1]);
+                fds[0] = fds[1] = -1;
+                return -1;
+            }
             return 0;
+        }
+
+        inline void close_if_valid(int fd) {
+            if (fd != -1) ::close(fd);
+        }
+
+        inline void close_pipe(int p[2]) {
+            close_if_valid(p[0]);
+            close_if_valid(p[1]);
+            p[0] = p[1] = -1;
         }
     }
 
     struct one_shot_process_output {
-        int status = -1;      // 0 on successful spawn
+        int status = -1; // 0 on successful spawn
         pid_t pid = -1;
     };
 
@@ -477,8 +502,11 @@ namespace usylibpp::windows::process {
     run_process(settings&& options) {
         if (options.commandline.empty()) return { -1 };
 
-        constexpr bool need_stdout = opts.capture_stdout || !std::is_same_v<decltype(options.on_stdout_line), types::noop_t>;
-        constexpr bool need_stderr = opts.capture_stderr || !std::is_same_v<decltype(options.on_stderr_line), types::noop_t>;
+        using StdoutCb = std::remove_cvref_t<decltype(options.on_stdout_line)>;
+        using StderrCb = std::remove_cvref_t<decltype(options.on_stderr_line)>;
+
+        constexpr bool need_stdout = opts.capture_stdout || !std::is_same_v<StdoutCb, types::noop_t>;
+        constexpr bool need_stderr = opts.capture_stderr || !std::is_same_v<StderrCb, types::noop_t>;
         const bool need_stdin = !options.input.empty();
 
         int out_pipe[2]{-1, -1};
@@ -491,14 +519,14 @@ namespace usylibpp::windows::process {
             }
             if constexpr (need_stderr) {
                 if (internal::make_pipe_cloexec(err_pipe) != 0) {
-                    if (out_pipe[0] != -1) { ::close(out_pipe[0]); ::close(out_pipe[1]); }
+                    internal::close_pipe(out_pipe);
                     return { -1 };
                 }
             }
             if (need_stdin) {
                 if (internal::make_pipe_cloexec(in_pipe) != 0) {
-                    if (out_pipe[0] != -1) { ::close(out_pipe[0]); ::close(out_pipe[1]); }
-                    if (err_pipe[0] != -1) { ::close(err_pipe[0]); ::close(err_pipe[1]); }
+                    internal::close_pipe(out_pipe);
+                    internal::close_pipe(err_pipe);
                     return { -1 };
                 }
             }
@@ -506,9 +534,9 @@ namespace usylibpp::windows::process {
 
         pid_t pid = ::fork();
         if (pid < 0) {
-            if (out_pipe[0] != -1) { ::close(out_pipe[0]); ::close(out_pipe[1]); }
-            if (err_pipe[0] != -1) { ::close(err_pipe[0]); ::close(err_pipe[1]); }
-            if (in_pipe[0] != -1) { ::close(in_pipe[0]); ::close(in_pipe[1]); }
+            internal::close_pipe(out_pipe);
+            internal::close_pipe(err_pipe);
+            internal::close_pipe(in_pipe);
             return { -1 };
         }
 
@@ -516,19 +544,19 @@ namespace usylibpp::windows::process {
             // Child
             if constexpr (!opts.one_shot_process) {
                 if constexpr (need_stdout) {
-                    ::dup2(out_pipe[1], STDOUT_FILENO);
+                    if (::dup2(out_pipe[1], STDOUT_FILENO) < 0) _exit(127);
                 }
                 if constexpr (need_stderr) {
-                    ::dup2(err_pipe[1], STDERR_FILENO);
+                    if (::dup2(err_pipe[1], STDERR_FILENO) < 0) _exit(127);
                 }
                 if (need_stdin) {
-                    ::dup2(in_pipe[0], STDIN_FILENO);
+                    if (::dup2(in_pipe[0], STDIN_FILENO) < 0) _exit(127);
                 }
             }
 
-            if (out_pipe[0] != -1) { ::close(out_pipe[0]); ::close(out_pipe[1]); }
-            if (err_pipe[0] != -1) { ::close(err_pipe[0]); ::close(err_pipe[1]); }
-            if (in_pipe[0] != -1) { ::close(in_pipe[0]); ::close(in_pipe[1]); }
+            internal::close_pipe(out_pipe);
+            internal::close_pipe(err_pipe);
+            internal::close_pipe(in_pipe);
 
             if (options.working_directory && !options.working_directory->empty()) {
                 (void)::chdir(options.working_directory->c_str());
@@ -536,8 +564,9 @@ namespace usylibpp::windows::process {
 
 #if defined(__linux__)
             if constexpr (opts.set_lifetime_of_subprocess_to_this_process) {
-                // Best-effort: kill child if parent dies (Linux-specific)
                 (void)::prctl(PR_SET_PDEATHSIG, SIGKILL);
+                // Close race: parent may have died before prctl call.
+                if (::getppid() == 1) _exit(127);
             }
 #endif
 
@@ -548,9 +577,9 @@ namespace usylibpp::windows::process {
 
         // Parent
         if constexpr (!opts.one_shot_process) {
-            if (out_pipe[1] != -1) ::close(out_pipe[1]);
-            if (err_pipe[1] != -1) ::close(err_pipe[1]);
-            if (in_pipe[0] != -1) ::close(in_pipe[0]);
+            internal::close_if_valid(out_pipe[1]); out_pipe[1] = -1;
+            internal::close_if_valid(err_pipe[1]); err_pipe[1] = -1;
+            internal::close_if_valid(in_pipe[0]);  in_pipe[0]  = -1;
         }
 
         if constexpr (opts.one_shot_process) {
@@ -559,14 +588,14 @@ namespace usylibpp::windows::process {
             std::string stdoutOutput;
             std::string stderrOutput;
 
-            // Start draining stdout/stderr first to avoid pipe deadlocks.
             std::jthread stdoutThread;
             if constexpr (need_stdout) {
                 stdoutThread = std::jthread([&](std::stop_token st) {
                     stdoutOutput = internal::read_from_fd<opts.capture_stdout, opts.on_stdout_line_call_on_lines>(
                         st, out_pipe[0], options.on_stdout_line
                     );
-                    ::close(out_pipe[0]);
+                    internal::close_if_valid(out_pipe[0]);
+                    out_pipe[0] = -1;
                 });
             }
 
@@ -576,11 +605,11 @@ namespace usylibpp::windows::process {
                     stderrOutput = internal::read_from_fd<opts.capture_stderr, opts.on_stderr_line_call_on_lines>(
                         st, err_pipe[0], options.on_stderr_line
                     );
-                    ::close(err_pipe[0]);
+                    internal::close_if_valid(err_pipe[0]);
+                    err_pipe[0] = -1;
                 });
             }
 
-            // Write stdin concurrently (instead of blocking main thread before readers start).
             std::jthread stdinThread;
             if (need_stdin && in_pipe[1] != -1) {
                 stdinThread = std::jthread([&](std::stop_token st) {
@@ -599,43 +628,74 @@ namespace usylibpp::windows::process {
                         remaining -= static_cast<size_t>(w);
                     }
 
-                    ::close(in_pipe[1]);
+                    internal::close_if_valid(in_pipe[1]);
+                    in_pipe[1] = -1;
                 });
             } else if (in_pipe[1] != -1) {
-                ::close(in_pipe[1]);
+                internal::close_if_valid(in_pipe[1]);
+                in_pipe[1] = -1;
             }
 
             int status_raw = 0;
             int exit_code = -1;
+            bool waited_ok = false;
 
             if (options.wait_for_ms == 0xFFFFFFFFu) {
-                if (::waitpid(pid, &status_raw, 0) < 0) exit_code = -1;
-                else if (WIFEXITED(status_raw)) exit_code = WEXITSTATUS(status_raw);
-                else if (WIFSIGNALED(status_raw)) exit_code = 128 + WTERMSIG(status_raw);
+                for (;;) {
+                    pid_t r = ::waitpid(pid, &status_raw, 0);
+                    if (r == pid) { waited_ok = true; break; }
+                    if (r < 0 && errno == EINTR) continue;
+                    break;
+                }
             } else {
-                const uint32_t step_ms = 10;
-                uint32_t waited = 0;
+                auto start = std::chrono::steady_clock::now();
                 bool done = false;
 
-                while (waited < options.wait_for_ms) {
+                for (;;) {
                     pid_t r = ::waitpid(pid, &status_raw, WNOHANG);
-                    if (r == pid) { done = true; break; }
-                    if (r < 0 && errno != EINTR) break;
-                    std::this_thread::sleep_for(std::chrono::milliseconds(step_ms));
-                    waited += step_ms;
-                }
-
-                if (!done) {
-                    ::kill(pid, SIGTERM);
-                    std::this_thread::sleep_for(std::chrono::milliseconds(50));
-                    if (::waitpid(pid, &status_raw, WNOHANG) == 0) {
-                        ::kill(pid, SIGKILL);
+                    if (r == pid) { waited_ok = true; done = true; break; }
+                    if (r < 0) {
+                        if (errno == EINTR) continue;
+                        done = true;
+                        break;
                     }
-                    ::waitpid(pid, &status_raw, 0);
+
+                    auto now = std::chrono::steady_clock::now();
+                    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - start);
+                    if (elapsed.count() >= options.wait_for_ms) break;
+
+                    uint32_t remaining = options.wait_for_ms - static_cast<uint32_t>(elapsed.count());
+                    uint32_t sleep_ms = std::min<uint32_t>(10, remaining);
+                    std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
                 }
 
+                if (!waited_ok && !done) {
+                    (void)::kill(pid, SIGTERM);
+
+                    constexpr auto grace = std::chrono::milliseconds(50);
+                    std::this_thread::sleep_for(grace);
+
+                    pid_t r = ::waitpid(pid, &status_raw, WNOHANG);
+                    if (r == pid) {
+                        waited_ok = true;
+                    } else {
+                        (void)::kill(pid, SIGKILL);
+                        for (;;) {
+                            pid_t rr = ::waitpid(pid, &status_raw, 0);
+                            if (rr == pid) { waited_ok = true; break; }
+                            if (rr < 0 && errno == EINTR) continue;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (waited_ok) {
                 if (WIFEXITED(status_raw)) exit_code = WEXITSTATUS(status_raw);
                 else if (WIFSIGNALED(status_raw)) exit_code = 128 + WTERMSIG(status_raw);
+                else exit_code = -1;
+            } else {
+                exit_code = -1;
             }
 
             if (stdinThread.joinable())  stdinThread.request_stop();
