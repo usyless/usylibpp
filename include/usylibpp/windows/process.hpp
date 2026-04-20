@@ -2,27 +2,6 @@
 
 #include "../types.hpp"
 
-namespace usylibpp::windows::process {
-    struct process_output {
-        int status = -1;
-        std::string stdout_{};
-        std::string stderr_{};
-    };
-
-    struct process_options {
-        bool allow_visible_windows = true;
-        bool capture_stdout = true;
-        bool capture_stderr = true;
-        bool set_lifetime_of_subprocess_to_this_process = true;
-        bool on_stdout_line_call_on_lines = true; // otherwise only call on buffer full
-        bool on_stderr_line_call_on_lines = true;
-
-        bool one_shot_process = false; // no stdout or stderr
-    };
-}
-
-// only true if windows
-// linux at the end of the file
 #ifdef USYLIBPP_ENABLE_WIL
 #include "../aliases.hpp" // IWYU pragma: export
 #include <string>
@@ -35,7 +14,97 @@ namespace usylibpp::windows::process {
 
 #include <wil/resource.h>
 #include <wil/com.h>
+#endif
 
+#ifdef USYLIBPP_ENABLE_LINUX
+#include <algorithm>
+#include <atomic>
+#include <cerrno>
+#include <chrono>
+#include <csignal>
+#include <concepts>
+#include <cstdint>
+#include <cstring>
+#include <filesystem>
+#include <functional>
+#include <string>
+#include <string_view>
+#include <thread>
+#include <type_traits>
+
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <fcntl.h>
+#if defined(__linux__)
+#include <sys/prctl.h>
+#endif
+#endif
+
+namespace usylibpp::windows::process {
+    struct process_output {
+        int status = -1;
+        std::string stdout_{};
+        std::string stderr_{};
+    };
+
+    struct one_shot_process_output {
+        int status = -1;
+    #ifdef USYLIBPP_ENABLE_WIL
+        wil::unique_handle hJob;
+    #endif
+    #ifdef USYLIBPP_ENABLE_LINUX
+        pid_t pid = -1;
+    #endif
+    };
+
+    struct process_options {
+        bool allow_visible_windows = true;
+        bool capture_stdout = true;
+        bool capture_stderr = true;
+        bool set_lifetime_of_subprocess_to_this_process = true;
+        bool on_stdout_line_call_on_lines = true; // otherwise only call on buffer full
+        bool on_stderr_line_call_on_lines = true;
+
+        bool one_shot_process = false; // no stdout or stderr
+    };
+
+    template <typename F1 = types::noop_t, typename F2 = types::noop_t>
+    requires (std::invocable<F1&, std::string_view> && std::invocable<F2&, std::string_view>)
+    struct process_settings {
+        #ifdef USYLIBPP_ENABLE_WIL
+        std::wstring_view commandline;
+        #endif
+        #ifdef USYLIBPP_ENABLE_LINUX
+        std::string_view commandline;
+        #endif
+        std::string_view input = "";
+        std::filesystem::path* working_directory = nullptr;
+
+        F1 on_stdout_line{};
+        F2 on_stderr_line{};
+
+        #ifdef USYLIBPP_ENABLE_WIL
+        DWORD wait_for_ms = INFINITE;
+        #endif
+        #ifdef USYLIBPP_ENABLE_LINUX
+        uint32_t wait_for_ms = 0xFFFFFFFFu; // INFINITE-like
+        #endif
+    };
+
+    template <typename>
+    struct is_process_settings : std::false_type {};
+
+    template <typename F1, typename F2>
+    struct is_process_settings<process_settings<F1, F2>> : std::true_type {};
+
+    template <typename T>
+    concept process_settings_type = is_process_settings<std::remove_cvref_t<T>>::value;
+}
+
+// only true if windows
+// linux at the end of the file
+#ifdef USYLIBPP_ENABLE_WIL
 namespace usylibpp::windows::process {
     namespace internal {
         /**
@@ -91,36 +160,6 @@ namespace usylibpp::windows::process {
             return output;
         }
     }
-
-    struct one_shot_process_output {
-        int status = -1; // 0 if no early error
-        wil::unique_handle hJob;
-    };
-
-    template <
-        typename F1 = types::noop_t,
-        typename F2 = types::noop_t
-    >
-    requires (std::invocable<F1&, std::string_view> && std::invocable<F2&, std::string_view>)
-    struct process_settings {
-        std::wstring_view commandline;
-        std::string_view input = "";
-        std::filesystem::path* working_directory = nullptr;
-
-        F1 on_stdout_line{};
-        F2 on_stderr_line{};
-
-        DWORD wait_for_ms = INFINITE;
-    };
-
-    template <typename>
-    struct is_process_settings : std::false_type {};
-
-    template <typename F1, typename F2>
-    struct is_process_settings<process_settings<F1, F2>> : std::true_type {};
-
-    template <typename T>
-    concept process_settings_type = is_process_settings<std::remove_cvref_t<T>>::value;
 
     /**
         * Run a process and either capture its output or dont
@@ -368,28 +407,6 @@ namespace usylibpp::windows::process {
 #endif
 
 #ifdef USYLIBPP_ENABLE_LINUX
-#include <algorithm>
-#include <atomic>
-#include <cerrno>
-#include <chrono>
-#include <csignal>
-#include <concepts>
-#include <cstdint>
-#include <cstring>
-#include <filesystem>
-#include <functional>
-#include <string>
-#include <string_view>
-#include <thread>
-#include <type_traits>
-
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <fcntl.h>
-#if defined(__linux__)
-#include <sys/prctl.h>
-#endif
 
 namespace usylibpp::windows::process {
     namespace internal {
@@ -469,33 +486,6 @@ namespace usylibpp::windows::process {
             p[0] = p[1] = -1;
         }
     }
-
-    struct one_shot_process_output {
-        int status = -1; // 0 on successful spawn
-        pid_t pid = -1;
-    };
-
-    template <typename F1 = types::noop_t, typename F2 = types::noop_t>
-    requires (std::invocable<F1&, std::string_view> && std::invocable<F2&, std::string_view>)
-    struct process_settings {
-        std::string_view commandline;
-        std::string_view input = "";
-        std::filesystem::path* working_directory = nullptr;
-
-        F1 on_stdout_line{};
-        F2 on_stderr_line{};
-
-        uint32_t wait_for_ms = 0xFFFFFFFFu; // INFINITE-like
-    };
-
-    template <typename>
-    struct is_process_settings : std::false_type {};
-
-    template <typename F1, typename F2>
-    struct is_process_settings<process_settings<F1, F2>> : std::true_type {};
-
-    template <typename T>
-    concept process_settings_type = is_process_settings<std::remove_cvref_t<T>>::value;
 
     template <process_options opts = {}, process_settings_type settings>
     inline std::conditional_t<opts.one_shot_process, one_shot_process_output, process_output>
