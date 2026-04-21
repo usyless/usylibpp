@@ -48,6 +48,11 @@
 #endif
 #endif
 
+static_assert(true, "");
+#pragma push_macro("IS_NOOP")
+#undef IS_NOOP
+#define IS_NOOP(func) (std::is_same_v<decltype(std::declval<settings>().func), types::noop_t>)
+
 namespace usylibpp::windows::process {
     struct process_output {
         int status = -1;
@@ -277,10 +282,6 @@ namespace usylibpp::windows::process {
         if (options.commandline.empty()) {
             return {};
         }
-
-        #pragma push_macro("IS_NOOP")
-        #undef IS_NOOP
-        #define IS_NOOP(func) (std::is_same_v<decltype(std::declval<settings>().func), types::noop_t>)
         
         SECURITY_ATTRIBUTES saAttr{};
         saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
@@ -513,8 +514,6 @@ namespace usylibpp::windows::process {
 
             DWORD exitCode = 0;
             GetExitCodeProcess(process.get(), &exitCode);
-
-            #pragma pop_macro("IS_NOOP")
 
             return process_output{ static_cast<int>(exitCode), stdoutOutput, stderrOutput };
         }
@@ -996,3 +995,5 @@ namespace usylibpp::windows::process {
 }
 
 #endif
+
+#pragma pop_macro("IS_NOOP")
