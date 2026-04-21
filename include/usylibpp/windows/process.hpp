@@ -9,6 +9,10 @@
 #include <functional>
 #include <filesystem>
 #include <windows.h>
+#include <atomic>
+#include <mutex>
+#include <optional>
+#include <memory>
 #include <shellapi.h>
 #include "char_t.hpp"
 
@@ -24,6 +28,9 @@
 #include <csignal>
 #include <concepts>
 #include <cstdint>
+#include <mutex>
+#include <optional>
+#include <memory>
 #include <cstring>
 #include <filesystem>
 #include <functional>
@@ -58,6 +65,89 @@ namespace usylibpp::windows::process {
     #endif
     };
 
+    struct async_process_output {
+        struct state {
+            std::atomic_bool finished{false};
+            std::atomic_int status{-1};
+
+            std::mutex out_mtx;
+            std::string stdout_;
+            std::string stderr_;
+
+        #ifdef USYLIBPP_ENABLE_WIL
+            wil::unique_handle process;
+            wil::unique_handle job;
+        #endif
+        #ifdef USYLIBPP_ENABLE_LINUX
+            pid_t pid{-1};
+            pid_t pgid{-1};
+        #endif
+
+            std::jthread stdout_thread;
+            std::jthread stderr_thread;
+            std::jthread stdin_thread;
+            std::jthread waiter_thread;
+        };
+
+        std::shared_ptr<state> s{};
+
+        bool valid() const { return !!s; }
+
+        void cancel() const {
+            if (!s) return;
+        #ifdef USYLIBPP_ENABLE_WIL
+            if (s->job.is_valid()) {
+                TerminateJobObject(s->job.get(), 1);
+            } else if (s->process.is_valid()) {
+                TerminateProcess(s->process.get(), 1);
+            }
+        #endif
+        #ifdef USYLIBPP_ENABLE_LINUX
+            if (s->pgid > 0) {
+                ::kill(-s->pgid, SIGTERM);
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                ::kill(-s->pgid, SIGKILL);
+            } else if (s->pid > 0) {
+                ::kill(s->pid, SIGTERM);
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                ::kill(s->pid, SIGKILL);
+            }
+        #endif
+        }
+
+        bool is_finished() const {
+            return s && s->finished.load(std::memory_order_acquire);
+        }
+
+        int status() const {
+            return s ? s->status.load(std::memory_order_acquire) : -1;
+        }
+
+        // joins waiter and IO threads if needed
+        process_output wait() const {
+            process_output out{};
+            if (!s) return out;
+
+            if (s->waiter_thread.joinable()) s->waiter_thread.join();
+            if (s->stdin_thread.joinable())  s->stdin_thread.request_stop(),  s->stdin_thread.join();
+            if (s->stdout_thread.joinable()) s->stdout_thread.request_stop(), s->stdout_thread.join();
+            if (s->stderr_thread.joinable()) s->stderr_thread.request_stop(), s->stderr_thread.join();
+
+            out.status = s->status.load(std::memory_order_acquire);
+            {
+                std::scoped_lock lk(s->out_mtx);
+                out.stdout_ = s->stdout_;
+                out.stderr_ = s->stderr_;
+            }
+            return out;
+        }
+
+        std::optional<process_output> try_get() const {
+            if (!is_finished()) return std::nullopt;
+            return wait();
+        }
+    };
+
     struct process_options {
         bool allow_visible_windows = true;
         bool capture_stdout = true;
@@ -67,6 +157,7 @@ namespace usylibpp::windows::process {
         bool on_stderr_line_call_on_lines = true;
 
         bool one_shot_process = false; // no stdout or stderr
+        bool async = false; // incompatible with one_shot_process, allows for async process input and process killing
     };
 
     template <typename F1 = types::noop_t, typename F2 = types::noop_t>
@@ -100,6 +191,13 @@ namespace usylibpp::windows::process {
 
     template <typename T>
     concept process_settings_type = is_process_settings<std::remove_cvref_t<T>>::value;
+
+    template <process_options opts = {}>
+    using process_return_t = std::conditional_t<
+        opts.one_shot_process,
+        one_shot_process_output,
+        std::conditional_t<opts.async, async_process_output, process_output>
+    >;
 }
 
 // only true if windows
@@ -166,7 +264,11 @@ namespace usylibpp::windows::process {
         * Blocks until the process exits
         */
     template <process_options opts = {}, process_settings_type settings>
-    inline std::conditional_t<opts.one_shot_process, one_shot_process_output, process_output> run_process(settings&& options) {
+    inline process_return_t<opts> run_process(settings&& options) {
+        if constexpr (opts.one_shot_process && opts.async) {
+            static_assert(!std::is_same_v<process_options, process_options>, "Async one-shot processes are not supported.");
+        }
+
         if (options.commandline.empty()) {
             return { -1 };
         }
@@ -284,6 +386,65 @@ namespace usylibpp::windows::process {
                     AssignProcessToJobObject(hJob.get(), process.get());
                 }
             }
+        }
+
+        if constexpr (opts.async) {
+            async_process_output out;
+            out.s = std::make_shared<async_process_output::state>();
+            auto st = out.s;
+
+            st->process = std::move(process);
+            st->job = std::move(hJob);
+
+            if constexpr (opts.capture_stdout || !IS_NOOP(on_stdout_line)) {
+                st->stdout_thread = std::jthread([st, h = std::move(hStdOutRead), &options](std::stop_token tok) {
+                    auto txt = internal::read_from_pipe<opts.capture_stdout, opts.on_stdout_line_call_on_lines>(tok, h.get(), options.on_stdout_line);
+                    if constexpr (opts.capture_stdout) {
+                        std::scoped_lock lk(st->out_mtx);
+                        st->stdout_ = std::move(txt);
+                    }
+                });
+            }
+
+            if constexpr (opts.capture_stderr || !IS_NOOP(on_stderr_line)) {
+                st->stderr_thread = std::jthread([st, h = std::move(hStdErrRead), &options](std::stop_token tok) {
+                    auto txt = internal::read_from_pipe<opts.capture_stderr, opts.on_stderr_line_call_on_lines>(tok, h.get(), options.on_stderr_line);
+                    if constexpr (opts.capture_stderr) {
+                        std::scoped_lock lk(st->out_mtx);
+                        st->stderr_ = std::move(txt);
+                    }
+                });
+            }
+
+            if (!options.input.empty() && hStdInWrite.is_valid()) {
+                st->stdin_thread = std::jthread([hIn = std::move(hStdInWrite), &options](std::stop_token tok) mutable {
+                    const char* p = options.input.data();
+                    size_t rem = options.input.size();
+                    while (rem > 0 && !tok.stop_requested()) {
+                        DWORD chunk = static_cast<DWORD>(std::min<size_t>(rem, 64 * 1024));
+                        DWORD written = 0;
+                        if (!WriteFile(hIn.get(), p, chunk, &written, NULL) || written == 0) break;
+                        p += written; rem -= written;
+                    }
+                    hIn.reset();
+                });
+            }
+
+            st->waiter_thread = std::jthread([st, wait_ms = options.wait_for_ms](std::stop_token) {
+                DWORD wr = WaitForSingleObject(st->process.get(), wait_ms);
+                if (wr == WAIT_TIMEOUT) {
+                    if (st->job.is_valid()) TerminateJobObject(st->job.get(), 1);
+                    else TerminateProcess(st->process.get(), 1);
+                    WaitForSingleObject(st->process.get(), INFINITE);
+                }
+
+                DWORD ec = 0;
+                if (GetExitCodeProcess(st->process.get(), &ec)) st->status.store(static_cast<int>(ec), std::memory_order_release);
+                else st->status.store(-1, std::memory_order_release);
+
+                st->finished.store(true, std::memory_order_release);
+            });
+            return out;
         }
 
         if constexpr (!opts.one_shot_process) {
@@ -488,8 +649,11 @@ namespace usylibpp::windows::process {
     }
 
     template <process_options opts = {}, process_settings_type settings>
-    inline std::conditional_t<opts.one_shot_process, one_shot_process_output, process_output>
-    run_process(settings&& options) {
+    inline process_return_t<opts> run_process(settings&& options) {
+        if constexpr (opts.one_shot_process && opts.async) {
+            static_assert(!std::is_same_v<process_options, process_options>, "Async one-shot processes are not supported.");
+        }
+
         if (options.commandline.empty()) return { -1 };
 
         using StdoutCb = std::remove_cvref_t<decltype(options.on_stdout_line)>;
@@ -553,7 +717,9 @@ namespace usylibpp::windows::process {
             }
 
 #if defined(__linux__)
-            if constexpr (opts.set_lifetime_of_subprocess_to_this_process) {
+            if constexpr (opts.async && opts.set_lifetime_of_subprocess_to_this_process) {
+                (void)::setpgid(0, 0); // child becomes its own PG leader
+            } else if constexpr (opts.set_lifetime_of_subprocess_to_this_process) {
                 (void)::prctl(PR_SET_PDEATHSIG, SIGKILL);
                 // Close race: parent may have died before prctl call.
                 if (::getppid() == 1) _exit(127);
@@ -565,11 +731,122 @@ namespace usylibpp::windows::process {
             _exit(127);
         }
 
+        pid_t pgid = -1;
+        if constexpr (opts.async && opts.set_lifetime_of_subprocess_to_this_process) {
+            (void)::setpgid(pid, pid); // race-safe best effort
+            pgid = pid;
+        }
+
         // Parent
         if constexpr (!opts.one_shot_process) {
             internal::close_if_valid(out_pipe[1]); out_pipe[1] = -1;
             internal::close_if_valid(err_pipe[1]); err_pipe[1] = -1;
             internal::close_if_valid(in_pipe[0]);  in_pipe[0]  = -1;
+        }
+
+        if constexpr (opts.async) {
+            async_process_output out;
+            out.s = std::make_shared<async_process_output::state>();
+            auto st = out.s;
+            st->pid = pid;
+            st->pgid = pgid;
+
+            if constexpr (need_stdout) {
+                st->stdout_thread = std::jthread([st, fd = out_pipe[0], &options](std::stop_token tok) mutable {
+                    auto txt = internal::read_from_fd<opts.capture_stdout, opts.on_stdout_line_call_on_lines>(tok, fd, options.on_stdout_line);
+                    if constexpr (opts.capture_stdout) {
+                        std::scoped_lock lk(st->out_mtx);
+                        st->stdout_ = std::move(txt);
+                    }
+                    internal::close_if_valid(fd);
+                });
+            }
+
+            if constexpr (need_stderr) {
+                st->stderr_thread = std::jthread([st, fd = err_pipe[0], &options](std::stop_token tok) mutable {
+                    auto txt = internal::read_from_fd<opts.capture_stderr, opts.on_stderr_line_call_on_lines>(tok, fd, options.on_stderr_line);
+                    if constexpr (opts.capture_stderr) {
+                        std::scoped_lock lk(st->out_mtx);
+                        st->stderr_ = std::move(txt);
+                    }
+                    internal::close_if_valid(fd);
+                });
+            }
+
+            if (need_stdin && in_pipe[1] != -1) {
+                st->stdin_thread = std::jthread([fd = in_pipe[1], &options](std::stop_token tok) mutable {
+                    const char* p = options.input.data();
+                    size_t rem = options.input.size();
+                    while (rem > 0 && !tok.stop_requested()) {
+                        size_t chunk = std::min<size_t>(rem, 64 * 1024);
+                        ssize_t w = ::write(fd, p, chunk);
+                        if (w < 0) { if (errno == EINTR) continue; break; }
+                        if (w == 0) break;
+                        p += (size_t)w; rem -= (size_t)w;
+                    }
+                    internal::close_if_valid(fd);
+                });
+            }
+
+            st->waiter_thread = std::jthread([st, wait_ms = options.wait_for_ms](std::stop_token) {
+                int status_raw = 0;
+                bool waited_ok = false;
+
+                if (wait_ms == 0xFFFFFFFFu) {
+                    for (;;) {
+                        pid_t r = ::waitpid(st->pid, &status_raw, 0);
+                        if (r == st->pid) { waited_ok = true; break; }
+                        if (r < 0 && errno == EINTR) continue;
+                        break;
+                    }
+                } else {
+                    auto start = std::chrono::steady_clock::now();
+                    for (;;) {
+                        pid_t r = ::waitpid(st->pid, &status_raw, WNOHANG);
+                        if (r == st->pid) { waited_ok = true; break; }
+                        if (r < 0 && errno == EINTR) continue;
+                        if (r < 0) break;
+
+                        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                            std::chrono::steady_clock::now() - start
+                        );
+                        if ((uint32_t)elapsed.count() >= wait_ms) break;
+                        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                    }
+
+                    if (!waited_ok) {
+                        if (st->pgid > 0) ::kill(-st->pgid, SIGTERM);
+                        else ::kill(st->pid, SIGTERM);
+
+                        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+                        pid_t r = ::waitpid(st->pid, &status_raw, WNOHANG);
+                        if (r == st->pid) waited_ok = true;
+                        else {
+                            if (st->pgid > 0) ::kill(-st->pgid, SIGKILL);
+                            else ::kill(st->pid, SIGKILL);
+
+                            for (;;) {
+                                pid_t rr = ::waitpid(st->pid, &status_raw, 0);
+                                if (rr == st->pid) { waited_ok = true; break; }
+                                if (rr < 0 && errno == EINTR) continue;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                int ec = -1;
+                if (waited_ok) {
+                    if (WIFEXITED(status_raw)) ec = WEXITSTATUS(status_raw);
+                    else if (WIFSIGNALED(status_raw)) ec = 128 + WTERMSIG(status_raw);
+                }
+
+                st->status.store(ec, std::memory_order_release);
+                st->finished.store(true, std::memory_order_release);
+            });
+
+            return out;
         }
 
         if constexpr (opts.one_shot_process) {
