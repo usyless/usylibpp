@@ -50,7 +50,7 @@ int main() {
     }
     print::println();
 
-    #ifdef WIN32
+    #ifdef USYLIBPP_ENABLE_WINDOWS
     print::println("Windows functions:");
     // These break the vscode terminal
     // {
@@ -86,6 +86,30 @@ int main() {
             }
         });
         print::println("windows::process::run_process(whoami) - status: {} ; output: {} ; error: {}", status, output, error);
+    }
+    {
+        print::println("\nAsync Process with cancelling (timeout.exe /t 10):");
+        const auto process = windows::process::run_process<windows::process::process_options{
+            .allow_visible_windows = false,
+            .capture_stdout = true,
+            .capture_stderr = true,
+            .set_lifetime_of_subprocess_to_this_process = true,
+            .async = true,
+        }>(windows::process::process_settings{
+            .commandline = L"timeout.exe /t 10",
+            .on_stdout_line = [](std::string_view line) {
+                print::println("windows::process::run_process(timeout) - stdout line recieved: {}", line);
+            },
+            .async_then = []() {
+                print::println("windows::process::run_process(timeout) - async_then called");
+            }
+        });
+        print::println("Sleeping for 2 seconds...");
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+        print::println("Stopping async process");
+        process.cancel();
+        const auto [status, output, error] = process.wait();
+        print::println("windows::process::run_process(timeout) - status: {} ; output: {} ; error: {}", status, output, error);
     }
     #endif
 
