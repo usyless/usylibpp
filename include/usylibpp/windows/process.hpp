@@ -51,7 +51,7 @@
 static_assert(true, "");
 #pragma push_macro("IS_NOOP")
 #undef IS_NOOP
-#define IS_NOOP(func) (std::is_same_v<decltype(std::declval<settings>().func), types::noop_t>)
+#define IS_NOOP(func) (std::is_same_v<std::remove_cvref_t<decltype(std::declval<settings>().func)>, types::noop_t>)
 
 namespace usylibpp::windows::process {
     struct process_output {
@@ -669,13 +669,9 @@ namespace usylibpp::windows::process {
 
         if (options.commandline.empty()) return {};
 
-        using StdoutCb = std::remove_cvref_t<decltype(options.on_stdout_line)>;
-        using StderrCb = std::remove_cvref_t<decltype(options.on_stderr_line)>;
-        using AsyncThenCb = std::remove_cvref_t<decltype(options.async_then)>;
-
-        static constexpr bool need_stdout = opts.capture_stdout || !std::is_same_v<StdoutCb, types::noop_t>;
-        static constexpr bool need_stderr = opts.capture_stderr || !std::is_same_v<StderrCb, types::noop_t>;
-        static constexpr bool has_async_next = !std::is_same_v<AsyncThenCb, types::noop_t>;
+        static constexpr bool need_stdout = opts.capture_stdout || !IS_NOOP(on_stdout_line);
+        static constexpr bool need_stderr = opts.capture_stderr || !IS_NOOP(on_stderr_line);
+        static constexpr bool has_async_next = !IS_NOOP(async_then)
         const bool need_stdin = !options.input.empty();
 
         int out_pipe[2]{-1, -1};
