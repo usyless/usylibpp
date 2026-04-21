@@ -270,7 +270,7 @@ namespace usylibpp::windows::process {
         }
 
         if (options.commandline.empty()) {
-            return { -1 };
+            return {};
         }
 
         #pragma push_macro("IS_NOOP")
@@ -293,7 +293,7 @@ namespace usylibpp::windows::process {
             
             if constexpr (opts.capture_stdout || !IS_NOOP(on_stdout_line)) {
                 if (!CreatePipe(&hReadOut, &hWriteOut, &saAttr, 0)) {
-                    return { -1 };
+                    return {};
                 }
             }
 
@@ -302,13 +302,13 @@ namespace usylibpp::windows::process {
 
             if constexpr (opts.capture_stdout || !IS_NOOP(on_stdout_line)) {
                 if (!SetHandleInformation(hStdOutRead.get(), HANDLE_FLAG_INHERIT, 0)) {
-                    return { -1 };
+                    return {};
                 }
             }
 
             if constexpr (opts.capture_stderr || !IS_NOOP(on_stderr_line)) {
                 if (!CreatePipe(&hReadErr, &hWriteErr, &saAttr, 0)) {
-                    return { -1 };
+                    return {};
                 }
             }
 
@@ -317,20 +317,20 @@ namespace usylibpp::windows::process {
 
             if constexpr (opts.capture_stderr || !IS_NOOP(on_stderr_line)) {
                 if (!SetHandleInformation(hStdErrRead.get(), HANDLE_FLAG_INHERIT, 0)) {
-                    return { -1 };
+                    return {};
                 }
             }
 
             if (!options.input.empty()) {
                 if (!CreatePipe(&hInRead, &hInWrite, &saAttr, 0)) {
-                    return { -1 };
+                    return {};
                 }
                 
                 hStdInRead.reset(hInRead);
                 hStdInWrite.reset(hInWrite);
 
                 if (!SetHandleInformation(hStdInWrite.get(), HANDLE_FLAG_INHERIT, 0)) {
-                    return { -1 };
+                    return {};
                 }
             }
         }
@@ -364,7 +364,7 @@ namespace usylibpp::windows::process {
         hStdInRead.reset();
 
         if (!success) {
-            return { -1 };
+            return {};
         }
 
         wil::unique_handle process{pi.hProcess};
@@ -654,7 +654,7 @@ namespace usylibpp::windows::process {
             static_assert(!std::is_same_v<process_options, process_options>, "Async one-shot processes are not supported.");
         }
 
-        if (options.commandline.empty()) return { -1 };
+        if (options.commandline.empty()) return {};
 
         using StdoutCb = std::remove_cvref_t<decltype(options.on_stdout_line)>;
         using StderrCb = std::remove_cvref_t<decltype(options.on_stderr_line)>;
@@ -674,14 +674,14 @@ namespace usylibpp::windows::process {
             if constexpr (need_stderr) {
                 if (internal::make_pipe_cloexec(err_pipe) != 0) {
                     internal::close_pipe(out_pipe);
-                    return { -1 };
+                    return {};
                 }
             }
             if (need_stdin) {
                 if (internal::make_pipe_cloexec(in_pipe) != 0) {
                     internal::close_pipe(out_pipe);
                     internal::close_pipe(err_pipe);
-                    return { -1 };
+                    return {};
                 }
             }
         }
@@ -691,7 +691,7 @@ namespace usylibpp::windows::process {
             internal::close_pipe(out_pipe);
             internal::close_pipe(err_pipe);
             internal::close_pipe(in_pipe);
-            return { -1 };
+            return {};
         }
 
         if (pid == 0) {
