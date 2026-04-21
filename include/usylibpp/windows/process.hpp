@@ -268,6 +268,9 @@ namespace usylibpp::windows::process {
         if constexpr (opts.one_shot_process && opts.async) {
             static_assert(!std::is_same_v<process_options, process_options>, "Async one-shot processes are not supported.");
         }
+        static constexpr auto ASYNC = opts.async && !opts.one_shot_process;
+        static constexpr auto ONESHOT = opts.one_shot_process && !opts.async;
+        static constexpr auto NORMAL = !ASYNC && !ONESHOT;
 
         if (options.commandline.empty()) {
             return {};
@@ -388,7 +391,7 @@ namespace usylibpp::windows::process {
             }
         }
 
-        if constexpr (opts.async) {
+        if constexpr (ASYNC) {
             async_process_output out;
             out.s = std::make_shared<async_process_output::state>();
             auto st = out.s;
@@ -447,7 +450,11 @@ namespace usylibpp::windows::process {
             return out;
         }
 
-        if constexpr (!opts.one_shot_process) {
+        if constexpr (ONESHOT) {
+            return one_shot_process_output{ 0, std::move(hJob) };
+        }
+
+        if constexpr (NORMAL) {
             std::string stdoutOutput;
             std::string stderrOutput;
 
@@ -505,8 +512,6 @@ namespace usylibpp::windows::process {
             #pragma pop_macro("IS_NOOP")
 
             return process_output{ static_cast<int>(exitCode), stdoutOutput, stderrOutput };
-        } else {
-            return one_shot_process_output{ 0, std::move(hJob) };
         }
     }
 
@@ -654,6 +659,10 @@ namespace usylibpp::windows::process {
             static_assert(!std::is_same_v<process_options, process_options>, "Async one-shot processes are not supported.");
         }
 
+        static constexpr auto ASYNC = opts.async && !opts.one_shot_process;
+        static constexpr auto ONESHOT = opts.one_shot_process && !opts.async;
+        static constexpr auto NORMAL = !ASYNC && !ONESHOT;
+
         if (options.commandline.empty()) return {};
 
         using StdoutCb = std::remove_cvref_t<decltype(options.on_stdout_line)>;
@@ -744,7 +753,7 @@ namespace usylibpp::windows::process {
             internal::close_if_valid(in_pipe[0]);  in_pipe[0]  = -1;
         }
 
-        if constexpr (opts.async) {
+        if constexpr (ASYNC) {
             async_process_output out;
             out.s = std::make_shared<async_process_output::state>();
             auto st = out.s;
@@ -849,9 +858,11 @@ namespace usylibpp::windows::process {
             return out;
         }
 
-        if constexpr (opts.one_shot_process) {
+        if constexpr (ONESHOT) {
             return one_shot_process_output{ 0, pid };
-        } else {
+        }
+        
+        if constexpr (NORMAL) {
             std::string stdoutOutput;
             std::string stderrOutput;
 
