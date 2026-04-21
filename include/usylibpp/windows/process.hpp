@@ -279,6 +279,10 @@ namespace usylibpp::windows::process {
         static constexpr auto ONESHOT = opts.one_shot_process && !opts.async;
         static constexpr auto NORMAL = !ASYNC && !ONESHOT;
 
+        if constexpr (!ASYNC && !IS_NOOP(async_then)) {
+            static_assert(!std::is_same_v<process_options, process_options>, "async_then is not usable without async!");
+        }
+
         if (options.commandline.empty()) {
             return {};
         }
@@ -666,6 +670,10 @@ namespace usylibpp::windows::process {
         static constexpr auto ASYNC = opts.async && !opts.one_shot_process;
         static constexpr auto ONESHOT = opts.one_shot_process && !opts.async;
         static constexpr auto NORMAL = !ASYNC && !ONESHOT;
+
+        if constexpr (!ASYNC && !IS_NOOP(async_then)) {
+            static_assert(!std::is_same_v<process_options, process_options>, "async_then is not usable without async!");
+        }
 
         if (options.commandline.empty()) return {};
 
