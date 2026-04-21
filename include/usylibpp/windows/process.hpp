@@ -161,7 +161,7 @@ namespace usylibpp::windows::process {
     };
 
     template <typename F1 = types::noop_t, typename F2 = types::noop_t, typename F3 = types::noop_t>
-    requires (std::invocable<F1&, std::string_view> && std::invocable<F2&, std::string_view> && std::invocable<F3&>)
+    requires (std::invocable<F1&, std::string_view> && std::invocable<F2&, std::string_view> && std::invocable<F3&, int>)
     struct process_settings {
         #ifdef USYLIBPP_ENABLE_WIL
         std::wstring_view commandline;
@@ -182,7 +182,7 @@ namespace usylibpp::windows::process {
         uint32_t wait_for_ms = 0xFFFFFFFFu; // INFINITE-like
         #endif
 
-        F3 async_then{}; // run once async process exits
+        F3 async_then{}; // run once async process exits, invoked with int status
     };
 
     template <typename>
@@ -449,7 +449,7 @@ namespace usylibpp::windows::process {
 
                 st->finished.store(true, std::memory_order_release);
                 if constexpr (!IS_NOOP(async_then)) {
-                    std::invoke(async_then);
+                    std::invoke(async_then, static_cast<int>(ec));
                 }
             });
             return out;
@@ -861,7 +861,7 @@ namespace usylibpp::windows::process {
                 st->status.store(ec, std::memory_order_release);
                 st->finished.store(true, std::memory_order_release);
                 if constexpr (has_async_next) {
-                    std::invoke(async_then);
+                    std::invoke(async_then, ec);
                 }
             });
 

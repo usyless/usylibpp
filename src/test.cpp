@@ -100,8 +100,8 @@ int main() {
             .on_stdout_line = [](std::string_view line) {
                 print::println("windows::process::run_process(timeout) - stdout line recieved: {}", line);
             },
-            .async_then = []() {
-                print::println("windows::process::run_process(timeout) - async_then called");
+            .async_then = [](int status) {
+                print::println("windows::process::run_process(timeout) - async_then called with status: {}", status);
             }
         });
         print::println("Sleeping for 2 seconds...");
