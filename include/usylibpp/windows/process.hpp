@@ -160,8 +160,8 @@ namespace usylibpp::windows::process {
         bool async = false; // incompatible with one_shot_process, allows for async process input and process killing
     };
 
-    template <typename F1 = types::noop_t, typename F2 = types::noop_t>
-    requires (std::invocable<F1&, std::string_view> && std::invocable<F2&, std::string_view>)
+    template <typename F1 = types::noop_t, typename F2 = types::noop_t, typename F3 = types::noop_t>
+    requires (std::invocable<F1&, std::string_view> && std::invocable<F2&, std::string_view> && std::invocable<F3&>)
     struct process_settings {
         #ifdef USYLIBPP_ENABLE_WIL
         std::wstring_view commandline;
@@ -181,13 +181,15 @@ namespace usylibpp::windows::process {
         #ifdef USYLIBPP_ENABLE_LINUX
         uint32_t wait_for_ms = 0xFFFFFFFFu; // INFINITE-like
         #endif
+
+        F3 async_then{}; // run once async process exits
     };
 
     template <typename>
     struct is_process_settings : std::false_type {};
 
-    template <typename F1, typename F2>
-    struct is_process_settings<process_settings<F1, F2>> : std::true_type {};
+    template <typename F1, typename F2, typename F3>
+    struct is_process_settings<process_settings<F1, F2, F3>> : std::true_type {};
 
     template <typename T>
     concept process_settings_type = is_process_settings<std::remove_cvref_t<T>>::value;
@@ -433,7 +435,7 @@ namespace usylibpp::windows::process {
                 });
             }
 
-            st->waiter_thread = std::jthread([st, wait_ms = options.wait_for_ms](std::stop_token) {
+            st->waiter_thread = std::jthread([st, wait_ms = options.wait_for_ms, async_then = std::forward<decltype(options.async_then)>(options.async_then)](std::stop_token) {
                 DWORD wr = WaitForSingleObject(st->process.get(), wait_ms);
                 if (wr == WAIT_TIMEOUT) {
                     if (st->job.is_valid()) TerminateJobObject(st->job.get(), 1);
@@ -446,6 +448,9 @@ namespace usylibpp::windows::process {
                 else st->status.store(-1, std::memory_order_release);
 
                 st->finished.store(true, std::memory_order_release);
+                if constexpr (!IS_NOOP(async_then)) {
+                    std::invoke(async_then);
+                }
             });
             return out;
         }
@@ -667,9 +672,11 @@ namespace usylibpp::windows::process {
 
         using StdoutCb = std::remove_cvref_t<decltype(options.on_stdout_line)>;
         using StderrCb = std::remove_cvref_t<decltype(options.on_stderr_line)>;
+        using AsyncThenCb = std::remove_cvref_t<decltype(options.async_then)>;
 
-        constexpr bool need_stdout = opts.capture_stdout || !std::is_same_v<StdoutCb, types::noop_t>;
-        constexpr bool need_stderr = opts.capture_stderr || !std::is_same_v<StderrCb, types::noop_t>;
+        static constexpr bool need_stdout = opts.capture_stdout || !std::is_same_v<StdoutCb, types::noop_t>;
+        static constexpr bool need_stderr = opts.capture_stderr || !std::is_same_v<StderrCb, types::noop_t>;
+        static constexpr bool has_async_next = !std::is_same_v<AsyncThenCb, types::noop_t>;
         const bool need_stdin = !options.input.empty();
 
         int out_pipe[2]{-1, -1};
@@ -797,7 +804,7 @@ namespace usylibpp::windows::process {
                 });
             }
 
-            st->waiter_thread = std::jthread([st, wait_ms = options.wait_for_ms](std::stop_token) {
+            st->waiter_thread = std::jthread([st, wait_ms = options.wait_for_ms, async_then = std::forward<decltype(options.async_then)>(options.async_then)](std::stop_token) {
                 int status_raw = 0;
                 bool waited_ok = false;
 
@@ -853,6 +860,9 @@ namespace usylibpp::windows::process {
 
                 st->status.store(ec, std::memory_order_release);
                 st->finished.store(true, std::memory_order_release);
+                if constexpr (has_async_next) {
+                    std::invoke(async_then);
+                }
             });
 
             return out;
