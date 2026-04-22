@@ -688,7 +688,7 @@ namespace usylibpp::windows::process {
 
         if constexpr (!opts.one_shot_process) {
             if constexpr (need_stdout) {
-                if (internal::make_pipe_cloexec(out_pipe) != 0) return { -1 };
+                if (internal::make_pipe_cloexec(out_pipe) != 0) return {};
             }
             if constexpr (need_stderr) {
                 if (internal::make_pipe_cloexec(err_pipe) != 0) {
