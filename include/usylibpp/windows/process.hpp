@@ -679,7 +679,7 @@ namespace usylibpp::windows::process {
 
         static constexpr bool need_stdout = opts.capture_stdout || !IS_NOOP(on_stdout_line);
         static constexpr bool need_stderr = opts.capture_stderr || !IS_NOOP(on_stderr_line);
-        static constexpr bool has_async_next = !IS_NOOP(async_then)
+        static constexpr bool has_async_next = !IS_NOOP(async_then);
         const bool need_stdin = !options.input.empty();
 
         int out_pipe[2]{-1, -1};
