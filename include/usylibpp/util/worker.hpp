@@ -130,18 +130,30 @@ namespace usylibpp::util {
 
             check_cancelled
 
-            auto bound = [f = std::forward<Fn>(fn), ...as = std::forward<Args>(args)]() mutable -> Ret {
-                return std::invoke(f, std::move(as)...);
-            };
+            std::future<Ret> fut;
 
-            auto call = std::make_unique<Call<decltype(bound), Ret>>(std::move(bound));
-            [[maybe_unused]] auto fut = call->result.get_future();
+            if constexpr (sizeof...(Args) == 0)  {
+                auto call = std::make_unique<Call<Fn, Ret>>(std::forward<Fn>(fn));
+                fut = call->result.get_future();
+                {
+                    std::lock_guard lock{mtx};
+                    check_cancelled
+                    queue.push(std::move(call));
+                }
+            } else {
+                auto bound = [f = std::forward<Fn>(fn), ...as = std::forward<Args>(args)]() mutable -> Ret {
+                    return std::invoke(f, std::move(as)...);
+                };
 
-            {
-                std::lock_guard lock{mtx};
-                check_cancelled
-                queue.push(std::move(call));
+                auto call = std::make_unique<Call<decltype(bound), Ret>>(std::move(bound));
+                fut = call->result.get_future();
+                {
+                    std::lock_guard lock{mtx};
+                    check_cancelled
+                    queue.push(std::move(call));
+                }
             }
+            
             cv.notify_one();
 
             if constexpr (wait_for_completion) return fut.get();
