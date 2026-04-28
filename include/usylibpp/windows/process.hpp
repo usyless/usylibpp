@@ -440,7 +440,7 @@ namespace usylibpp::windows::process {
                 });
             }
 
-            st->waiter_thread = std::jthread([st, wait_ms = options.wait_for_ms, async_then = std::forward<decltype(options.async_then)>(options.async_then)](std::stop_token) {
+            st->waiter_thread = std::jthread([st, wait_ms = options.wait_for_ms, async_then = std::forward<decltype(options.async_then)>(options.async_then)]() {
                 DWORD wr = WaitForSingleObject(st->process.get(), wait_ms);
                 if (wr == WAIT_TIMEOUT) {
                     if (st->job.is_valid()) TerminateJobObject(st->job.get(), 1);
@@ -807,7 +807,7 @@ namespace usylibpp::windows::process {
                 });
             }
 
-            st->waiter_thread = std::jthread([st, wait_ms = options.wait_for_ms, async_then = std::forward<decltype(options.async_then)>(options.async_then)](std::stop_token) {
+            st->waiter_thread = std::jthread([st, wait_ms = options.wait_for_ms, async_then = std::forward<decltype(options.async_then)>(options.async_then)]() {
                 int status_raw = 0;
                 bool waited_ok = false;
 
