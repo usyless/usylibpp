@@ -508,7 +508,8 @@ namespace usylibpp::windows::process {
             DWORD result = WaitForSingleObject(process.get(), options.wait_for_ms);
 
             if (result == WAIT_TIMEOUT) { 
-                TerminateProcess(process.get(), 1); 
+                if (hJob.is_valid()) TerminateJobObject(hJob.get(), 1);
+                else TerminateProcess(process.get(), 1);
                 WaitForSingleObject(process.get(), INFINITE);
 
                 if (stdinThread.joinable()) stdinThread.request_stop();
