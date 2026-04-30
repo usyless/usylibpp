@@ -2,6 +2,8 @@
 
 #include "aliases.hpp" // IWYU pragma: export
 #include "strings.hpp"
+#include <concepts>
+#include <functional>
 
 namespace usylibpp::discord {
     /**
@@ -89,5 +91,20 @@ namespace usylibpp::discord {
         out.append(id);
         out.push_back('>');
         return out;
+    }
+
+    namespace dpp {
+        template <typename C, std::invocable F>
+        requires requires(C* c, uint64_t timeout, F f) {
+            c->start_timer([](uint64_t){}, timeout);
+            c->stop_timer(timeout);
+            std::invoke(f);
+        }
+        inline auto oneshot_timer(C* cluster, F&& func, uint64_t timeout) {
+            return cluster->start_timer([cluster, func = std::forward<F>(func)](uint64_t t) {
+                cluster->stop_timer(t);
+                std::invoke(func);
+            }, timeout);
+        }
     }
 }
