@@ -80,7 +80,10 @@ namespace usylibpp::strings {
     inline constexpr void to_lowercase_inplace(S& str) noexcept {
         using Char = S::value_type;
         if constexpr (std::is_same_v<Char, char>) {
+            #pragma push_macro("tolower")
+            #undef tolower
             std::transform(str.begin(), str.end(), str.begin(), [](unsigned char c) noexcept -> char { return static_cast<char>(std::tolower(c)); });
+            #pragma pop_macro("tolower")
         } else {
             std::transform(str.begin(), str.end(), str.begin(), [](wchar_t c) noexcept -> wchar_t { return static_cast<wchar_t>(std::towlower(c)); });
         }
