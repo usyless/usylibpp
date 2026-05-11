@@ -6,14 +6,16 @@
 #include <string>
 #include <optional>
 #include <variant>
+#ifdef USYLIBPP_ENABLE_WINDOWS
 #include <windows.h>
 #include <shobjidl.h>
 #include <shlguid.h>
 #include <shellapi.h>
 #include <knownfolders.h>
 #include <shlobj.h>
-#include "types.hpp"
 #include "windows/strings.hpp"
+#endif
+#include "types.hpp"
 
 #ifdef USYLIBPP_ENABLE_WIL
 #include <wil/resource.h>
@@ -21,6 +23,7 @@
 #endif
 
 namespace usylibpp::windows {
+    #ifdef USYLIBPP_ENABLE_WINDOWS
     /**
      * If dummy = true then COM is not actually initialised again
      */
@@ -110,6 +113,8 @@ namespace usylibpp::windows {
     }
     #endif
 
+    #endif
+
     /**
      * Caches the result
      */
@@ -122,6 +127,8 @@ namespace usylibpp::windows {
         }
 
         has_run = true;
+
+        #ifdef USYLIBPP_ENABLE_WINDOWS
 
         DWORD size = 260;
         DWORD copied = 0;
@@ -143,6 +150,16 @@ namespace usylibpp::windows {
 
         path = buffer;
 
+        #endif
+
+        #ifdef USYLIBPP_ENABLE_LINUX
+        
+        std::error_code ec;
+        path = std::filesystem::canonical("/proc/self/exe", ec);
+        if (ec || path.empty()) return std::nullopt;
+
+        #endif
+
         return path;
     }
 
@@ -159,6 +176,8 @@ namespace usylibpp::windows {
 
         auto& exe_path = *exe_path_opt;
 
+        #ifdef USYLIBPP_ENABLE_WINDOWS
+
         const auto pos = exe_path.get().native().find_last_of(L'\\');
         if (pos != std::wstring::npos) {
             // make a copy here
@@ -167,8 +186,20 @@ namespace usylibpp::windows {
             if (SetCurrentDirectoryW(exe_path_copy.c_str())) return true;
         }
 
+        #endif
+
+        #ifdef USYLIBPP_ENABLE_LINUX
+        
+        std::error_code ec;
+        std::filesystem::current_path(exe_path.get().parent_path(), ec);
+        if (!ec) return true;
+
+        #endif
+
         return false;
     }
+
+    #ifdef USYLIBPP_ENABLE_WINDOWS
 
     /**
      * Downloads folder by default
@@ -431,4 +462,5 @@ namespace usylibpp::windows {
             return true;
         }
     }
+    #endif
 }

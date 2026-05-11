@@ -14,6 +14,7 @@
 #endif
 
 #ifdef USYLIBPP_ENABLE_LINUX
+#include "windows.hpp" // IWYU pragma: export
 #include "windows/process.hpp" // IWYU pragma: export
 #endif
 
