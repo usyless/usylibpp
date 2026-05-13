@@ -8,6 +8,7 @@
 #include <mutex>
 #include <queue>
 #include <condition_variable>
+#include <functional>
 
 namespace usylibpp::util {
     enum class WorkerType {
