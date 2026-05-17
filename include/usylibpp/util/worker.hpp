@@ -2,6 +2,7 @@
 
 #include "../aliases.hpp" // IWYU pragma: export
 
+#include <optional>
 #include <thread>
 #include <atomic>
 #include <future>
@@ -195,6 +196,13 @@ namespace usylibpp::util {
 
         inline constexpr bool cancelled() const noexcept {
             return !running;
+        }
+
+        inline std::optional<std::thread::id> thread_id(const size_t idx) const noexcept {
+            std::lock_guard lock{mtx};
+            if (cancelled() || idx >= workers.size()) return std::nullopt;
+
+            return workers[idx].get_id();
         }
 
     private:
