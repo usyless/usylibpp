@@ -206,7 +206,7 @@ namespace usylibpp::util {
         }
 
     private:
-        std::mutex mtx;
+        mutable std::mutex mtx;
         std::condition_variable cv;
         std::atomic_bool running{true};
         std::queue<std::unique_ptr<CallBase>> queue;
