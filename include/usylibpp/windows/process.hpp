@@ -454,7 +454,7 @@ namespace usylibpp::windows::process {
 
                 st->finished.store(true, std::memory_order_release);
                 if constexpr (!IS_NOOP(async_then)) {
-                    std::invoke(std::invoke(async_then), static_cast<int>(ec));
+                    std::invoke(std::move(async_then), static_cast<int>(ec));
                 }
             });
             return out;
