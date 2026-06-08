@@ -144,7 +144,7 @@ namespace usylibpp::util {
                 }
             } else {
                 auto bound = [f = std::forward<Fn>(fn), ...as = std::forward<Args>(args)]() mutable -> Ret {
-                    return std::invoke(f, std::move(as)...);
+                    return std::invoke(std::move(f), std::move(as)...);
                 };
 
                 auto call = std::make_unique<Call<decltype(bound), Ret>>(std::move(bound));

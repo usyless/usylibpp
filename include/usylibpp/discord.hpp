@@ -101,9 +101,9 @@ namespace usylibpp::discord {
             std::invoke(f);
         }
         inline auto oneshot_timer(C* cluster, F&& func, uint64_t timeout) {
-            return cluster->start_timer([cluster, func = std::forward<F>(func)](uint64_t t) {
+            return cluster->start_timer([cluster, func = std::forward<F>(func)](uint64_t t) mutable {
                 cluster->stop_timer(t);
-                std::invoke(func);
+                std::invoke(std::move(func));
             }, timeout);
         }
     }

@@ -407,8 +407,8 @@ namespace usylibpp::windows::process {
             st->job = std::move(hJob);
 
             if constexpr (opts.capture_stdout || !IS_NOOP(on_stdout_line)) {
-                st->stdout_thread = std::jthread([st, h = std::move(hStdOutRead), on_stdout_line = std::forward<decltype(options.on_stdout_line)>(options.on_stdout_line)](std::stop_token tok) {
-                    auto txt = internal::read_from_pipe<opts.capture_stdout, opts.on_stdout_line_call_on_lines>(tok, h.get(), on_stdout_line);
+                st->stdout_thread = std::jthread([st, h = std::move(hStdOutRead), on_stdout_line = std::forward<decltype(options.on_stdout_line)>(options.on_stdout_line)](std::stop_token tok) mutable {
+                    auto txt = internal::read_from_pipe<opts.capture_stdout, opts.on_stdout_line_call_on_lines>(tok, h.get(), std::move(on_stdout_line));
                     if constexpr (opts.capture_stdout) {
                         std::scoped_lock lk(st->out_mtx);
                         st->stdout_ = std::move(txt);
@@ -417,8 +417,8 @@ namespace usylibpp::windows::process {
             }
 
             if constexpr (opts.capture_stderr || !IS_NOOP(on_stderr_line)) {
-                st->stderr_thread = std::jthread([st, h = std::move(hStdErrRead), on_stderr_line = std::forward<decltype(options.on_stderr_line)>(options.on_stderr_line)](std::stop_token tok) {
-                    auto txt = internal::read_from_pipe<opts.capture_stderr, opts.on_stderr_line_call_on_lines>(tok, h.get(), on_stderr_line);
+                st->stderr_thread = std::jthread([st, h = std::move(hStdErrRead), on_stderr_line = std::forward<decltype(options.on_stderr_line)>(options.on_stderr_line)](std::stop_token tok) mutable {
+                    auto txt = internal::read_from_pipe<opts.capture_stderr, opts.on_stderr_line_call_on_lines>(tok, h.get(), std::move(on_stderr_line));
                     if constexpr (opts.capture_stderr) {
                         std::scoped_lock lk(st->out_mtx);
                         st->stderr_ = std::move(txt);
@@ -440,7 +440,7 @@ namespace usylibpp::windows::process {
                 });
             }
 
-            st->waiter_thread = std::jthread([st, wait_ms = options.wait_for_ms, async_then = std::forward<decltype(options.async_then)>(options.async_then)]() {
+            st->waiter_thread = std::jthread([st, wait_ms = options.wait_for_ms, async_then = std::forward<decltype(options.async_then)>(options.async_then)]() mutable {
                 DWORD wr = WaitForSingleObject(st->process.get(), wait_ms);
                 if (wr == WAIT_TIMEOUT) {
                     if (st->job.is_valid()) TerminateJobObject(st->job.get(), 1);
@@ -454,7 +454,7 @@ namespace usylibpp::windows::process {
 
                 st->finished.store(true, std::memory_order_release);
                 if constexpr (!IS_NOOP(async_then)) {
-                    std::invoke(async_then, static_cast<int>(ec));
+                    std::invoke(std::invoke(async_then), static_cast<int>(ec));
                 }
             });
             return out;
@@ -773,7 +773,7 @@ namespace usylibpp::windows::process {
 
             if constexpr (need_stdout) {
                 st->stdout_thread = std::jthread([st, fd = out_pipe[0], on_stdout_line = std::forward<decltype(options.on_stdout_line)>(options.on_stdout_line)](std::stop_token tok) mutable {
-                    auto txt = internal::read_from_fd<opts.capture_stdout, opts.on_stdout_line_call_on_lines>(tok, fd, on_stdout_line);
+                    auto txt = internal::read_from_fd<opts.capture_stdout, opts.on_stdout_line_call_on_lines>(tok, fd, std::move(on_stdout_line));
                     if constexpr (opts.capture_stdout) {
                         std::scoped_lock lk(st->out_mtx);
                         st->stdout_ = std::move(txt);
@@ -784,7 +784,7 @@ namespace usylibpp::windows::process {
 
             if constexpr (need_stderr) {
                 st->stderr_thread = std::jthread([st, fd = err_pipe[0], on_stderr_line = std::forward<decltype(options.on_stderr_line)>(options.on_stderr_line)](std::stop_token tok) mutable {
-                    auto txt = internal::read_from_fd<opts.capture_stderr, opts.on_stderr_line_call_on_lines>(tok, fd, on_stderr_line);
+                    auto txt = internal::read_from_fd<opts.capture_stderr, opts.on_stderr_line_call_on_lines>(tok, fd, std::move(on_stderr_line));
                     if constexpr (opts.capture_stderr) {
                         std::scoped_lock lk(st->out_mtx);
                         st->stderr_ = std::move(txt);
@@ -808,7 +808,7 @@ namespace usylibpp::windows::process {
                 });
             }
 
-            st->waiter_thread = std::jthread([st, wait_ms = options.wait_for_ms, async_then = std::forward<decltype(options.async_then)>(options.async_then)]() {
+            st->waiter_thread = std::jthread([st, wait_ms = options.wait_for_ms, async_then = std::forward<decltype(options.async_then)>(options.async_then)]() mutable {
                 int status_raw = 0;
                 bool waited_ok = false;
 
@@ -865,7 +865,7 @@ namespace usylibpp::windows::process {
                 st->status.store(ec, std::memory_order_release);
                 st->finished.store(true, std::memory_order_release);
                 if constexpr (has_async_next) {
-                    std::invoke(async_then, ec);
+                    std::invoke(std::move(async_then), ec);
                 }
             });
 
