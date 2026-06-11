@@ -27,12 +27,12 @@ namespace usylibpp::print {
 
     template<typename... Ts>
     inline void println(const std::format_string<Ts...>& fmt, Ts&&... args) {
-        print(fmt, std::forward<Ts>(args)...) << '\n';
+        usylibpp::print::print(fmt, std::forward<Ts>(args)...) << '\n';
     }
 
     template<typename... Ts>
     inline void println(const std::wformat_string<Ts...>& fmt, Ts&&... args) {
-        print(fmt, std::forward<Ts>(args)...) << L'\n';
+        usylibpp::print::print(fmt, std::forward<Ts>(args)...) << L'\n';
     }
 
     inline void println() {
