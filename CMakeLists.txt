@@ -50,11 +50,11 @@ target_include_directories(usylibpp_usylibpp INTERFACE
 if(USYLIBPP_ENABLE_PCH)
     if (PROJECT_IS_TOP_LEVEL)
         target_precompile_headers(usylibpp_usylibpp INTERFACE 
-            <pch_top_level.hpp>
+            <usylibpp/pch_top_level.hpp>
         )
     else()
         target_precompile_headers(usylibpp_usylibpp INTERFACE 
-            <usylibpp.hpp>
+            <usylibpp/usylibpp.hpp>
         )
     endif()
 endif()
