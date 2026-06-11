@@ -16,7 +16,7 @@ string(
 )
 
 if (PROJECT_IS_TOP_LEVEL)
-  set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+    set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 endif()
 
 set(USYLIBPP_DEPS_DIR "${CMAKE_CURRENT_BINARY_DIR}/_deps")
@@ -34,10 +34,30 @@ target_compile_features(usylibpp_usylibpp INTERFACE
     cxx_std_20
 )
 
+set(USYLIBPP_ENABLE_PCH
+    ON
+    CACHE BOOL
+    "Enable PCH for quicker compilation"
+)
+
+message(STATUS "Using PCH: (USYLIBPP_ENABLE_PCH): ${USYLIBPP_ENABLE_PCH}")
+
 target_include_directories(usylibpp_usylibpp INTERFACE
     "${PROJECT_SOURCE_DIR}/include"
     "${CMAKE_CURRENT_BINARY_DIR}/usylibpp_config"
 )
+
+if(USYLIBPP_ENABLE_PCH)
+    if (PROJECT_IS_TOP_LEVEL)
+        target_precompile_headers(usylibpp_usylibpp INTERFACE 
+            <pch_top_level.hpp>
+        )
+    else()
+        target_precompile_headers(usylibpp_usylibpp INTERFACE 
+            <usylibpp.hpp>
+        )
+    endif()
+endif()
 
 set(USYLIBPP_ENABLE_LTCG
     ON
