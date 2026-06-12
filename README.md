@@ -43,6 +43,8 @@ Look at the cmake file and come up with whatever is needed... (it is header only
 
 These are printed when configuring, which will be more up to date probably
 
+- `USYLIBPP_ENABLE_PCH` (BOOL, Default: OFF) - Toggles PCH, enable to speed up repeated compilation times!
+
 ### WIN32 Specific
 - `USYLIBPP_ENABLE_WINDOWS` (BOOL, Default: ON) - Toggles all of the following
 

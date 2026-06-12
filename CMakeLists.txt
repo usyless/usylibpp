@@ -35,7 +35,7 @@ target_compile_features(usylibpp_usylibpp INTERFACE
 )
 
 set(USYLIBPP_ENABLE_PCH
-    ON
+    OFF
     CACHE BOOL
     "Enable PCH for quicker compilation"
 )
