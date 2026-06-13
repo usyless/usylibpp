@@ -79,11 +79,6 @@ if(USYLIBPP_ENABLE_LTCG)
     endif()
 endif()
 
-target_compile_definitions(usylibpp_common INTERFACE
-    $<$<CONFIG:Debug>:_DEBUG>
-    $<$<CONFIG:Release>:NDEBUG>
-)
-
 target_link_libraries(usylibpp_usylibpp INTERFACE usylibpp_common)
 
 if (WIN32)
