@@ -15,8 +15,22 @@
 "language='*'\"")
 
 namespace usylibpp::windows::task_dialog {
+    inline constexpr int TIMED_OUT = 9999999;
+
     namespace internal {
-        inline int create(PCWSTR title, PCWSTR message, PCWSTR mainContent, PCWSTR icon, TASKDIALOG_BUTTON* buttons, UINT buttons_size, HWND hwnd = nullptr) {
+        inline HRESULT CALLBACK TaskDialogTimerProc(HWND hwnd, UINT uNotification, WPARAM wParam, LPARAM, LONG_PTR dwRefData) {
+            if (uNotification == TDN_TIMER) {
+                const DWORD elapsedMs = (DWORD)wParam;
+                const DWORD timeoutMs = (DWORD)dwRefData;
+
+                if (elapsedMs >= timeoutMs) {
+                    SendMessage(hwnd, TDM_CLICK_BUTTON, TIMED_OUT, 0);
+                }
+            }
+            return S_OK;
+        }
+
+        inline int create(PCWSTR title, PCWSTR message, PCWSTR mainContent, PCWSTR icon, TASKDIALOG_BUTTON* buttons, UINT buttons_size, HWND hwnd = nullptr, DWORD timeoutMs = 0) {
             TASKDIALOGCONFIG td_config{};
             td_config.cbSize = sizeof(td_config);
             td_config.hwndParent = hwnd;
@@ -26,6 +40,12 @@ namespace usylibpp::windows::task_dialog {
             td_config.pszMainIcon = icon;
             td_config.dwFlags = TDF_ALLOW_DIALOG_CANCELLATION;
 
+            if (timeoutMs > 0) {
+                td_config.dwFlags |= TDF_CALLBACK_TIMER;
+                td_config.pfCallback = TaskDialogTimerProc;
+                td_config.lpCallbackData = (LONG_PTR)timeoutMs;
+            }
+
             td_config.pButtons = buttons;
             td_config.cButtons = buttons_size;
 
@@ -34,61 +54,65 @@ namespace usylibpp::windows::task_dialog {
             return buttonPressed;
         }
 
-        inline void ok(PCWSTR title, PCWSTR message, PCWSTR mainContent, PCWSTR icon, HWND hwnd = nullptr) {
+        inline void ok(PCWSTR title, PCWSTR message, PCWSTR mainContent, PCWSTR icon, HWND hwnd = nullptr, DWORD timeoutMs = 0) {
             TASKDIALOG_BUTTON buttons[] = { { IDOK, L"Ok" } };
-            create(title, message, mainContent, icon, buttons, ARRAYSIZE(buttons), hwnd);
+            create(title, message, mainContent, icon, buttons, ARRAYSIZE(buttons), hwnd, timeoutMs);
         }
 
-        [[nodiscard]] inline bool confirmation(PCWSTR title, PCWSTR message, PCWSTR mainContent, PCWSTR icon, HWND hwnd = nullptr) {
+        [[nodiscard]] inline bool confirmation(PCWSTR title, PCWSTR message, PCWSTR mainContent, PCWSTR icon, HWND hwnd = nullptr, DWORD timeoutMs = 0) {
             TASKDIALOG_BUTTON buttons[] = { 
                 { IDOK, L"Confirm" },
                 { IDCANCEL, L"Cancel" } 
             };
-            return create(title, message, mainContent, icon, buttons, ARRAYSIZE(buttons), hwnd) == IDOK;
+            return create(title, message, mainContent, icon, buttons, ARRAYSIZE(buttons), hwnd, timeoutMs) == IDOK;
         }
     }
 
     template <types::wchar_t_strict T1, types::wchar_t_strict T2, types::wchar_t_strict T3>
-    inline void error(T1&& title, T2&& message, T3&& message_body, HWND hwnd = nullptr) noexcept {
+    inline void error(T1&& title, T2&& message, T3&& message_body, HWND hwnd = nullptr, DWORD timeoutMs = 0) noexcept {
         internal::ok(
             wchar_t_from_strict(std::forward<T1>(title)), 
             wchar_t_from_strict(std::forward<T2>(message)), 
             wchar_t_from_strict(std::forward<T3>(message_body)), 
             TD_ERROR_ICON,
-            hwnd
+            hwnd,
+            timeoutMs
         );
     }
 
     template <types::wchar_t_strict T1, types::wchar_t_strict T2, types::wchar_t_strict T3>
-    inline void warning(T1&& title, T2&& message, T3&& message_body, HWND hwnd = nullptr) noexcept {
+    inline void warning(T1&& title, T2&& message, T3&& message_body, HWND hwnd = nullptr, DWORD timeoutMs = 0) noexcept {
         internal::ok(
             wchar_t_from_strict(std::forward<T1>(title)), 
             wchar_t_from_strict(std::forward<T2>(message)), 
             wchar_t_from_strict(std::forward<T3>(message_body)), 
             TD_WARNING_ICON,
-            hwnd
+            hwnd,
+            timeoutMs
         );
     }
 
     template <types::wchar_t_strict T1, types::wchar_t_strict T2, types::wchar_t_strict T3>
-    inline void info(T1&& title, T2&& message, T3&& message_body, HWND hwnd = nullptr) noexcept {
+    inline void info(T1&& title, T2&& message, T3&& message_body, HWND hwnd = nullptr, DWORD timeoutMs = 0) noexcept {
         internal::ok(
             wchar_t_from_strict(std::forward<T1>(title)), 
             wchar_t_from_strict(std::forward<T2>(message)), 
             wchar_t_from_strict(std::forward<T3>(message_body)), 
             TD_INFORMATION_ICON,
-            hwnd
+            hwnd,
+            timeoutMs
         );
     }
 
     template <types::wchar_t_strict T1, types::wchar_t_strict T2, types::wchar_t_strict T3>
-    [[nodiscard]] inline bool confirmation(T1&& title, T2&& message, T3&& message_body, HWND hwnd = nullptr) noexcept {
+    [[nodiscard]] inline bool confirmation(T1&& title, T2&& message, T3&& message_body, HWND hwnd = nullptr, DWORD timeoutMs = 0) noexcept {
         return internal::confirmation(
             wchar_t_from_strict(std::forward<T1>(title)), 
             wchar_t_from_strict(std::forward<T2>(message)), 
             wchar_t_from_strict(std::forward<T3>(message_body)), 
             TD_INFORMATION_ICON,
-            hwnd
+            hwnd,
+            timeoutMs
         );
     }
 }
