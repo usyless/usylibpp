@@ -296,4 +296,7 @@ int main() {
         // closed when out of scope
     }
     #endif
+    #ifdef USYLIBPP_ENABLE_TASK_DIALOG_DARK_MODE
+    ulp::win::td::info(L"Hello!", L"Usylibpp message", L"usylibpp body....\nThis will timeout after 5 seconds!", nullptr, 5000);
+    #endif
 }
