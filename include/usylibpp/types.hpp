@@ -61,6 +61,10 @@ namespace usylibpp::types {
     template <typename S>
     concept is_basic_string_view = requires { typename string_view_char<S>::type; };
 
+    template <typename SV>
+    concept owning_rvalue_string =
+        std::is_same_v<SV, std::remove_cvref_t<SV>> && is_basic_string<SV>;
+
     struct noop_t {
         template <typename... Args>
         void operator()(Args&&...) const noexcept {}

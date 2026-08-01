@@ -5,6 +5,7 @@
 #include <thread>
 #include <condition_variable>
 #include <mutex>
+#include <stop_token>
 #include <functional>
 
 namespace usylibpp::util {
@@ -24,23 +25,16 @@ struct CancellableInterval {
     template <std::invocable T, class Rep, class Period>
     CancellableInterval(T&& cb, std::chrono::duration<Rep, Period> duration) : thread{[cb = std::forward<T>(cb), duration = std::move(duration)](std::stop_token stoken) {
         std::condition_variable_any cv;
-        struct dummy_mutex {
-            inline void lock() noexcept {}
-            inline void unlock() noexcept {}
-            inline bool try_lock() noexcept { return true; }
-        } m;
+        std::mutex m;
         std::unique_lock lock{m};
 
-        #ifdef _MSC_VER
-        std::stop_callback stop_cb{stoken, [&cv]{ cv.notify_all(); }};
-        #endif
+        std::stop_callback stop_cb{stoken, [&cv, &m]{
+            { std::lock_guard guard{m}; }
+            cv.notify_all();
+        }};
 
         if constexpr (!options.fire_immediately) {
-            #ifdef _MSC_VER
             cv.wait_for(lock, duration, [&stoken]{ return stoken.stop_requested(); });
-            #else
-            cv.wait_for(lock, duration, stoken, [&stoken]{ return stoken.stop_requested(); });
-            #endif
         }
 
         while (!stoken.stop_requested()) {
@@ -59,12 +53,7 @@ struct CancellableInterval {
                 } else {
                     std::invoke(cb);
                 }
-                #ifdef _MSC_VER
                 cv.wait_for(lock, duration, [&stoken]{ return stoken.stop_requested(); });
-                #else
-                // msvc does not support this overload
-                cv.wait_for(lock, duration, stoken, [&stoken]{ return stoken.stop_requested(); });
-                #endif
             }
         }
     }} {}

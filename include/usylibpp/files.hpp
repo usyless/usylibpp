@@ -20,12 +20,13 @@ namespace usylibpp::files {
         if (!file) return std::nullopt;
 
         file.seekg(0, std::ios::end);
-        const auto size = file.tellg();
+        const std::streamoff size = file.tellg();
+        if (size < 0) return std::nullopt;
         file.seekg(0, std::ios::beg);
 
-        std::string buffer(size, '\0');
+        std::string buffer(static_cast<std::size_t>(size), '\0');
 
-        if (!file.read(buffer.data(), size)) {
+        if (size > 0 && !file.read(buffer.data(), static_cast<std::streamsize>(size))) {
             return std::nullopt;
         }
 

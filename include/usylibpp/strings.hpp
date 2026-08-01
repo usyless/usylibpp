@@ -3,7 +3,9 @@
 #include "aliases.hpp" // IWYU pragma: export
 #include "macros.hpp"
 #include <algorithm>
+#include <cctype>
 #include <cwctype>
+#include <vector>
 #include <string>
 #include <string_view>
 #include <cstring>
@@ -30,7 +32,7 @@ namespace usylibpp::strings {
 
         Char* dest = result.data();
         std::basic_string_view<Char> sv;
-        #if __cplusplus >= 202302L
+        #if (defined(_MSVC_LANG) ? _MSVC_LANG : __cplusplus) >= 202302L
         if consteval
         #else
         if (std::is_constant_evaluated())
@@ -42,7 +44,9 @@ namespace usylibpp::strings {
                 }
             }(), dest += sv.size()), ...);
         } else {
-            ((sv = std::basic_string_view<Char>(std::forward<Ts>(parts)), ::memcpy(dest, sv.data(), sv.size() * sizeof(Char)), dest += sv.size()), ...);
+            ((sv = std::basic_string_view<Char>(parts),
+              (sv.empty() ? (void)0 : (void)::memcpy(dest, sv.data(), sv.size() * sizeof(Char))),
+              dest += sv.size()), ...);
         }
 
         return result;
@@ -101,7 +105,7 @@ namespace usylibpp::strings {
      * Don't pass in an rvalue as it return a view into the input
      */
     template <types::CharOrWChar Char, types::is_basic_string_view SV>
-    requires (std::same_as<types::string_view_char_t<SV>, Char>)
+    requires (std::same_as<types::string_view_char_t<SV>, Char> && !types::owning_rvalue_string<SV>)
     [[nodiscard]] inline constexpr std::basic_string_view<Char> trim_left(SV&& _input, const Char character) noexcept {
         const std::basic_string_view<Char> input{_input};
         if (input.empty()) return input;
@@ -119,7 +123,7 @@ namespace usylibpp::strings {
      * Don't pass in an rvalue as it return a view into the input
      */
     template <types::CharOrWChar Char, types::is_basic_string_view SV>
-    requires (std::same_as<types::string_view_char_t<SV>, Char>)
+    requires (std::same_as<types::string_view_char_t<SV>, Char> && !types::owning_rvalue_string<SV>)
     [[nodiscard]] inline constexpr std::basic_string_view<Char> trim_right(SV&& _input, const Char character) noexcept {
         const std::basic_string_view<Char> input{_input};
         if (input.empty()) return input;
@@ -134,7 +138,7 @@ namespace usylibpp::strings {
      * Don't pass in an rvalue as it return a view into the input
      */
     template <types::CharOrWChar Char, types::is_basic_string_view SV>
-    requires (std::same_as<types::string_view_char_t<SV>, Char>)
+    requires (std::same_as<types::string_view_char_t<SV>, Char> && !types::owning_rvalue_string<SV>)
     [[nodiscard]] inline constexpr std::basic_string_view<Char> trim(SV&& _input, const Char character) noexcept {
         std::basic_string_view<Char> input{_input};
         input = trim_left(input, character);
@@ -149,6 +153,8 @@ namespace usylibpp::strings {
 
         const std::basic_string_view<Char> from{_from};
         const std::basic_string_view<Char> to{_to};
+
+        if (from.empty()) return;
 
         size_t start_pos = 0;
         while ((start_pos = str.find(from, start_pos)) != std::basic_string<Char>::npos) {
@@ -167,18 +173,24 @@ namespace usylibpp::strings {
         return ret;
     }
 
+    /**
+     * Returns nullopt unless the WHOLE string parses as a number.
+     */
     template <types::Numeric N>
+    requires (!std::is_same_v<N, bool>)
     [[nodiscard]] inline constexpr std::optional<N> to_number(const std::string_view str) noexcept {
-        N num;
+        if (str.empty()) return std::nullopt;
+        N num{};
+        const auto* const last = str.data() + str.size();
         #ifndef USYLIBPP_HAS_GLAZE
-        if (std::from_chars(str.data(), str.data() + str.size(), num).ec == std::errc{}) return num;
+        const auto res = std::from_chars(str.data(), last, num);
         #else
-        if constexpr (std::is_floating_point_v<N>) {
-            if (glz::from_chars<false>(str.data(), str.data() + str.size(), num).ec == std::errc{}) return num;
-        } else {
-            if (std::from_chars(str.data(), str.data() + str.size(), num).ec == std::errc{}) return num;
-        }
+        const auto res = [&] {
+            if constexpr (std::is_floating_point_v<N>) return glz::from_chars<false>(str.data(), last, num);
+            else return std::from_chars(str.data(), last, num);
+        }();
         #endif
+        if (res.ec == std::errc{} && res.ptr == last) return num;
         return std::nullopt;
     }
     
@@ -196,6 +208,7 @@ namespace usylibpp::strings {
      * String view only survives to next function call on this thread, make copy into std::string to keep alive
      */
     template <types::Numeric T>
+    requires (!std::is_same_v<T, bool>)
     [[nodiscard]] inline std::string_view to_string_view(T val) noexcept {
         static constexpr auto TO_STRING_BUFFER_LENGTH = 128;
         static thread_local char buffer[TO_STRING_BUFFER_LENGTH];
@@ -285,7 +298,7 @@ namespace usylibpp::strings {
      * No url sensitivity, for that use encode_full_urls
      */
     [[nodiscard]] inline 
-    #if __cplusplus >= 202302L
+    #if (defined(_MSVC_LANG) ? _MSVC_LANG : __cplusplus) >= 202302L
     constexpr 
     #endif
     std::string url_encode(const std::string_view url) {

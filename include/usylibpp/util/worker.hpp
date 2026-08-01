@@ -3,6 +3,10 @@
 #include "../aliases.hpp" // IWYU pragma: export
 
 #include <optional>
+#include <memory>
+#include <stdexcept>
+#include <type_traits>
+#include <vector>
 #include <thread>
 #include <atomic>
 #include <future>
@@ -40,7 +44,11 @@ namespace usylibpp::util {
             Fn fn;
             std::promise<Ret> result;
 
-            Call(Fn&& f) : fn(std::move(f)) {}
+            static_assert(!std::is_reference_v<Fn>,
+                "Call must own its callable - see post()'s use of std::decay_t.");
+
+            template <typename F>
+            explicit Call(F&& f) : fn(std::forward<F>(f)) {}
 
             void execute() noexcept override final {
                 try {
@@ -81,6 +89,7 @@ namespace usylibpp::util {
 
 
         explicit Worker(const size_t worker_count) {
+            if (worker_count == 0) throw std::invalid_argument("Worker requires at least one thread");
             workers.reserve(worker_count);
             for (size_t i = 0; i < worker_count; ++i) {
                 workers.emplace_back(&Worker::worker_loop, this);
@@ -105,6 +114,7 @@ namespace usylibpp::util {
         requires std::invocable<Fn&, Args...>
         inline auto post(Fn&& fn, Args&&... args) -> conditional_return<std::invoke_result_t<Fn&, Args...>, wait_for_completion> {
             using Ret = std::invoke_result_t<Fn&, Args...>;
+            using StoredFn = std::decay_t<Fn>;
 
             #pragma push_macro("check_cancelled")
             #undef check_cancelled
@@ -135,7 +145,7 @@ namespace usylibpp::util {
             std::future<Ret> fut;
 
             if constexpr (sizeof...(Args) == 0)  {
-                auto call = std::make_unique<Call<Fn, Ret>>(std::forward<Fn>(fn));
+                auto call = std::make_unique<Call<StoredFn, Ret>>(std::forward<Fn>(fn));
                 fut = call->result.get_future();
                 {
                     std::lock_guard lock{mtx};
@@ -143,7 +153,7 @@ namespace usylibpp::util {
                     queue.push(std::move(call));
                 }
             } else {
-                auto bound = [f = std::forward<Fn>(fn), ...as = std::forward<Args>(args)]() mutable -> Ret {
+                auto bound = [f = StoredFn(std::forward<Fn>(fn)), ...as = std::decay_t<Args>(std::forward<Args>(args))]() mutable -> Ret {
                     return std::invoke(std::move(f), std::move(as)...);
                 };
 
@@ -170,7 +180,7 @@ namespace usylibpp::util {
         inline void cancel() noexcept {
             {
                 std::lock_guard lock{mtx};
-                running.store(false);
+                running.store(false, std::memory_order_release);
                 if constexpr (!opts.drain_queue_on_cancel) {
                     while (!queue.empty()) {
                         queue.front()->cancel();
@@ -194,14 +204,12 @@ namespace usylibpp::util {
             }
         }
 
-        inline constexpr bool cancelled() const noexcept {
-            return !running;
+        inline bool cancelled() const noexcept {
+            return !running.load(std::memory_order_acquire);
         }
 
         inline std::optional<std::thread::id> thread_id(const size_t idx) const noexcept {
-            std::lock_guard lock{mtx};
-            if (cancelled() || idx >= workers.size()) return std::nullopt;
-
+            if (idx >= workers.size()) return std::nullopt;
             return workers[idx].get_id();
         }
 

@@ -12,7 +12,7 @@ namespace usylibpp::time {
      */
     [[nodiscard]] inline ::tm tm_safe(::time_t time = std::time(nullptr)) noexcept {
         ::tm cur_tm{};
-        #ifdef WIN32
+        #if defined(_WIN32)
         localtime_s(&cur_tm, &time);
         #else
         localtime_r(&time, &cur_tm);
@@ -23,8 +23,8 @@ namespace usylibpp::time {
     [[nodiscard]] inline auto datetime_stream(const ::tm& tm, const char* fmt = "%Y-%m-%d %H:%M:%S") {
         return std::put_time(&tm, fmt);
     }
-    inline auto datetime_stream(const ::tm&&) = delete;
-    inline auto datetime_stream(::tm&) = delete;
+
+    inline auto datetime_stream(const ::tm&&, const char* = nullptr) = delete;
 
     [[nodiscard]] inline std::string datetime_string(::time_t time = std::time(nullptr), const char* fmt = "%Y-%m-%d %H:%M:%S") {
         std::stringstream ss;

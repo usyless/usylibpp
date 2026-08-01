@@ -10,7 +10,7 @@ private:
     const std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
     bool ended{false};
 public:
-    inline void end() noexcept {
+    inline void end() {
         ended = true;
         const auto end = std::chrono::steady_clock::now();
         const auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
@@ -20,7 +20,9 @@ public:
     }
 
     ~Timer() {
-        if (!ended) end();
+        if (!ended) {
+            try { end(); } catch (...) {}
+        }
     }
 };
 }
