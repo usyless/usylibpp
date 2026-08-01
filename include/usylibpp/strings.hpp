@@ -11,6 +11,7 @@
 #include <functional>
 #include <optional>
 #include "types.hpp"
+#include "glaze.hpp"
 
 namespace usylibpp::strings {
     template<types::is_basic_string_view... Ts>
@@ -169,7 +170,15 @@ namespace usylibpp::strings {
     template <types::Numeric N>
     [[nodiscard]] inline constexpr std::optional<N> to_number(const std::string_view str) noexcept {
         N num;
+        #ifndef USYLIBPP_HAS_GLAZE
         if (std::from_chars(str.data(), str.data() + str.size(), num).ec == std::errc{}) return num;
+        #else
+        if constexpr (std::is_floating_point_v<N>) {
+            if (glz::from_chars(str.data(), str.data() + str.size(), num).ec == std::errc{}) return num;
+        } else {
+            if (std::from_chars(str.data(), str.data() + str.size(), num).ec == std::errc{}) return num;
+        }
+        #endif
         return std::nullopt;
     }
     
@@ -179,16 +188,17 @@ namespace usylibpp::strings {
      * String view only survives to next function call on this thread, make copy into std::string to keep alive
      */
     template <types::Numeric T>
-    [[nodiscard]] inline std::optional<std::string_view> to_string_view(T val) noexcept {
+    [[nodiscard]] inline std::string_view to_string_view(T val) noexcept {
         static constexpr auto TO_STRING_BUFFER_LENGTH = 128;
-
         static thread_local char buffer[TO_STRING_BUFFER_LENGTH];
-        auto [ptr, ec] = std::to_chars(buffer, buffer + TO_STRING_BUFFER_LENGTH, val);
-        if (ec != std::errc{}) return std::nullopt;
-        return std::string_view{buffer, static_cast<size_t>(ptr - buffer)};
-    }
 
-    USYLIBPP__MAKE_OR(to_string_view, std::string_view{})
+        #ifndef USYLIBPP_HAS_GLAZE
+        // this will never fail
+        return std::string_view{buffer, std::to_chars(buffer, buffer + TO_STRING_BUFFER_LENGTH, val).ptr};
+        #else
+        return std::string_view{buffer, glz::to_chars_40kb(buffer, val)};
+        #endif
+    }
 
     /**
      * Stop looping early if false returned from function
