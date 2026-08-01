@@ -1,7 +1,8 @@
 #pragma once
 
 #include "aliases.hpp" // IWYU pragma: exports
-#if (defined(_MSVC_LANG) ? _MSVC_LANG : __cplusplus) >= 202302L && __has_include(<print>)
+#include "macros.hpp" // IWYU pragma: keep
+#if USYLIBPP_CPLUSPLUS >= 202302L && __has_include(<print>)
 #include <print>
 
 namespace usylibpp::print {

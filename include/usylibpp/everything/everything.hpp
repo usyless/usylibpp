@@ -11,7 +11,14 @@
 #include "../strings.hpp"
 #include "../windows/char_t.hpp"
 
+#include <chrono>
 #include <functional>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <thread>
+#include <type_traits>
 
 #include <Everything.h>
 #include <everything_ipc.h>
@@ -55,51 +62,52 @@ namespace usylibpp {
         struct RequestFlags : public FlagsBase<DWORD, RequestFlags> {
             constexpr RequestFlags(DWORD _flags = EVERYTHING_REQUEST_FILE_NAME | EVERYTHING_REQUEST_PATH) noexcept : FlagsBase{_flags} {}
 
-            #pragma push_macro("HANDLE")
-            #undef HANDLE
-            #define HANDLE(func_name, flag) constexpr inline RequestFlags& func_name() noexcept { return add_flag(EVERYTHING_REQUEST_##flag); }
+            // Renamed from HANDLE, which shadowed the Win32 HANDLE typedef.
+            #pragma push_macro("USYLIBPP_FLAG")
+            #undef USYLIBPP_FLAG
+            #define USYLIBPP_FLAG(func_name, flag) constexpr inline RequestFlags& func_name() noexcept { return add_flag(EVERYTHING_REQUEST_##flag); }
 
-            HANDLE(file_name, FILE_NAME)
-            HANDLE(parent_path, PATH)
-            HANDLE(full_path_and_file_name, FULL_PATH_AND_FILE_NAME)
-            HANDLE(extension, EXTENSION)
-            HANDLE(size, SIZE)
-            HANDLE(date_created, DATE_CREATED)
-            HANDLE(date_modified, DATE_MODIFIED)
-            HANDLE(date_accessed, DATE_ACCESSED)
-            HANDLE(attributes, ATTRIBUTES)
-            HANDLE(file_list_file_name, FILE_LIST_FILE_NAME)
-            HANDLE(run_count, RUN_COUNT)
-            HANDLE(date_run, DATE_RUN)
-            HANDLE(recently_changed, DATE_RECENTLY_CHANGED)
-            HANDLE(highlighted_file_name, HIGHLIGHTED_FILE_NAME)
-            HANDLE(highlighted_path, HIGHLIGHTED_PATH)
-            HANDLE(highlighted_full_path_and_file_name, HIGHLIGHTED_FULL_PATH_AND_FILE_NAME)
+            USYLIBPP_FLAG(file_name, FILE_NAME)
+            USYLIBPP_FLAG(parent_path, PATH)
+            USYLIBPP_FLAG(full_path_and_file_name, FULL_PATH_AND_FILE_NAME)
+            USYLIBPP_FLAG(extension, EXTENSION)
+            USYLIBPP_FLAG(size, SIZE)
+            USYLIBPP_FLAG(date_created, DATE_CREATED)
+            USYLIBPP_FLAG(date_modified, DATE_MODIFIED)
+            USYLIBPP_FLAG(date_accessed, DATE_ACCESSED)
+            USYLIBPP_FLAG(attributes, ATTRIBUTES)
+            USYLIBPP_FLAG(file_list_file_name, FILE_LIST_FILE_NAME)
+            USYLIBPP_FLAG(run_count, RUN_COUNT)
+            USYLIBPP_FLAG(date_run, DATE_RUN)
+            USYLIBPP_FLAG(recently_changed, DATE_RECENTLY_CHANGED)
+            USYLIBPP_FLAG(highlighted_file_name, HIGHLIGHTED_FILE_NAME)
+            USYLIBPP_FLAG(highlighted_path, HIGHLIGHTED_PATH)
+            USYLIBPP_FLAG(highlighted_full_path_and_file_name, HIGHLIGHTED_FULL_PATH_AND_FILE_NAME)
         };
 
         struct SortFlags : public FlagsBase<DWORD, SortFlags> {
             constexpr SortFlags(DWORD _flags = EVERYTHING_SORT_NAME_ASCENDING) noexcept : FlagsBase{_flags} {}
 
-            #undef HANDLE
-            #define HANDLE(func_name, flag) \
+            #undef USYLIBPP_FLAG
+            #define USYLIBPP_FLAG(func_name, flag) \
             constexpr inline SortFlags& func_name##_ascending() noexcept { return add_flag(EVERYTHING_SORT_##flag##_ASCENDING); } \
             constexpr inline SortFlags& func_name##_descending() noexcept { return add_flag(EVERYTHING_SORT_##flag##_DESCENDING); }
 
-            HANDLE(name, NAME)
-            HANDLE(path, PATH)
-            HANDLE(size, SIZE)
-            HANDLE(extension, EXTENSION)
-            HANDLE(type_name, TYPE_NAME)
-            HANDLE(date_created, DATE_CREATED)
-            HANDLE(date_modified, DATE_MODIFIED)
-            HANDLE(attributes, ATTRIBUTES)
-            HANDLE(file_list_filename, FILE_LIST_FILENAME)
-            HANDLE(run_count, RUN_COUNT)
-            HANDLE(date_recently_changed, DATE_RECENTLY_CHANGED)
-            HANDLE(date_accessed, DATE_ACCESSED)
-            HANDLE(date_run, DATE_RUN)
+            USYLIBPP_FLAG(name, NAME)
+            USYLIBPP_FLAG(path, PATH)
+            USYLIBPP_FLAG(size, SIZE)
+            USYLIBPP_FLAG(extension, EXTENSION)
+            USYLIBPP_FLAG(type_name, TYPE_NAME)
+            USYLIBPP_FLAG(date_created, DATE_CREATED)
+            USYLIBPP_FLAG(date_modified, DATE_MODIFIED)
+            USYLIBPP_FLAG(attributes, ATTRIBUTES)
+            USYLIBPP_FLAG(file_list_filename, FILE_LIST_FILENAME)
+            USYLIBPP_FLAG(run_count, RUN_COUNT)
+            USYLIBPP_FLAG(date_recently_changed, DATE_RECENTLY_CHANGED)
+            USYLIBPP_FLAG(date_accessed, DATE_ACCESSED)
+            USYLIBPP_FLAG(date_run, DATE_RUN)
 
-            #pragma pop_macro("HANDLE")
+            #pragma pop_macro("USYLIBPP_FLAG")
         };
 
         template <RequestFlags flags = RequestFlags{0xffffffff}>
@@ -296,7 +304,7 @@ namespace usylibpp {
             constexpr explicit Query(std::wstring_view dir) : base_dir{dir} {
                 if (!base_dir.ends_with(L'\\')) base_dir.push_back(L'\\');
 
-                if (!q.empty()) q.push_back(L' ');
+                // q is always empty here - the old `if (!q.empty()) q.push_back(L' ');` was dead.
                 q += L"path:\"";
                 q += base_dir;
                 q.push_back(L'\"');
@@ -383,11 +391,14 @@ namespace usylibpp {
         if (name.back() == windows::WIN_CHAR('.'))
             fail("Instance name cannot end with a dot!");
 
-        for (wchar_t c : name) {
+        for (const windows::WIN_CHAR c : name) {
             if (c == windows::WIN_CHAR('"'))
                 fail("Instance name cannot have quotes!");
 
-            if (c < 0x20)
+            // Iterating into a wchar_t sign-extended a signed char, so in an ANSI
+            // build every byte >= 0x80 compared < 0x20 and non-ASCII names were
+            // rejected as "control characters".
+            if (static_cast<std::make_unsigned_t<windows::WIN_CHAR>>(c) < 0x20u)
                 fail("Instance name contains control characters!");
 
             #ifdef UNICODE
@@ -431,8 +442,14 @@ namespace usylibpp {
 
         Everything(struct instance_name _instance_name, std::basic_string<windows::WIN_CHAR> _everything_path) : instance_name{_instance_name.get()}, everything_path{std::move(_everything_path)} {}
 
-        template <bool wait_for_completion = true>
-        [[nodiscard]] inline auto close_everything() {
+        /**
+         * NOTE: Everything_Exit() TERMINATES the Everything process, it does not just
+         * disconnect this client.
+         *
+         * The unused wait_for_completion template parameter and the [[nodiscard]] on a
+         * void return are gone - the latter only ever warned at the destructor below.
+         */
+        inline void close_everything() {
             Everything_Exit();
             Everything_CleanUp();
 
@@ -451,10 +468,17 @@ namespace usylibpp {
             FailedToLaunchExe,
             OtherError,
 
-            UACRejected
+            UACRejected,
+            Timeout
         };
 
-        [[nodiscard]] inline bool wait_for_load() {
+        /**
+         * Polls until the database is loaded. Previously unbounded: if Everything was
+         * running but its DB never finished loading, this never returned.
+         */
+        [[nodiscard]] inline bool wait_for_load(std::chrono::milliseconds timeout = std::chrono::minutes(5)) {
+            const auto deadline = std::chrono::steady_clock::now() + timeout;
+
             while (true) {
                 if (Everything_IsDBLoaded()) {
                     return true;
@@ -462,7 +486,9 @@ namespace usylibpp {
                     // IPC not running.
                     return false;
                 }
-                
+
+                if (std::chrono::steady_clock::now() >= deadline) return false;
+
                 // wait for database to load..
                 std::this_thread::sleep_for(std::chrono::seconds(1));
             }
@@ -477,7 +503,8 @@ namespace usylibpp {
             #else
             ""
             #endif
-            , F&& on_uac_success = {}) {
+            , F&& on_uac_success = {}
+            , std::chrono::milliseconds load_timeout = std::chrono::minutes(5)) {
             if (everything_path.empty()) {
                 return LoadStatus::NoExeFound;
             }
@@ -515,13 +542,11 @@ namespace usylibpp {
 
             _Everything_IPC_WndClass = wndclass->c_str();
 
-            if (wait_for_load()) {
+            if (wait_for_load(load_timeout)) {
                 return LoadStatus::Success;
-            } else {
-                reset_wndclass();
-                return LoadStatus::NotRunning;
             }
 
+            // The old code had two unreachable lines after this if/else.
             reset_wndclass();
             return LoadStatus::NotRunning;
         }
@@ -596,9 +621,10 @@ namespace usylibpp {
                 warn_condition_not_met();
             }
 
-            #pragma push_macro("HANDLE")
-            #undef HANDLE
-            #define HANDLE(checkresult, func) \
+            // Renamed from HANDLE, which shadowed the Win32 HANDLE typedef.
+            #pragma push_macro("USYLIBPP_EVERYTHING_DISPATCH")
+            #undef USYLIBPP_EVERYTHING_DISPATCH
+            #define USYLIBPP_EVERYTHING_DISPATCH(checkresult, func) \
             if constexpr (!std::is_same_v<decltype(std::declval<CB>().func), types::noop_t>) { \
                 if (checkresult(i)) { \
                     if constexpr (std::is_convertible_v<std::invoke_result_t<decltype((std::declval<CB>().func)), everything::File<flags>>, bool>) { \
@@ -611,12 +637,12 @@ namespace usylibpp {
             }
 
             for (DWORD i = 0; i < results_count; ++i) {
-                HANDLE(Everything_IsFileResult, on_file);
-                HANDLE(Everything_IsFolderResult, on_directory);
-                HANDLE(Everything_IsVolumeResult, on_volume);
+                USYLIBPP_EVERYTHING_DISPATCH(Everything_IsFileResult, on_file);
+                USYLIBPP_EVERYTHING_DISPATCH(Everything_IsFolderResult, on_directory);
+                USYLIBPP_EVERYTHING_DISPATCH(Everything_IsVolumeResult, on_volume);
             }
 
-            #pragma pop_macro("HANDLE")
+            #pragma pop_macro("USYLIBPP_EVERYTHING_DISPATCH")
         }
     };
 }

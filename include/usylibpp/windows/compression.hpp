@@ -8,6 +8,8 @@
 #include <windows.h>
 #include <compressapi.h>
 #include <wil/resource.h>
+#include <wil/result_macros.h>
+#include <filesystem>
 #include "../files.hpp"
 
 #pragma comment(lib, "Cabinet.lib")
@@ -67,7 +69,9 @@ public:
         const auto data = compress_from_file(input_path);
         if (!data) return std::nullopt;
 
-        return compress_to_file(*data, output_path);
+        if (!files::write(output_path, *data)) return std::nullopt;
+
+        return data->size();
     }
 
 private:

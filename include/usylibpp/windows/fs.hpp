@@ -125,9 +125,9 @@ inline void _walk_directory(std::wstring&& root, CB&& cb, FindDataWrapper& wrapp
 
         const DWORD attr = data.dwFileAttributes;
         
-        #pragma push_macro("HANDLE")
-        #undef HANDLE
-        #define HANDLE(func) \
+        #pragma push_macro("USYLIBPP_FS_DISPATCH")
+        #undef USYLIBPP_FS_DISPATCH
+        #define USYLIBPP_FS_DISPATCH(func) \
         if constexpr (!std::is_same_v<decltype(std::declval<CB>().func), types::noop_t>) { \
             if constexpr (std::is_convertible_v<std::invoke_result_t<decltype((std::declval<CB>().func)), wstring_arg, data_arg>, bool>) { \
                 if (!std::invoke(cb.func, root, wrapper)) break; \
@@ -135,40 +135,37 @@ inline void _walk_directory(std::wstring&& root, CB&& cb, FindDataWrapper& wrapp
                 std::invoke(cb.func, root, wrapper); \
             } \
         }
-        
+
         if (attr & FILE_ATTRIBUTE_DEVICE || attr & FILE_ATTRIBUTE_OFFLINE || attr & FILE_ATTRIBUTE_VIRTUAL) continue;
         else if (attr & FILE_ATTRIBUTE_REPARSE_POINT) {
-            HANDLE(on_other)
+            USYLIBPP_FS_DISPATCH(on_other)
         } else if (attr & FILE_ATTRIBUTE_DIRECTORY) {
             if constexpr (opts.recursive) {
-                if constexpr (!std::is_same_v<decltype(std::declval<CB>().on_directory), types::noop_t>) {
-                    #pragma push_macro("recurse")
-                    #undef recurse
-                    #define recurse \
-                    if constexpr (opts.trailing_slash_on_parent) { \
-                        _walk_directory<opts>(strings::concat_strings(root, filename), cb, wrapper); \
-                    } else { \
-                        _walk_directory<opts>(strings::concat_strings(root, L"\\", filename), cb, wrapper); \
-                    }
+                bool descend = true;
 
+                if constexpr (!std::is_same_v<decltype(std::declval<CB>().on_directory), types::noop_t>) {
                     if constexpr (std::is_convertible_v<std::invoke_result_t<decltype((std::declval<CB>().on_directory)), wstring_arg, data_arg>, bool>) {
-                        if (std::invoke(cb.on_directory, root, wrapper)) {
-                            recurse
-                        }
+                        descend = std::invoke(cb.on_directory, root, wrapper);
                     } else {
                         std::invoke(cb.on_directory, root, wrapper);
-                        recurse
                     }
-                    #pragma pop_macro("recurse")
+                }
+
+                if (descend && !wrapper.cancelled) {
+                    std::wstring child = opts.trailing_slash_on_parent
+                        ? strings::concat_strings(root, filename)
+                        : strings::concat_strings(root, L"\\", filename);
+
+                    _walk_directory<opts>(std::move(child), cb, wrapper);
                 }
             } else {
-                HANDLE(on_directory)
+                USYLIBPP_FS_DISPATCH(on_directory)
             }
         } else {
-            HANDLE(on_file)
+            USYLIBPP_FS_DISPATCH(on_file)
         }
 
-        #pragma pop_macro("HANDLE")
+        #pragma pop_macro("USYLIBPP_FS_DISPATCH")
 
     } while (!wrapper.cancelled && FindNextFileW(hFind_ptr, &data));
 }

@@ -12,11 +12,16 @@ set(CMAKE_SKIP_INSTALL_RULES ON)
 string(
     COMPARE EQUAL
     "${CMAKE_SOURCE_DIR}" "${PROJECT_SOURCE_DIR}"
-    PROJECT_IS_TOP_LEVEL
+    USYLIBPP_IS_TOP_LEVEL
 )
 
-if (PROJECT_IS_TOP_LEVEL)
+if (USYLIBPP_IS_TOP_LEVEL)
     set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+endif()
+
+if (USYLIBPP_IS_TOP_LEVEL)
+    set(USYLIBPP_ENABLE_LTCG ON CACHE BOOL "" FORCE)
+    set(USYLIBPP_ENABLE_WINDOWS_UNICODE ON CACHE BOOL "" FORCE)
 endif()
 
 set(USYLIBPP_DEPS_DIR "${CMAKE_CURRENT_BINARY_DIR}/_deps")
@@ -48,7 +53,7 @@ target_include_directories(usylibpp_usylibpp INTERFACE
 )
 
 if(USYLIBPP_ENABLE_PCH)
-    if (PROJECT_IS_TOP_LEVEL)
+    if (USYLIBPP_IS_TOP_LEVEL)
         target_precompile_headers(usylibpp_usylibpp INTERFACE 
             <usylibpp/pch_top_level.hpp>
         )
@@ -169,12 +174,12 @@ This includes windows.h along with various other headers, but enables all of the
                 GIT_REPOSITORY https://github.com/microsoft/wil.git
                 GIT_TAG ${USYLIBPP_WIL_GIT_TAG}
                 GIT_SHALLOW TRUE
+                EXCLUDE_FROM_ALL
             )
 
-            FetchContent_GetProperties(microsoft_wil)
-            if(NOT microsoft_wil_POPULATED)
-                FetchContent_Populate(microsoft_wil)
-            endif()
+            set(WIL_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+            set(WIL_BUILD_PACKAGING OFF CACHE BOOL "" FORCE)
+            FetchContent_MakeAvailable(microsoft_wil)
 
             add_library(microsoft_wil INTERFACE)
 
@@ -194,6 +199,10 @@ This includes windows.h along with various other headers, but enables all of the
         message(STATUS "WinToast (USYLIBPP_ENABLE_WINTOAST): ${USYLIBPP_ENABLE_WINTOAST}")
 
         if(USYLIBPP_ENABLE_WINTOAST)
+            if(NOT USYLIBPP_ENABLE_WIL)
+                message(FATAL_ERROR "USYLIBPP_ENABLE_WINTOAST requires USYLIBPP_ENABLE_WIL")
+            endif()
+
             target_compile_definitions(usylibpp_usylibpp INTERFACE "USYLIBPP_ENABLE_WINTOAST")
 
             set(USYLIBPP_WINTOAST_GIT_TAG
@@ -213,12 +222,10 @@ This includes windows.h along with various other headers, but enables all of the
                 GIT_REPOSITORY https://github.com/mohabouje/WinToast.git
                 GIT_TAG ${USYLIBPP_WINTOAST_GIT_TAG}
                 GIT_SHALLOW TRUE
+                EXCLUDE_FROM_ALL
             )
 
-            FetchContent_GetProperties(mohabouje_wintoast)
-            if(NOT mohabouje_wintoast_POPULATED)
-                FetchContent_Populate(mohabouje_wintoast)
-            endif()
+            FetchContent_MakeAvailable(mohabouje_wintoast)
 
             add_library(mohabouje_wintoast STATIC
                 "${mohabouje_wintoast_SOURCE_DIR}/src/wintoastlib.cpp"
@@ -285,6 +292,10 @@ This includes windows.h along with various other headers, but enables all of the
         message(STATUS "Windows imaging components (USYLIBPP_ENABLE_WINDOWS_IMAGING): ${USYLIBPP_ENABLE_WINDOWS_IMAGING}")
 
         if(USYLIBPP_ENABLE_WINDOWS_IMAGING)
+            if(NOT USYLIBPP_ENABLE_WIL)
+                message(FATAL_ERROR "USYLIBPP_ENABLE_WINDOWS_IMAGING requires USYLIBPP_ENABLE_WIL (wil::com_ptr)")
+            endif()
+
             target_compile_definitions(usylibpp_usylibpp INTERFACE "USYLIBPP_ENABLE_WINDOWS_IMAGING")
         endif()
 
@@ -297,6 +308,10 @@ This includes windows.h along with various other headers, but enables all of the
         message(STATUS "Voidtools Everything SDK Support (USYLIBPP_ENABLE_VOIDTOOLS_EVERYTHING): ${USYLIBPP_ENABLE_VOIDTOOLS_EVERYTHING}")
 
         if(USYLIBPP_ENABLE_VOIDTOOLS_EVERYTHING)
+            if(NOT USYLIBPP_ENABLE_WIL)
+                message(FATAL_ERROR "USYLIBPP_ENABLE_VOIDTOOLS_EVERYTHING requires USYLIBPP_ENABLE_WIL")
+            endif()
+
             target_compile_definitions(usylibpp_usylibpp INTERFACE "USYLIBPP_ENABLE_VOIDTOOLS_EVERYTHING")
 
             set(USYLIBPP_VOIDTOOLS_EVERYTHING_DIR "${USYLIBPP_3RD_PARTY_DIR}/voidtools-everything-sdk")
@@ -374,7 +389,7 @@ Will likely be a very small subset of the windows wrappers that I've needed"
 endif()
 
 
-if (PROJECT_IS_TOP_LEVEL)
+if (USYLIBPP_IS_TOP_LEVEL)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG   "${CMAKE_BINARY_DIR}/builddebug")
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/build")
     set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_DEBUG   "${CMAKE_BINARY_DIR}/builddebug")
@@ -412,7 +427,6 @@ if (PROJECT_IS_TOP_LEVEL)
                 /Oi
                 /Oy
                 /Gy
-                /GL
             >
         )
 

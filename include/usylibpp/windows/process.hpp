@@ -14,6 +14,7 @@
 #include <optional>
 #include <memory>
 #include <shellapi.h>
+#include <algorithm> // std::min
 #include "char_t.hpp"
 
 #include <wil/resource.h>
@@ -48,7 +49,10 @@
 #endif
 #endif
 
-static_assert(true, "");
+namespace usylibpp::windows::process::internal {
+    template <typename...> inline constexpr bool always_false_v = false;
+}
+
 #pragma push_macro("IS_NOOP")
 #undef IS_NOOP
 #define IS_NOOP(func) (std::is_same_v<std::remove_cvref_t<decltype(std::declval<settings>().func)>, types::noop_t>)
@@ -92,6 +96,8 @@ namespace usylibpp::windows::process {
             std::jthread stderr_thread;
             std::jthread stdin_thread;
             std::jthread waiter_thread;
+
+            std::once_flag join_once;
         };
 
         std::shared_ptr<state> s{};
@@ -128,15 +134,16 @@ namespace usylibpp::windows::process {
             return s ? s->status.load(std::memory_order_acquire) : -1;
         }
 
-        // joins waiter and IO threads if needed
         process_output wait() const {
             process_output out{};
             if (!s) return out;
 
-            if (s->waiter_thread.joinable()) s->waiter_thread.join();
-            if (s->stdin_thread.joinable())  s->stdin_thread.request_stop(),  s->stdin_thread.join();
-            if (s->stdout_thread.joinable()) s->stdout_thread.request_stop(), s->stdout_thread.join();
-            if (s->stderr_thread.joinable()) s->stderr_thread.request_stop(), s->stderr_thread.join();
+            std::call_once(s->join_once, [st = s.get()] {
+                if (st->waiter_thread.joinable()) st->waiter_thread.join();
+                if (st->stdin_thread.joinable())  { st->stdin_thread.request_stop();  st->stdin_thread.join(); }
+                if (st->stdout_thread.joinable()) { st->stdout_thread.request_stop(); st->stdout_thread.join(); }
+                if (st->stderr_thread.joinable()) { st->stderr_thread.request_stop(); st->stderr_thread.join(); }
+            });
 
             out.status = s->status.load(std::memory_order_acquire);
             {
@@ -175,7 +182,7 @@ namespace usylibpp::windows::process {
         std::string_view commandline;
         #endif
         std::string_view input = "";
-        std::filesystem::path* working_directory = nullptr;
+        const std::filesystem::path* working_directory = nullptr;
 
         F1 on_stdout_line{};
         F2 on_stderr_line{};
@@ -224,15 +231,19 @@ namespace usylibpp::windows::process {
 
             std::string partialLine;
 
-            HANDLE threadHandle{nullptr};
-            if (DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(), &threadHandle, 0, FALSE, DUPLICATE_SAME_ACCESS)) {
-                std::stop_callback cb(stop, [&pipe, threadHandle]() {
-                    CancelSynchronousIo(threadHandle);
-                });
+            wil::unique_handle threadHandle;
+            std::optional<std::stop_callback<std::function<void()>>> cancel_cb;
+
+            if (DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(),
+                                threadHandle.put(), 0, FALSE, DUPLICATE_SAME_ACCESS)) {
+                cancel_cb.emplace(stop, std::function<void()>{[h = threadHandle.get()]() {
+                    CancelSynchronousIo(h);
+                }});
             }
 
-            while (ReadFile(pipe, buffer, sizeof(buffer), &bytesRead, NULL) && bytesRead > 0) {
-                if (stop.stop_requested()) break;
+            const auto unregister_cb = wil::scope_exit([&cancel_cb] { cancel_cb.reset(); });
+
+            while (!stop.stop_requested() && ReadFile(pipe, buffer, sizeof(buffer), &bytesRead, NULL) && bytesRead > 0) {
 
                 if constexpr (with_output) output.append(buffer, bytesRead);
 
@@ -268,19 +279,22 @@ namespace usylibpp::windows::process {
 
     /**
         * Run a process and either capture its output or dont
-        * Blocks until the process exits
+        * Blocks until the process exits (unless opts.async)
+        *
+        * On failure the returned object is default constructed: status == -1 for the
+        * blocking form, and !valid() for the async form. Check before using it.
         */
     template <process_options opts = {}, process_settings_type settings>
     inline process_return_t<opts> run_process(settings&& options) {
         if constexpr (opts.one_shot_process && opts.async) {
-            static_assert(!std::is_same_v<process_options, process_options>, "Async one-shot processes are not supported.");
+            static_assert(internal::always_false_v<settings>, "Async one-shot processes are not supported.");
         }
         static constexpr auto ASYNC = opts.async && !opts.one_shot_process;
         static constexpr auto ONESHOT = opts.one_shot_process && !opts.async;
         static constexpr auto NORMAL = !ASYNC && !ONESHOT;
 
         if constexpr (!ASYNC && !IS_NOOP(async_then)) {
-            static_assert(!std::is_same_v<process_options, process_options>, "async_then is not usable without async!");
+            static_assert(internal::always_false_v<settings>, "async_then is not usable without async!");
         }
 
         if (options.commandline.empty()) {
@@ -345,13 +359,23 @@ namespace usylibpp::windows::process {
             }
         }
 
-        STARTUPINFO si{};
-        si.cb = sizeof(STARTUPINFO);
-        si.dwFlags = STARTF_USESHOWWINDOW | STARTF_USESTDHANDLES;
+        STARTUPINFOW si{};
+        si.cb = sizeof(si);
+        si.dwFlags = STARTF_USESHOWWINDOW;
         si.wShowWindow = (opts.allow_visible_windows) ? SW_SHOW : SW_HIDE;
-        si.hStdOutput = hStdOutWrite.get();
-        si.hStdError = hStdErrWrite.get();
-        si.hStdInput = hStdInRead.get();
+
+        if (hStdOutWrite.is_valid() || hStdErrWrite.is_valid() || hStdInRead.is_valid()) {
+            const auto or_inherited = [](HANDLE own, DWORD std_id) -> HANDLE {
+                if (own) return own;
+                const HANDLE inherited = GetStdHandle(std_id);
+                return (inherited == INVALID_HANDLE_VALUE) ? nullptr : inherited;
+            };
+
+            si.dwFlags |= STARTF_USESTDHANDLES;
+            si.hStdOutput = or_inherited(hStdOutWrite.get(), STD_OUTPUT_HANDLE);
+            si.hStdError  = or_inherited(hStdErrWrite.get(), STD_ERROR_HANDLE);
+            si.hStdInput  = or_inherited(hStdInRead.get(),   STD_INPUT_HANDLE);
+        }
 
         PROCESS_INFORMATION pi{};
 
@@ -362,7 +386,7 @@ namespace usylibpp::windows::process {
             NULL,
             NULL,
             TRUE,
-            (opts.allow_visible_windows) ? NULL : CREATE_NO_WINDOW,
+            (opts.allow_visible_windows) ? DWORD{0} : DWORD{CREATE_NO_WINDOW},
             NULL,
             (options.working_directory && !options.working_directory->empty()) ? options.working_directory->c_str() : NULL,
             &si,
@@ -449,12 +473,12 @@ namespace usylibpp::windows::process {
                 }
 
                 DWORD ec = 0;
-                if (GetExitCodeProcess(st->process.get(), &ec)) st->status.store(static_cast<int>(ec), std::memory_order_release);
-                else st->status.store(-1, std::memory_order_release);
+                const int final_status = GetExitCodeProcess(st->process.get(), &ec) ? static_cast<int>(ec) : -1;
+                st->status.store(final_status, std::memory_order_release);
 
                 st->finished.store(true, std::memory_order_release);
                 if constexpr (!IS_NOOP(async_then)) {
-                    std::invoke(std::move(async_then), static_cast<int>(ec));
+                    std::invoke(std::move(async_then), final_status);
                 }
             });
             return out;
@@ -484,22 +508,21 @@ namespace usylibpp::windows::process {
 
             std::jthread stdinThread;
             if (!options.input.empty() && hStdInWrite.is_valid()) {
-                stdinThread = std::jthread([&hStdInWrite, &options](std::stop_token st) {
-                    const auto h = hStdInWrite.get();
-                    const char* p = options.input.data();
-                    size_t remaining = options.input.size();
+                stdinThread = std::jthread([h = std::move(hStdInWrite), input = std::string{options.input}](std::stop_token st) mutable {
+                    const char* p = input.data();
+                    size_t remaining = input.size();
 
                     while (remaining > 0 && !st.stop_requested()) {
                         DWORD chunk = static_cast<DWORD>(std::min<size_t>(remaining, 64 * 1024));
                         DWORD written = 0;
-                        if (!WriteFile(h, p, chunk, &written, NULL) || written == 0) {
+                        if (!WriteFile(h.get(), p, chunk, &written, NULL) || written == 0) {
                             break;
                         }
                         p += written;
                         remaining -= written;
                     }
 
-                    hStdInWrite.reset();
+                    h.reset();
                 });
             } else {
                 hStdInWrite.reset();
@@ -507,20 +530,20 @@ namespace usylibpp::windows::process {
 
             DWORD result = WaitForSingleObject(process.get(), options.wait_for_ms);
 
-            if (result == WAIT_TIMEOUT) { 
+            if (result == WAIT_TIMEOUT) {
                 if (hJob.is_valid()) TerminateJobObject(hJob.get(), 1);
                 else TerminateProcess(process.get(), 1);
                 WaitForSingleObject(process.get(), INFINITE);
-
-                if (stdinThread.joinable()) stdinThread.request_stop();
-                if (stdoutThread.joinable()) stdoutThread.request_stop();
-                if (stderrThread.joinable()) stderrThread.request_stop();
             }
 
             DWORD exitCode = 0;
             GetExitCodeProcess(process.get(), &exitCode);
 
-            return process_output{ static_cast<int>(exitCode), stdoutOutput, stderrOutput };
+            if (stdinThread.joinable())  { stdinThread.request_stop();  stdinThread.join(); }
+            if (stdoutThread.joinable()) { stdoutThread.request_stop(); stdoutThread.join(); }
+            if (stderrThread.joinable()) { stderrThread.request_stop(); stderrThread.join(); }
+
+            return process_output{ static_cast<int>(exitCode), std::move(stdoutOutput), std::move(stderrOutput) };
         }
     }
 
@@ -665,7 +688,7 @@ namespace usylibpp::windows::process {
     template <process_options opts = {}, process_settings_type settings>
     inline process_return_t<opts> run_process(settings&& options) {
         if constexpr (opts.one_shot_process && opts.async) {
-            static_assert(!std::is_same_v<process_options, process_options>, "Async one-shot processes are not supported.");
+            static_assert(internal::always_false_v<settings>, "Async one-shot processes are not supported.");
         }
 
         static constexpr auto ASYNC = opts.async && !opts.one_shot_process;
@@ -673,7 +696,7 @@ namespace usylibpp::windows::process {
         static constexpr auto NORMAL = !ASYNC && !ONESHOT;
 
         if constexpr (!ASYNC && !IS_NOOP(async_then)) {
-            static_assert(!std::is_same_v<process_options, process_options>, "async_then is not usable without async!");
+            static_assert(internal::always_false_v<settings>, "async_then is not usable without async!");
         }
 
         if (options.commandline.empty()) return {};
@@ -706,6 +729,13 @@ namespace usylibpp::windows::process {
             }
         }
 
+        const std::string cmd_storage{options.commandline};
+        const char* const cmd_cstr = cmd_storage.c_str();
+        const char* const wd_cstr =
+            (options.working_directory && !options.working_directory->empty())
+                ? options.working_directory->c_str()
+                : nullptr;
+
         pid_t pid = ::fork();
         if (pid < 0) {
             internal::close_pipe(out_pipe);
@@ -732,22 +762,19 @@ namespace usylibpp::windows::process {
             internal::close_pipe(err_pipe);
             internal::close_pipe(in_pipe);
 
-            if (options.working_directory && !options.working_directory->empty()) {
-                (void)::chdir(options.working_directory->c_str());
-            }
+            if (wd_cstr) (void)::chdir(wd_cstr);
 
 #if defined(__linux__)
-            if constexpr (opts.async && opts.set_lifetime_of_subprocess_to_this_process) {
-                (void)::setpgid(0, 0); // child becomes its own PG leader
-            } else if constexpr (opts.set_lifetime_of_subprocess_to_this_process) {
+            if constexpr (opts.set_lifetime_of_subprocess_to_this_process) {
+                if constexpr (opts.async) {
+                    (void)::setpgid(0, 0);
+                }
                 (void)::prctl(PR_SET_PDEATHSIG, SIGKILL);
-                // Close race: parent may have died before prctl call.
                 if (::getppid() == 1) _exit(127);
             }
 #endif
 
-            std::string cmd{options.commandline};
-            ::execl("/bin/sh", "sh", "-c", cmd.c_str(), (char*)nullptr);
+            ::execl("/bin/sh", "sh", "-c", cmd_cstr, (char*)nullptr);
             _exit(127);
         }
 
@@ -873,6 +900,11 @@ namespace usylibpp::windows::process {
         }
 
         if constexpr (ONESHOT) {
+            std::thread([pid] {
+                int st = 0;
+                while (::waitpid(pid, &st, 0) < 0 && errno == EINTR) {}
+            }).detach();
+
             return one_shot_process_output{ 0, pid };
         }
         
@@ -989,10 +1021,10 @@ namespace usylibpp::windows::process {
             } else {
                 exit_code = -1;
             }
-
-            if (stdinThread.joinable())  stdinThread.request_stop();
-            if (stdoutThread.joinable()) stdoutThread.request_stop();
-            if (stderrThread.joinable()) stderrThread.request_stop();
+            
+            if (stdinThread.joinable())  { stdinThread.request_stop();  stdinThread.join(); }
+            if (stdoutThread.joinable()) { stdoutThread.request_stop(); stdoutThread.join(); }
+            if (stderrThread.joinable()) { stderrThread.request_stop(); stderrThread.join(); }
 
             return process_output{ exit_code, std::move(stdoutOutput), std::move(stderrOutput) };
         }

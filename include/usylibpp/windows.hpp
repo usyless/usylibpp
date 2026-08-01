@@ -2,10 +2,15 @@
 
 #include "aliases.hpp" // IWYU pragma: export
 #include "macros.hpp"
+#include <algorithm>
+#include <cstdlib>
+#include <filesystem>
+#include <iostream>
 #include <functional>
 #include <string>
 #include <optional>
 #include <variant>
+#include <vector>
 #ifdef USYLIBPP_ENABLE_WINDOWS
 #include <windows.h>
 #include <shobjidl.h>
@@ -31,16 +36,31 @@ namespace usylibpp::windows {
     class COMWrapper {
     private:
         HRESULT hr;
+        bool should_uninitialise{false};
     public:
-        COMWrapper(DWORD co_init_flags = COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE) : hr(dummy ? 1 : (CoInitializeEx(nullptr, co_init_flags))) {}
+        explicit COMWrapper(DWORD co_init_flags = COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE) : hr(dummy ? S_FALSE : (CoInitializeEx(nullptr, co_init_flags))) {
+            if constexpr (!dummy) {
+                if (hr == RPC_E_CHANGED_MODE) {
+                    hr = S_FALSE;
+                    should_uninitialise = false;
+                } else {
+                    should_uninitialise = SUCCEEDED(hr);
+                }
+            }
+        }
 
-        [[nodiscard]] constexpr HRESULT status() noexcept {
+        COMWrapper(const COMWrapper&) = delete;
+        COMWrapper& operator=(const COMWrapper&) = delete;
+        COMWrapper(COMWrapper&&) = delete;
+        COMWrapper& operator=(COMWrapper&&) = delete;
+
+        [[nodiscard]] constexpr HRESULT status() const noexcept {
             return hr;
         }
 
         ~COMWrapper() {
             if constexpr (!dummy) {
-                if (SUCCEEDED(hr)) CoUninitialize();
+                if (should_uninitialise) CoUninitialize();
             }
         }
     };
@@ -115,56 +135,51 @@ namespace usylibpp::windows {
 
     #endif
 
-    /**
-     * Caches the result
-     */
-    [[nodiscard]] inline std::optional<std::reference_wrapper<const std::filesystem::path>> current_executable_path() {
-        static bool has_run = false;
-        static std::filesystem::path path;
-        if (has_run) {
-            if (path.empty()) return std::nullopt;
-            return path;
-        }
-
-        has_run = true;
-
-        #ifdef USYLIBPP_ENABLE_WINDOWS
-
-        DWORD size = 260;
-        DWORD copied = 0;
-        std::wstring buffer;
-
-        while (true) {
-            buffer.resize(size);
-            copied = GetModuleFileNameW(nullptr, buffer.data(), size);
-
-            if (copied == 0) return std::nullopt;
-            if (copied < (size - 1)) break;
-
-            size *= 2;
-        };
-
-        buffer.resize(copied);
-
-        if (buffer.empty()) return std::nullopt;
-
-        path = buffer;
-
-        #endif
-
-        #ifdef USYLIBPP_ENABLE_LINUX
-        
-        std::error_code ec;
-        path = std::filesystem::canonical("/proc/self/exe", ec);
-        if (ec || path.empty()) return std::nullopt;
-
-        #endif
-
-        return path;
-    }
-
     namespace internal {
         inline const std::filesystem::path empty_path{};
+
+        [[nodiscard]] inline std::optional<std::filesystem::path> compute_executable_path() {
+            #ifdef USYLIBPP_ENABLE_WINDOWS
+
+            DWORD size = 260;
+            DWORD copied = 0;
+            std::wstring buffer;
+
+            while (true) {
+                buffer.resize(size);
+                copied = GetModuleFileNameW(nullptr, buffer.data(), size);
+
+                if (copied == 0) return std::nullopt;
+                if (copied < (size - 1)) break;
+
+                size *= 2;
+            }
+
+            buffer.resize(copied);
+
+            if (buffer.empty()) return std::nullopt;
+
+            return std::filesystem::path{buffer};
+
+            #elif defined(USYLIBPP_ENABLE_LINUX)
+
+            std::error_code ec;
+            auto path = std::filesystem::canonical("/proc/self/exe", ec);
+            if (ec || path.empty()) return std::nullopt;
+
+            return path;
+
+            #else
+
+            return std::nullopt;
+            #endif
+        }
+    }
+
+    [[nodiscard]] inline std::optional<std::reference_wrapper<const std::filesystem::path>> current_executable_path() {
+        static const std::optional<std::filesystem::path> cached = internal::compute_executable_path();
+        if (!cached) return std::nullopt;
+        return std::cref(*cached);
     }
 
     USYLIBPP__MAKE_OR(current_executable_path, internal::empty_path)
@@ -178,13 +193,8 @@ namespace usylibpp::windows {
 
         #ifdef USYLIBPP_ENABLE_WINDOWS
 
-        const auto pos = exe_path.get().native().find_last_of(L'\\');
-        if (pos != std::wstring::npos) {
-            // make a copy here
-            std::wstring exe_path_copy{exe_path.get()};
-            exe_path_copy.resize(pos);
-            if (SetCurrentDirectoryW(exe_path_copy.c_str())) return true;
-        }
+        const auto parent = exe_path.get().parent_path();
+        if (!parent.empty() && SetCurrentDirectoryW(parent.c_str())) return true;
 
         #endif
 
@@ -201,6 +211,7 @@ namespace usylibpp::windows {
 
     #ifdef USYLIBPP_ENABLE_WINDOWS
 
+    #ifdef USYLIBPP_ENABLE_WIL
     /**
      * Downloads folder by default
      * Pass in any FOLDERID_XXXXXX
@@ -216,7 +227,6 @@ namespace usylibpp::windows {
 
     USYLIBPP__MAKE_OR(get_known_folder, std::filesystem::path{})
 
-    #ifdef USYLIBPP_ENABLE_WIL
     /**
      * Pass true into ComInitialised to not re-initialise COM
      */
@@ -255,13 +265,19 @@ namespace usylibpp::windows {
     /**
      * No stdin, just stdout and stderr
      */
-    inline void show_console_for_gui_app() {
-        AllocConsole();
-        FILE* fp_stdout;
-        freopen_s(&fp_stdout, "CONOUT$", "w", stdout);
+    inline bool show_console_for_gui_app() {
+        if (!AllocConsole() && GetLastError() != ERROR_ACCESS_DENIED) return false; // ACCESS_DENIED == already attached
 
-        FILE* fp_stderr;
-        freopen_s(&fp_stderr, "CONOUT$", "w", stderr);
+        FILE* fp_stdout = nullptr;
+        FILE* fp_stderr = nullptr;
+        const bool ok = (freopen_s(&fp_stdout, "CONOUT$", "w", stdout) == 0) &&
+                        (freopen_s(&fp_stderr, "CONOUT$", "w", stderr) == 0);
+
+        std::ios::sync_with_stdio(true);
+        std::cout.clear();
+        std::cerr.clear();
+
+        return ok;
     }
 
     /**
@@ -342,15 +358,15 @@ namespace usylibpp::windows {
      * Get a vector of wstrings for the drag query files in a hDrop
      */
     [[nodiscard]] inline std::vector<std::wstring> get_drag_query_files(const HDROP hDrop) {
-        UINT file_count = DragQueryFileW(hDrop, 0xFFFFFFFF, NULL, 0);
-        if (file_count <= 0) {
+        const UINT file_count = DragQueryFileW(hDrop, 0xFFFFFFFF, nullptr, 0);
+        if (file_count == 0) {
             return {};
         }
 
         std::vector<std::wstring> files;
 
         for (UINT file_index{0}; file_index < file_count; ++file_index) {
-            UINT len = DragQueryFileW(hDrop, file_index, NULL, 0);
+            UINT len = DragQueryFileW(hDrop, file_index, nullptr, 0);
 
             if (len == 0) continue;
 
@@ -359,7 +375,7 @@ namespace usylibpp::windows {
             std::wstring& buffer = files.emplace_back(len, L'\0');
             UINT copied = DragQueryFileW(hDrop, file_index, buffer.data(), len);
 
-            if (copied <= 0) {
+            if (copied == 0) {
                 files.pop_back();
                 continue;
             }
@@ -376,29 +392,35 @@ namespace usylibpp::windows {
         COMWrapper<ComInitialised> COM{COINIT_MULTITHREADED | COINIT_DISABLE_OLE1DDE};
         wil::com_ptr<ITaskbarList3> taskbar = nullptr;
         HWND hwnd_ = nullptr;
-        HRESULT hr;
+        HRESULT hr = E_FAIL;
 
         /**
          * You must check the status before using any method
          */
-        TaskbarProgress(HWND hwnd) : hr(COM.status()), hwnd_(hwnd) {
+        explicit TaskbarProgress(HWND hwnd) : hwnd_(hwnd), hr(COM.status()) {
             if (FAILED(hr)) return;
 
             hr = CoCreateInstance(CLSID_TaskbarList, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&taskbar));
             if (FAILED(hr)) taskbar = nullptr;
         }
 
-        [[nodiscard]] constexpr HRESULT status() noexcept {
+        TaskbarProgress(const TaskbarProgress&) = delete;
+        TaskbarProgress& operator=(const TaskbarProgress&) = delete;
+        TaskbarProgress(TaskbarProgress&&) = delete;
+        TaskbarProgress& operator=(TaskbarProgress&&) = delete;
+
+        [[nodiscard]] constexpr HRESULT status() const noexcept {
             return hr;
         }
 
         bool set_progress(int value, int max) {
             if (!taskbar) return false;
+            if (max <= 0) return false;
 
             hr = taskbar->SetProgressState(hwnd_, TBPF_NORMAL);
             if (FAILED(hr)) return false;
 
-            hr = taskbar->SetProgressValue(hwnd_, std::clamp(value, 0, max), max);
+            hr = taskbar->SetProgressValue(hwnd_, static_cast<ULONGLONG>(std::clamp(value, 0, max)), static_cast<ULONGLONG>(max));
             return SUCCEEDED(hr);
         }
 
@@ -418,47 +440,47 @@ namespace usylibpp::windows {
     namespace admin {
         #ifdef USYLIBPP_ENABLE_WIL
         [[nodiscard]] inline bool is_admin() {
-            static bool has_run = false;
-            static bool is_admin = false;
+            static const bool cached = []() -> bool {
+                BOOL isAdmin = FALSE;
+                SID_IDENTIFIER_AUTHORITY ntAuthority = SECURITY_NT_AUTHORITY;
 
-            if (has_run) return is_admin;
-            has_run = true;
+                wil::unique_sid adminGroup;
+                if (AllocateAndInitializeSid(&ntAuthority, 2,
+                    SECURITY_BUILTIN_DOMAIN_RID,
+                    DOMAIN_ALIAS_RID_ADMINS,
+                    0, 0, 0, 0, 0, 0,
+                    &adminGroup)) {
+                    if (!CheckTokenMembership(nullptr, adminGroup.get(), &isAdmin)) isAdmin = FALSE;
+                }
 
-            BOOL isAdmin = FALSE;
-            SID_IDENTIFIER_AUTHORITY ntAuthority = SECURITY_NT_AUTHORITY;
+                return static_cast<bool>(isAdmin);
+            }();
 
-            wil::unique_sid adminGroup;
-            if (AllocateAndInitializeSid(&ntAuthority, 2,
-                SECURITY_BUILTIN_DOMAIN_RID,
-                DOMAIN_ALIAS_RID_ADMINS,
-                0, 0, 0, 0, 0, 0,
-                &adminGroup)) {
-                CheckTokenMembership(nullptr, adminGroup.get(), &isAdmin);
-            }
-
-            return (is_admin = static_cast<bool>(isAdmin));
+            return cached;
         }
         #endif
 
         /**
          * Exits the program on success
          */
-        [[nodiscard]] inline bool relaunch_as_admin() {
+        [[nodiscard]] inline bool relaunch_as_admin(const std::wstring& arguments = {}) {
             auto exe_path_option = current_executable_path();
 
             if (!exe_path_option) return false;
 
             SHELLEXECUTEINFOW sei{};
-            
+
             sei.cbSize = sizeof(sei);
+            sei.fMask = SEE_MASK_NOASYNC;
             sei.lpVerb = L"runas";
             sei.lpFile = exe_path_option->get().c_str();
+            sei.lpParameters = arguments.empty() ? nullptr : arguments.c_str();
             sei.hwnd = nullptr;
             sei.nShow = SW_NORMAL;
 
             if (!ShellExecuteExW(&sei)) return false;
 
-            exit(0);
+            std::exit(0);
             return true;
         }
     }

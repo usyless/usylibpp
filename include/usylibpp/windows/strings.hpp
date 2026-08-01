@@ -11,14 +11,20 @@
 namespace usylibpp::windows {
     /**
      * Convert a const char* into a std::wstring
-     * Returns std::nullopt if the string is empty or on error
+     * Returns std::nullopt on error or if utf8 is null.
+     * NOTE: an EMPTY input is not an error - it yields an engaged, empty string.
      */
     template <opts options = {}>
     [[nodiscard]] inline auto to_wstr(const char* utf8) -> types::opts_return<options, std::wstring> {
         using STR = std::wstring;
 
+        if (utf8 == nullptr) {
+            if constexpr (options.as_optional) return std::optional<STR>{std::nullopt};
+            else return STR{};
+        }
+
         const auto buffer_size = MultiByteToWideChar(CP_UTF8, 0, utf8, -1, nullptr, 0);
-        
+
         if (buffer_size == 0) {
             if constexpr (options.as_optional) return std::optional<STR>{std::nullopt};
             else return STR{};
@@ -67,7 +73,13 @@ namespace usylibpp::windows {
             if (!buffer) return L"";
             return buffer->c_str();
         } else if constexpr (types::filesystem_path<T>) {
-            return str.native().c_str();
+            // native() returns a reference to a member of `str`. For an rvalue path
+            // that member dies at the end of the full-expression, so route it through
+            // the same thread-local buffer as the narrow-string branch and keep one
+            // uniform lifetime rule for every non-wide input.
+            static thread_local std::wstring path_buffer;
+            path_buffer = str.native();
+            return path_buffer.c_str();
         } else {
             static_assert(!std::is_same_v<T, T>, "Unsupported type passed to usylibpp::wchar_t_from_compatible, must have forgotten a branch");
         }
@@ -75,7 +87,8 @@ namespace usylibpp::windows {
 
      /**
      * Convert any compatible wide string into a std::string
-     * Returns std::nullopt if the string is empty or on error
+     * Returns std::nullopt on error.
+     * NOTE: an EMPTY input is not an error - it yields an engaged, empty string.
      */
     template <opts options = {}, types::wchar_t_compatible T>
     [[nodiscard]] inline auto to_utf8(T&& _wstr) -> types::opts_return<options, std::string> {

@@ -32,7 +32,7 @@ namespace usylibpp::strings {
 
         Char* dest = result.data();
         std::basic_string_view<Char> sv;
-        #if (defined(_MSVC_LANG) ? _MSVC_LANG : __cplusplus) >= 202302L
+        #if USYLIBPP_CPLUSPLUS >= 202302L
         if consteval
         #else
         if (std::is_constant_evaluated())
@@ -298,7 +298,7 @@ namespace usylibpp::strings {
      * No url sensitivity, for that use encode_full_urls
      */
     [[nodiscard]] inline 
-    #if (defined(_MSVC_LANG) ? _MSVC_LANG : __cplusplus) >= 202302L
+    #if USYLIBPP_CPLUSPLUS >= 202302L
     constexpr 
     #endif
     std::string url_encode(const std::string_view url) {

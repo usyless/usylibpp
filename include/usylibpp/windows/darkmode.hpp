@@ -5,6 +5,8 @@
 
 #include <windows.h>
 #include <shobjidl.h>
+#include <uxtheme.h>
+#include <mutex>
 
 #pragma comment(linker, \
 "\"/manifestdependency:type='win32' " \
@@ -54,10 +56,8 @@ namespace usylibpp::windows::darkmode {
         return buildNumber >= 17763;
     }
 
-    /**
-    * Call this to initialise the dark mode win32 stuff, then call allow_dark_mode_for_window on your individual hwnd
-    */
-    inline void init_dark_mode() noexcept {
+    namespace internal {
+    inline void init_dark_mode_once() noexcept {
         auto RtlGetNtVersionNumbers = reinterpret_cast<fnRtlGetNtVersionNumbers>(GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "RtlGetNtVersionNumbers"));
         if (!RtlGetNtVersionNumbers) return;
 
@@ -93,10 +93,16 @@ namespace usylibpp::windows::darkmode {
             g_darkModeSupported = true;
 
             if (_AllowDarkModeForApp) _AllowDarkModeForApp(true);
-            else if (_SetPreferredAppMode) _SetPreferredAppMode(true ? AllowDark : Default);
+            else if (_SetPreferredAppMode) _SetPreferredAppMode(AllowDark);
 
             _RefreshImmersiveColorPolicyState();
         }
+    }
+    } // namespace internal
+
+    inline void init_dark_mode() noexcept {
+        static std::once_flag once;
+        std::call_once(once, internal::init_dark_mode_once);
     }
 }
 #endif

@@ -5,6 +5,8 @@
 #include "../strings.hpp"
 #include <wincodec.h>
 #include <wincodecsdk.h>
+#include <cstdint>
+#include <limits>
 
 #pragma comment(lib, "Windowscodecs.lib")
 
@@ -55,21 +57,23 @@ namespace usylibpp::windows::images {
         }
     }
 
-    #pragma warning(push)
-    #pragma warning(disable:4201)
+    struct ImageDimensions {
+        uint32_t height{};
+        uint32_t width{};
+
+        [[nodiscard]] constexpr uint64_t full() const noexcept {
+            return (static_cast<uint64_t>(width) << 32) | height;
+        }
+
+        [[nodiscard]] friend constexpr bool operator==(const ImageDimensions&, const ImageDimensions&) noexcept = default;
+    };
 
     template <DecodedImageType type>
     struct DecodedImage {
         static constexpr uint8_t channels = channels_of<type>();
 
         std::vector<uint8_t> data;
-        union {
-            uint64_t full;
-            struct { // works on little endian, nothing uses big endian anyway
-                uint32_t height; // low 4 bits
-                uint32_t width; // high 4 bits
-            };
-        } dimensions;
+        ImageDimensions dimensions{};
     };
 
     template <DecodedImageType type>
@@ -79,18 +83,10 @@ namespace usylibpp::windows::images {
         wil::com_ptr<IWICBitmap> bitmap;
         wil::com_ptr<IWICBitmapLock> lock;
 
-        const uint8_t* data;
-        union {
-            uint64_t full;
-            struct { // works on little endian, nothing uses big endian anyway
-                uint32_t height; // low 4 bits
-                uint32_t width; // high 4 bits
-            };
-        } dimensions;
-        uint32_t buffer_size;
+        const uint8_t* data{nullptr};
+        ImageDimensions dimensions{};
+        uint32_t buffer_size{};
     };
-
-    #pragma warning(pop)
 
     [[nodiscard]] inline std::optional<wil::com_ptr<IWICImagingFactory>> create_imaging_factory() {
         wil::com_ptr<IWICImagingFactory> factory;
@@ -147,7 +143,7 @@ namespace usylibpp::windows::images {
             if (FAILED(hr) || frame_count == 0) return std::nullopt;
 
             wil::com_ptr<IWICBitmapFrameDecode> best_frame;
-            UINT best_area = 0;
+            uint64_t best_area = 0;
 
             for (UINT i = 0; i < frame_count; ++i) {
                 wil::com_ptr<IWICBitmapFrameDecode> frame;
@@ -171,7 +167,7 @@ namespace usylibpp::windows::images {
 
                 if (!looksJPEG) continue;
 
-                UINT area = w * h;
+                const uint64_t area = static_cast<uint64_t>(w) * h;
                 if (area > best_area) {
                     best_area = area;
                     best_frame = std::move(frame);
@@ -255,8 +251,13 @@ namespace usylibpp::windows::images {
         auto hr = data.converter->GetSize(&width, &height);
         if (FAILED(hr)) return std::nullopt;
 
-        const UINT stride = width * channels_of<opts.type>();
-        const UINT buffer_size = stride * height;
+        const uint64_t stride64 = static_cast<uint64_t>(width) * channels_of<opts.type>();
+        const uint64_t buffer64 = stride64 * height;
+        if (stride64 == 0 || buffer64 == 0) return std::nullopt;
+        if (stride64 > (std::numeric_limits<UINT>::max)() || buffer64 > (std::numeric_limits<UINT>::max)()) return std::nullopt;
+
+        const UINT stride = static_cast<UINT>(stride64);
+        const UINT buffer_size = static_cast<UINT>(buffer64);
 
         std::vector<uint8_t> buffer(buffer_size);
 
@@ -268,13 +269,10 @@ namespace usylibpp::windows::images {
         );
         if (FAILED(hr)) return std::nullopt;
 
-        DecodedImage<opts.type> ret {
-            std::move(buffer), {0}
+        return DecodedImage<opts.type>{
+            std::move(buffer),
+            ImageDimensions{ .height = height, .width = width }
         };
-        ret.dimensions.width = width;
-        ret.dimensions.height = height;
-
-        return ret;
     }
 
     /**
@@ -312,13 +310,11 @@ namespace usylibpp::windows::images {
         hr = lock->GetDataPointer(&bufferSize, &locked_data);
         if (FAILED(hr)) return std::nullopt;
 
-        DecodedImageView<opts.type> ret {
-            bitmap, lock, locked_data, {0}, bufferSize
+        return DecodedImageView<opts.type>{
+            std::move(bitmap), std::move(lock), locked_data,
+            ImageDimensions{ .height = height, .width = width },
+            bufferSize
         };
-        ret.dimensions.width = width;
-        ret.dimensions.height = height;
-
-        return ret;
     }
 
     /**
@@ -343,8 +339,7 @@ namespace usylibpp::windows::images {
 
         std::vector<std::basic_string<Char>> formats;
 
-        wil::com_ptr<IUnknown> unk;
-        while (enumDecoders->Next(1, &unk, nullptr) == S_OK) {
+        for (wil::com_ptr<IUnknown> unk; enumDecoders->Next(1, &unk, nullptr) == S_OK; unk.reset()) {
             wil::com_ptr<IWICComponentInfo> compInfo;
             hr = unk->QueryInterface(IID_PPV_ARGS(&compInfo));
 
@@ -362,11 +357,13 @@ namespace usylibpp::windows::images {
 
                 UINT cch = 0;
                 hr = codecInfo->GetFileExtensions(0, nullptr, &cch);
-                if (FAILED(hr) || cch <= 0) continue;
+                if (FAILED(hr) || cch == 0) continue;
 
                 std::wstring ext(cch, L'\0');
                 hr = codecInfo->GetFileExtensions(cch, ext.data(), &cch);
-                if (FAILED(hr)) continue;
+                if (FAILED(hr) || cch == 0) continue;
+
+                ext.resize(cch - 1);
 
                 std::basic_string<Char> ext_converted;
                 if constexpr (std::is_same_v<Char, char>) {
@@ -382,7 +379,13 @@ namespace usylibpp::windows::images {
 
                     if constexpr (include_leading_dot) {
                         if (extension.starts_with(Char('.'))) formats.emplace_back(extension);
-                        else formats.emplace_back(strings::concat_strings(Char('.', extension)));
+                        else {
+                            std::basic_string<Char> with_dot;
+                            with_dot.reserve(extension.size() + 1);
+                            with_dot.push_back(Char('.'));
+                            with_dot.append(extension);
+                            formats.emplace_back(std::move(with_dot));
+                        }
                     } else {
                         if (extension.starts_with(Char('.'))) formats.emplace_back(extension.substr(1));
                         else formats.emplace_back(extension);

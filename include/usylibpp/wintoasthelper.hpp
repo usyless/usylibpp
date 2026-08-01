@@ -1,5 +1,9 @@
 #pragma once
 
+#ifndef USYLIBPP_ENABLE_WIL
+#error "USYLIBPP_ENABLE_WIL must be enabled to use wintoasthelper"
+#endif
+
 #include "aliases.hpp" // IWYU pragma: export
 #include "windows.hpp"
 #include "print.hpp"
@@ -143,7 +147,7 @@ namespace usylibpp::wintoast {
             if constexpr (wait_for_completion) {
                 return worker.template post<true>([&toast, eventHandler, error]{ return WinToastLib::WinToast::instance()->showToast(toast, eventHandler, error); });
             } else {
-                return worker.template post<true>([toast, eventHandler, error]{ return WinToastLib::WinToast::instance()->showToast(toast, eventHandler, error); });
+                return worker.template post<false>([toast, eventHandler, error]{ return WinToastLib::WinToast::instance()->showToast(toast, eventHandler, error); });
             }
         }
 
@@ -167,12 +171,21 @@ namespace usylibpp::wintoast {
             return worker.template post<wait_for_completion>([]{ return WinToastLib::WinToast::instance()->appUserModelId(); });
         }
 
+        ~ToastWorker() {
+            if (!worker.cancelled()) {
+                try {
+                    worker.template post<true>([this]{ _toast.reset(); });
+                } catch (...) {}
+            }
+        }
+
     private:
         static constexpr util::WorkerOpts worker_opts{
             .drain_queue_on_cancel = false, 
             .type = cancel_return_type
         };
-        util::Worker<worker_opts> worker{1};
+
         std::unique_ptr<WinToastInit<delete_on_destruct>> _toast;
+        util::Worker<worker_opts> worker{1};
     };
 }
