@@ -184,6 +184,14 @@ namespace usylibpp::strings {
     
     USYLIBPP__MAKE_OR(to_number, 0)
 
+
+    #ifdef USYLIBPP_HAS_GLAZE
+    template<typename T>
+    concept has_glaze_40kb = requires(char* buf, T val) {
+        { glz::to_chars_40kb(buf, val) } -> std::same_as<char*>;
+    };
+    #endif
+
     /**
      * String view only survives to next function call on this thread, make copy into std::string to keep alive
      */
@@ -196,7 +204,7 @@ namespace usylibpp::strings {
         // this will never fail
         return std::string_view{buffer, std::to_chars(buffer, buffer + TO_STRING_BUFFER_LENGTH, val).ptr};
         #else
-        if constexpr ( reqiures({ glz::to_chars_40kb(buffer, val); }) ) {
+        if constexpr (has_glaze_40kb<T>) {
             return std::string_view{buffer, glz::to_chars_40kb(buffer, val)};
         } else {
             return std::string_view{buffer, std::to_chars(buffer, buffer + TO_STRING_BUFFER_LENGTH, val).ptr};
