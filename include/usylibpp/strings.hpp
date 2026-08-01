@@ -11,7 +11,7 @@
 #include <functional>
 #include <optional>
 #include "types.hpp"
-#include "glaze.hpp"
+#include "glaze.hpp" // IWYU pragma: keep
 
 namespace usylibpp::strings {
     template<types::is_basic_string_view... Ts>
