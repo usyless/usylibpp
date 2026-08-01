@@ -174,7 +174,7 @@ namespace usylibpp::strings {
         if (std::from_chars(str.data(), str.data() + str.size(), num).ec == std::errc{}) return num;
         #else
         if constexpr (std::is_floating_point_v<N>) {
-            if (glz::from_chars(str.data(), str.data() + str.size(), num).ec == std::errc{}) return num;
+            if (glz::from_chars<false>(str.data(), str.data() + str.size(), num).ec == std::errc{}) return num;
         } else {
             if (std::from_chars(str.data(), str.data() + str.size(), num).ec == std::errc{}) return num;
         }
