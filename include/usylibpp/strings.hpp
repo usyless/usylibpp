@@ -196,7 +196,11 @@ namespace usylibpp::strings {
         // this will never fail
         return std::string_view{buffer, std::to_chars(buffer, buffer + TO_STRING_BUFFER_LENGTH, val).ptr};
         #else
-        return std::string_view{buffer, glz::to_chars_40kb(buffer, val)};
+        if constexpr ( reqiures({ glz::to_chars_40kb(buffer, val); }) ) {
+            return std::string_view{buffer, glz::to_chars_40kb(buffer, val)};
+        } else {
+            return std::string_view{buffer, std::to_chars(buffer, buffer + TO_STRING_BUFFER_LENGTH, val).ptr};
+        }
         #endif
     }
 
