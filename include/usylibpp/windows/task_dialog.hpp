@@ -15,7 +15,7 @@
 "language='*'\"")
 
 namespace usylibpp::windows::task_dialog {
-    inline constexpr int TIMED_OUT = 0x7000;
+    inline constexpr int TIMED_OUT = 9999999;
 
     namespace internal {
         inline HRESULT CALLBACK TaskDialogTimerProc(HWND hwnd, UINT uNotification, WPARAM wParam, LPARAM, LONG_PTR dwRefData) {
@@ -25,9 +25,7 @@ namespace usylibpp::windows::task_dialog {
 
                 if (elapsedMs >= timeoutMs) {
                     SendMessage(hwnd, TDM_CLICK_BUTTON, TIMED_OUT, 0);
-                    return S_OK;
                 }
-                return S_FALSE;
             }
             return S_OK;
         }
@@ -56,20 +54,17 @@ namespace usylibpp::windows::task_dialog {
             return buttonPressed;
         }
 
-        inline int ok(PCWSTR title, PCWSTR message, PCWSTR mainContent, PCWSTR icon, HWND hwnd = nullptr, DWORD timeoutMs = 0) {
-            TASKDIALOG_BUTTON buttons[] = { { IDOK, L"Ok" }, { TIMED_OUT, L"" } };
-            const UINT count = (timeoutMs > 0) ? 2u : 1u;
-            return create(title, message, mainContent, icon, buttons, count, hwnd, timeoutMs);
+        inline void ok(PCWSTR title, PCWSTR message, PCWSTR mainContent, PCWSTR icon, HWND hwnd = nullptr, DWORD timeoutMs = 0) {
+            TASKDIALOG_BUTTON buttons[] = { { IDOK, L"Ok" } };
+            create(title, message, mainContent, icon, buttons, ARRAYSIZE(buttons), hwnd, timeoutMs);
         }
 
         [[nodiscard]] inline bool confirmation(PCWSTR title, PCWSTR message, PCWSTR mainContent, PCWSTR icon, HWND hwnd = nullptr, DWORD timeoutMs = 0) {
-            TASKDIALOG_BUTTON buttons[] = {
+            TASKDIALOG_BUTTON buttons[] = { 
                 { IDOK, L"Confirm" },
-                { IDCANCEL, L"Cancel" },
-                { TIMED_OUT, L"" }
+                { IDCANCEL, L"Cancel" } 
             };
-            const UINT count = (timeoutMs > 0) ? 3u : 2u;
-            return create(title, message, mainContent, icon, buttons, count, hwnd, timeoutMs) == IDOK;
+            return create(title, message, mainContent, icon, buttons, ARRAYSIZE(buttons), hwnd, timeoutMs) == IDOK;
         }
     }
 
