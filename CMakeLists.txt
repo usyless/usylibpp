@@ -20,7 +20,6 @@ if (USYLIBPP_IS_TOP_LEVEL)
 endif()
 
 if (USYLIBPP_IS_TOP_LEVEL)
-    set(USYLIBPP_ENABLE_LTCG ON CACHE BOOL "" FORCE)
     set(USYLIBPP_ENABLE_WINDOWS_UNICODE ON CACHE BOOL "" FORCE)
 endif()
 
@@ -64,25 +63,7 @@ if(USYLIBPP_ENABLE_PCH)
     endif()
 endif()
 
-set(USYLIBPP_ENABLE_LTCG
-    ON
-    CACHE BOOL
-    "Enable LTCG for any dependencies that need compilation"
-)
-
-message(STATUS "Using LTCG for compiled dependencies: (USYLIBPP_ENABLE_LTCG): ${USYLIBPP_ENABLE_LTCG}")
-
 add_library(usylibpp_common INTERFACE)
-
-if(USYLIBPP_ENABLE_LTCG)
-    if(MSVC)
-        target_compile_options(usylibpp_common INTERFACE /GL)
-        target_link_options(usylibpp_common INTERFACE /LTCG)
-    elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-        target_compile_options(usylibpp_common INTERFACE -flto)
-        target_link_options(usylibpp_common INTERFACE -flto)
-    endif()
-endif()
 
 target_link_libraries(usylibpp_usylibpp INTERFACE usylibpp_common)
 
@@ -401,7 +382,6 @@ if (USYLIBPP_IS_TOP_LEVEL)
         "${PROJECT_SOURCE_DIR}/src/test.cpp"
     )
 
-    set(USYLIBPP_ENABLE_LTCG ON CACHE BOOL "" FORCE)
     set(USYLIBPP_ENABLE_WINDOWS_UNICODE ON CACHE BOOL "" FORCE)
 
     target_link_libraries(usylibpp_test PRIVATE 
