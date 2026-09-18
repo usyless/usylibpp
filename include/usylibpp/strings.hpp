@@ -225,6 +225,24 @@ namespace usylibpp::strings {
         #endif
     }
 
+    template <types::Numeric T>
+    requires (!std::is_same_v<T, bool>)
+    [[nodiscard]] inline std::string to_string(T val) noexcept {
+        static constexpr auto TO_STRING_BUFFER_LENGTH = 128;
+        char buffer[TO_STRING_BUFFER_LENGTH];
+
+        #ifndef USYLIBPP_HAS_GLAZE
+        // this will never fail
+        return std::string{buffer, std::to_chars(buffer, buffer + TO_STRING_BUFFER_LENGTH, val).ptr};
+        #else
+        if constexpr (has_glaze_40kb<T>) {
+            return std::string{buffer, glz::to_chars_40kb(buffer, val)};
+        } else {
+            return std::string{buffer, std::to_chars(buffer, buffer + TO_STRING_BUFFER_LENGTH, val).ptr};
+        }
+        #endif
+    }
+
     /**
      * Stop looping early if false returned from function
      */
