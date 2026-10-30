@@ -301,6 +301,8 @@ namespace usylibpp {
             std::wstring base_dir;
             std::wstring q;
 
+            constexpr Query() noexcept {}
+
             constexpr explicit Query(std::wstring_view dir) : base_dir{dir} {
                 if (!base_dir.ends_with(L'\\')) base_dir.push_back(L'\\');
 
@@ -331,11 +333,13 @@ namespace usylibpp {
              * Can't perform any other operations on this query
              */
             static constexpr inline Query from_directory_absolute(std::wstring_view dir) {
-                Query query{dir};
-                std::wstring excluded{dir};
-                if (!excluded.ends_with(L'\\')) excluded.push_back(L'\\');
-                excluded += L"*\\*";
-                query.exclude_directory_absolute(excluded);
+                Query query;
+                query.base_dir = dir;
+                if (!query.base_dir.ends_with(L'\\')) query.base_dir.push_back(L'\\');
+
+                query.q = L"parent:\"";
+                query.q += query.base_dir;
+                query.q.push_back(L'\"');
 
                 return query;
             }
