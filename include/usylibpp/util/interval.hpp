@@ -24,16 +24,15 @@ struct CancellableInterval {
 
     template <std::invocable T, class Rep, class Period>
     CancellableInterval(T&& cb, std::chrono::duration<Rep, Period> duration) : thread{[cb = std::forward<T>(cb), duration = std::move(duration)](std::stop_token stoken) {
-        std::condition_variable_any cv;
+        std::condition_variable cv;
         std::mutex m;
-        std::unique_lock lock{m};
 
-        std::stop_callback stop_cb{stoken, [&cv, &m]{
-            { std::lock_guard guard{m}; }
+        std::stop_callback stop_cb{stoken, [&cv]{
             cv.notify_all();
         }};
 
         if constexpr (!options.fire_immediately) {
+            std::unique_lock lock{m};
             cv.wait_for(lock, duration, [&stoken]{ return stoken.stop_requested(); });
         }
 
@@ -45,7 +44,9 @@ struct CancellableInterval {
                 } else {
                     std::invoke(cb);
                 }
+                if (stoken.stop_requested()) break;
                 if (std::chrono::steady_clock::now() > wait_until) continue;
+                std::unique_lock lock{m};
                 cv.wait_until(lock, wait_until, [&stoken]{ return stoken.stop_requested(); });
             } else {
                 if constexpr (options.ignore_callback_exceptions) {
@@ -53,6 +54,8 @@ struct CancellableInterval {
                 } else {
                     std::invoke(cb);
                 }
+                if (stoken.stop_requested()) break;
+                std::unique_lock lock{m};
                 cv.wait_for(lock, duration, [&stoken]{ return stoken.stop_requested(); });
             }
         }
