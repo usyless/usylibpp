@@ -454,6 +454,7 @@ namespace usylibpp {
          * void return are gone - the latter only ever warned at the destructor below.
          */
         inline void close_everything() {
+            Everything_SaveDB();
             Everything_Exit();
             Everything_CleanUp();
 
