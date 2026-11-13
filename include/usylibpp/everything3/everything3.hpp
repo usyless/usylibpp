@@ -85,7 +85,7 @@ namespace usylibpp::everything3 {
         return static_cast<ErrorCode>(Everything3_GetLastError());
     }
 
-    enum class TargetMachine : DWORD {
+    enum class TargetMachine : std::uint8_t {
         Unknown = EVERYTHING3_TARGET_MACHINE_UNKNOWN,
         X86 = EVERYTHING3_TARGET_MACHINE_X86,
         X64 = EVERYTHING3_TARGET_MACHINE_X64,
@@ -93,14 +93,14 @@ namespace usylibpp::everything3 {
         Arm64 = EVERYTHING3_TARGET_MACHINE_ARM64,
     };
 
-    enum class FoldersFirst : DWORD {
+    enum class FoldersFirst : std::uint8_t {
         Ascending = EVERYTHING3_SEARCH_FOLDERS_FIRST_ASCENDING,
         Always = EVERYTHING3_SEARCH_FOLDERS_FIRST_ALWAYS,
         Never = EVERYTHING3_SEARCH_FOLDERS_FIRST_NEVER,
         Descending = EVERYTHING3_SEARCH_FOLDERS_FIRST_DESCENDING,
     };
 
-    enum class PropertyType : DWORD {
+    enum class PropertyType : std::uint8_t {
         None = EVERYTHING3_PROPERTY_TYPE_NONE,
         Metadata = EVERYTHING3_PROPERTY_TYPE_METADATA,
         File = EVERYTHING3_PROPERTY_TYPE_FILE,
@@ -111,7 +111,7 @@ namespace usylibpp::everything3 {
         PropertySystem = EVERYTHING3_PROPERTY_TYPE_PROPERTY_SYSTEM,
     };
 
-    enum class PropertyValueType : DWORD {
+    enum class PropertyValueType : std::uint8_t {
         Null = EVERYTHING3_PROPERTY_VALUE_TYPE_NULL,
         Byte = EVERYTHING3_PROPERTY_VALUE_TYPE_BYTE,
         Word = EVERYTHING3_PROPERTY_VALUE_TYPE_WORD,
@@ -136,7 +136,7 @@ namespace usylibpp::everything3 {
         PropVariant = EVERYTHING3_PROPERTY_VALUE_TYPE_PROPVARIANT,
     };
 
-    enum class PropertyVariantType : WORD {
+    enum class PropertyVariantType : std::uint8_t {
         Empty = EVERYTHING3_PROPERTY_VARIANT_TYPE_EMPTY,
         Null = EVERYTHING3_PROPERTY_VARIANT_TYPE_NULL,
         ByteUI1 = EVERYTHING3_PROPERTY_VARIANT_TYPE_BYTE_UI1,
@@ -609,7 +609,8 @@ namespace usylibpp::everything3 {
         return static_cast<DWORD>(id);
     }
 
-    enum class JournalChangeType : BYTE {
+    enum class JournalChangeType : std::uint8_t {
+        Unknown = 0,
         FolderCreate = EVERYTHING3_JOURNAL_CHANGE_TYPE_FOLDER_CREATE,
         FolderDelete = EVERYTHING3_JOURNAL_CHANGE_TYPE_FOLDER_DELETE,
         FolderRename = EVERYTHING3_JOURNAL_CHANGE_TYPE_FOLDER_RENAME,
@@ -2833,7 +2834,7 @@ namespace usylibpp::everything3 {
      */
     struct Everything3 {
     public:
-        enum class LoadStatus {
+        enum class LoadStatus : std::uint8_t {
             Success,
             NotRunning,
 
@@ -2842,7 +2843,7 @@ namespace usylibpp::everything3 {
             OtherError,
 
             UACRejected,
-            Timeout
+            Timeout,
         };
 
         explicit Everything3(InstanceName instance_name)
@@ -3164,17 +3165,31 @@ namespace usylibpp::everything3 {
             std::same_as<std::remove_cvref_t<QueryT>, QueryW> ||
             std::same_as<std::remove_cvref_t<QueryT>, QueryUtf8>
         )
-        [[nodiscard]] bool query_and_walk(QueryT&& query, SearchOptions options, CB&& cb) {
+        [[nodiscard]] bool query_and_walk(QueryT&& query, const SearchOptions& options, CB&& cb) {
+            const SearchOptions* active_options = &options;
+            std::optional<SearchOptions> adjusted;
             if constexpr (sizeof...(Props) > 0) {
-                auto add_if_missing = [&](PropertyId id) {
+                auto has_prop = [&](PropertyId id) noexcept {
                     for (const auto& req : options.Properties) {
-                        if (req.property_id == id) return;
+                        if (req.property_id == id) return true;
                     }
-                    options.Properties.push_back(PropertyRequest{id, PropertyRequestFormat::Raw});
+                    return false;
                 };
-                (add_if_missing(Props), ...);
+                if (!(has_prop(Props) && ...)) {
+                    adjusted.emplace(options);
+                    const auto add_if_missing = [&](PropertyId id) {
+                        for (const auto& req : adjusted->Properties) {
+                            if (req.property_id == id) return;
+                        }
+                        adjusted->Properties.push_back(
+                            PropertyRequest{.property_id = id, .format = PropertyRequestFormat::Raw}
+                        );
+                    };
+                    (add_if_missing(Props), ...);
+                    active_options = &(*adjusted);
+                }
             }
-            if (!do_query(std::forward<QueryT>(query), options)) {
+            if (!do_query(std::forward<QueryT>(query), *active_options)) {
                 return false;
             }
             last_results_.walk<Props...>(std::forward<CB>(cb));
