@@ -12,6 +12,7 @@
 #include "../windows/char_t.hpp"
 
 #include <chrono>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <stdexcept>
@@ -57,6 +58,11 @@ namespace usylibpp {
             friend constexpr inline bool operator==(const C& lhs, const C& rhs) noexcept {
                 return lhs.flags == rhs.flags;
             }
+
+        private:
+            friend C;
+            constexpr FlagsBase() noexcept = default;
+            constexpr explicit FlagsBase(T initial) noexcept : flags{initial} {}
         };
 
         struct RequestFlags : public FlagsBase<DWORD, RequestFlags> {
@@ -465,7 +471,7 @@ namespace usylibpp {
             close_everything();
         }
 
-        enum class LoadStatus {
+        enum class LoadStatus : std::uint8_t {
             Success,
             NotRunning,
 

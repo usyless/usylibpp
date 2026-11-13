@@ -2,6 +2,7 @@
 
 #ifdef USYLIBPP_ENABLE_WIL
 #include "../aliases.hpp" // IWYU pragma: export
+#include <cstdint>
 #include <vector>
 #include <optional>
 #include <span>
@@ -16,7 +17,7 @@
 
 namespace usylibpp::windows {
 
-enum class CompressAlgorithm : DWORD {
+enum class CompressAlgorithm : std::uint8_t {
     INVALID = COMPRESS_ALGORITHM_INVALID,
     NULL_ = COMPRESS_ALGORITHM_NULL,
     MSZIP = COMPRESS_ALGORITHM_MSZIP,

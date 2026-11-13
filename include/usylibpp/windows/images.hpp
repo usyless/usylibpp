@@ -11,7 +11,7 @@
 #pragma comment(lib, "Windowscodecs.lib")
 
 namespace usylibpp::windows::images {
-    enum class DecodedImageType {
+    enum class DecodedImageType : uint8_t {
         RGB,
         RGBA,
         Gray,
@@ -151,7 +151,7 @@ namespace usylibpp::windows::images {
                 hr = decoder->GetFrame(i, &frame);
                 if (FAILED(hr) || !frame) continue;
 
-                UINT w, h;
+                UINT w = 0, h = 0;
                 hr = frame->GetSize(&w, &h);
                 if (FAILED(hr) || w == 0 || h == 0) continue;
 
@@ -189,7 +189,7 @@ namespace usylibpp::windows::images {
     using FramePicker = std::optional<wil::com_ptr<IWICBitmapFrameDecode>> (*)(IWICBitmapDecoder*);
 
     struct DecodeOpts{
-        DecodedImageType type;
+        DecodedImageType type{DecodedImageType::RGB};
         FramePicker frame_picker{FramePickers::pick_frame_zero};
         bool thread_local_factory{true}; // only applies to decode_image_as_view
     };
@@ -247,7 +247,7 @@ namespace usylibpp::windows::images {
         if (!data_opt) return std::nullopt;
         auto& data = *data_opt;
 
-        UINT width, height;
+        UINT width = 0, height = 0;
         auto hr = data.converter->GetSize(&width, &height);
         if (FAILED(hr)) return std::nullopt;
 
@@ -287,7 +287,7 @@ namespace usylibpp::windows::images {
         if (!data_opt) return std::nullopt;
         auto& data = *data_opt;
 
-        UINT width, height;
+        UINT width = 0, height = 0;
         auto hr = data.converter->GetSize(&width, &height);
         if (FAILED(hr)) return std::nullopt;
 
@@ -346,7 +346,7 @@ namespace usylibpp::windows::images {
             if (FAILED(hr) || !compInfo) continue;
 
 
-            WICComponentType type;
+            WICComponentType type{WICAllComponents};
             hr = compInfo->GetComponentType(&type);
             if (FAILED(hr)) continue;
 

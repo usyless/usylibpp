@@ -10,6 +10,12 @@ private:
     const std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
     bool ended{false};
 public:
+    Timer() = default;
+    Timer(const Timer&) = delete;
+    Timer& operator=(const Timer&) = delete;
+    Timer(Timer&&) = delete;
+    Timer& operator=(Timer&&) = delete;
+
     inline void end() {
         ended = true;
         const auto end = std::chrono::steady_clock::now();

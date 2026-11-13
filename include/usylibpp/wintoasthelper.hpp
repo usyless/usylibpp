@@ -74,6 +74,8 @@ namespace usylibpp::wintoast {
         WinToastInit() = delete;
         WinToastInit(const WinToastInit&) = delete;
         WinToastInit& operator=(const WinToastInit&) = delete;
+        WinToastInit(WinToastInit&&) = delete;
+        WinToastInit& operator=(WinToastInit&&) = delete;
 
         WinToastInit(const std::wstring& app_name, const std::wstring& company_name, const std::wstring& product_name, const std::wstring& sub_product, const std::wstring& version_information, std::optional<WinToastLib::WinToast::ShortcutPolicy> shortcut_policy = std::nullopt) {
             if constexpr (delete_on_destruct) {
@@ -99,7 +101,9 @@ namespace usylibpp::wintoast {
 
         ~WinToastInit() {
             if constexpr (delete_on_destruct) {
-                delete_shortcut(appname);
+                try {
+                    delete_shortcut(appname);
+                } catch (...) {}
             }
         }
     private:

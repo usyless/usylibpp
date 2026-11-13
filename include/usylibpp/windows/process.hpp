@@ -4,6 +4,7 @@
 
 #ifdef USYLIBPP_ENABLE_WIL
 #include "../aliases.hpp" // IWYU pragma: export
+#include <cstdint>
 #include <string>
 #include <thread>
 #include <functional>
@@ -224,7 +225,7 @@ namespace usylibpp::windows::process {
          */
         template <bool with_output = true, bool break_line = true, typename Callback = types::noop_t>
         requires (std::invocable<Callback&, std::string_view>)
-        inline std::string read_from_pipe(std::stop_token stop, HANDLE pipe, Callback&& on_line = {}) {
+        inline std::string read_from_pipe(const std::stop_token& stop, HANDLE pipe, Callback&& on_line = {}) {
             std::string output;
             char buffer[4096];
             DWORD bytesRead{0};
@@ -431,7 +432,7 @@ namespace usylibpp::windows::process {
             st->job = std::move(hJob);
 
             if constexpr (opts.capture_stdout || !IS_NOOP(on_stdout_line)) {
-                st->stdout_thread = std::jthread([st, h = std::move(hStdOutRead), on_stdout_line = std::forward<decltype(options.on_stdout_line)>(options.on_stdout_line)](std::stop_token tok) mutable {
+                st->stdout_thread = std::jthread([st, h = std::move(hStdOutRead), on_stdout_line = std::forward<decltype(options.on_stdout_line)>(options.on_stdout_line)](const std::stop_token& tok) mutable {
                     auto txt = internal::read_from_pipe<opts.capture_stdout, opts.on_stdout_line_call_on_lines>(tok, h.get(), std::move(on_stdout_line));
                     if constexpr (opts.capture_stdout) {
                         std::scoped_lock lk(st->out_mtx);
@@ -441,7 +442,7 @@ namespace usylibpp::windows::process {
             }
 
             if constexpr (opts.capture_stderr || !IS_NOOP(on_stderr_line)) {
-                st->stderr_thread = std::jthread([st, h = std::move(hStdErrRead), on_stderr_line = std::forward<decltype(options.on_stderr_line)>(options.on_stderr_line)](std::stop_token tok) mutable {
+                st->stderr_thread = std::jthread([st, h = std::move(hStdErrRead), on_stderr_line = std::forward<decltype(options.on_stderr_line)>(options.on_stderr_line)](const std::stop_token& tok) mutable {
                     auto txt = internal::read_from_pipe<opts.capture_stderr, opts.on_stderr_line_call_on_lines>(tok, h.get(), std::move(on_stderr_line));
                     if constexpr (opts.capture_stderr) {
                         std::scoped_lock lk(st->out_mtx);
@@ -451,11 +452,11 @@ namespace usylibpp::windows::process {
             }
 
             if (!options.input.empty() && hStdInWrite.is_valid()) {
-                st->stdin_thread = std::jthread([hIn = std::move(hStdInWrite), input = std::string{options.input}](std::stop_token tok) mutable {
+                st->stdin_thread = std::jthread([hIn = std::move(hStdInWrite), input = std::string{options.input}](const std::stop_token& tok) mutable {
                     const char* p = input.data();
                     size_t rem = input.size();
                     while (rem > 0 && !tok.stop_requested()) {
-                        DWORD chunk = static_cast<DWORD>(std::min<size_t>(rem, 64 * 1024));
+                        DWORD chunk = static_cast<DWORD>(std::min<size_t>(rem, size_t{64} * 1024));
                         DWORD written = 0;
                         if (!WriteFile(hIn.get(), p, chunk, &written, NULL) || written == 0) break;
                         p += written; rem -= written;
@@ -494,26 +495,26 @@ namespace usylibpp::windows::process {
 
             std::jthread stdoutThread;
             if constexpr (opts.capture_stdout || !IS_NOOP(on_stdout_line)) {
-                stdoutThread = std::jthread([&stdoutOutput, hStdOutRead = hStdOutRead.get(), &options](std::stop_token st) {
+                stdoutThread = std::jthread([&stdoutOutput, hStdOutRead = hStdOutRead.get(), &options](const std::stop_token& st) {
                     stdoutOutput = internal::read_from_pipe<opts.capture_stdout, opts.on_stdout_line_call_on_lines>(st, hStdOutRead, options.on_stdout_line);
                 });
             }
 
             std::jthread stderrThread;
             if constexpr (opts.capture_stderr || !IS_NOOP(on_stderr_line)) {
-                stderrThread = std::jthread([&stderrOutput, hStdErrRead = hStdErrRead.get(), &options](std::stop_token st) {
+                stderrThread = std::jthread([&stderrOutput, hStdErrRead = hStdErrRead.get(), &options](const std::stop_token& st) {
                     stderrOutput = internal::read_from_pipe<opts.capture_stderr, opts.on_stderr_line_call_on_lines>(st, hStdErrRead, options.on_stderr_line);
                 });
             }
 
             std::jthread stdinThread;
             if (!options.input.empty() && hStdInWrite.is_valid()) {
-                stdinThread = std::jthread([h = std::move(hStdInWrite), input = std::string{options.input}](std::stop_token st) mutable {
+                stdinThread = std::jthread([h = std::move(hStdInWrite), input = std::string{options.input}](const std::stop_token& st) mutable {
                     const char* p = input.data();
                     size_t remaining = input.size();
 
                     while (remaining > 0 && !st.stop_requested()) {
-                        DWORD chunk = static_cast<DWORD>(std::min<size_t>(remaining, 64 * 1024));
+                        DWORD chunk = static_cast<DWORD>(std::min<size_t>(remaining, size_t{64} * 1024));
                         DWORD written = 0;
                         if (!WriteFile(h.get(), p, chunk, &written, NULL) || written == 0) {
                             break;
@@ -559,7 +560,7 @@ namespace usylibpp::windows::process {
     };
 
     struct admin_process_output {
-        enum class Status {
+        enum class Status : std::uint8_t {
             Success,
 
             NoFilename,

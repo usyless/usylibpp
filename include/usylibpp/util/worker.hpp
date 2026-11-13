@@ -5,6 +5,8 @@
 #include <optional>
 #include <memory>
 #include <stdexcept>
+#include <concepts>
+#include <cstdint>
 #include <type_traits>
 #include <vector>
 #include <thread>
@@ -16,7 +18,7 @@
 #include <functional>
 
 namespace usylibpp::util {
-    enum class WorkerType {
+    enum class WorkerType : std::uint8_t {
         ReturnDefault,
         ThrowError
     };
@@ -34,6 +36,11 @@ namespace usylibpp::util {
     class Worker {
     private:
         struct CallBase {
+            CallBase() = default;
+            CallBase(const CallBase&) = delete;
+            CallBase& operator=(const CallBase&) = delete;
+            CallBase(CallBase&&) = delete;
+            CallBase& operator=(CallBase&&) = delete;
             virtual ~CallBase() = default;
             virtual void execute() noexcept = 0;
             virtual void cancel() noexcept = 0;
@@ -48,6 +55,7 @@ namespace usylibpp::util {
                 "Call must own its callable - see post()'s use of std::decay_t.");
 
             template <typename F>
+            requires (!std::same_as<std::remove_cvref_t<F>, Call>)
             explicit Call(F&& f) : fn(std::forward<F>(f)) {}
 
             void execute() noexcept override final {

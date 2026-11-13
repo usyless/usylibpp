@@ -28,7 +28,7 @@ namespace usylibpp::strings {
         using Char = types::string_view_char_t<First>;
 
         std::basic_string<Char> result;
-        result.resize((std::basic_string_view<Char>(std::forward<Ts>(parts)).size() + ... + 0));
+        result.resize((std::basic_string_view<Char>(parts).size() + ... + 0));
 
         Char* dest = result.data();
         std::basic_string_view<Char> sv;
@@ -38,7 +38,7 @@ namespace usylibpp::strings {
         if (std::is_constant_evaluated())
         #endif
         {
-            ((sv = std::basic_string_view<Char>(std::forward<Ts>(parts)), [&sv, &dest]{
+            ((sv = std::basic_string_view<Char>(parts), [&sv, &dest]{
                 for (::size_t i = 0; i < sv.size(); ++i) {
                     dest[i] = sv[i];
                 }
