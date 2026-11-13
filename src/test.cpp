@@ -296,6 +296,116 @@ int main() {
         // closed when out of scope
     }
     #endif
+
+    #ifdef USYLIBPP_ENABLE_VOIDTOOLS_EVERYTHING3
+    print::println("Everything SDK3 stuff (make sure to put Everything64.exe / everything.exe in everything3\\everything.exe):");
+    {
+        using namespace usylibpp::everything3;
+
+        // Offline isolated instance & UTF-8 / Wide checks
+        {
+            const auto q_w = QueryW(L"C:\\Example")
+                .exclude_directory_any(L".git");
+            const auto q_utf8 = QueryUtf8("C:\\Example")
+                .exclude_directory_any(".git");
+            print::println("SDK3 QueryW: {}", windows::to_utf8_or_default(q_w.get()));
+            print::println("SDK3 QueryUtf8: {}", q_utf8.get());
+        }
+
+        print::println("Everything3 is loading... this may take a while for the first run");
+        Everything3 everything3{"usylibpp_test3", "everything3\\everything.exe"};
+        print::println("Isolated IPC WndClass: {}", windows::to_utf8_or_default(everything3.ipc_wndclass_w()));
+
+        switch (everything3.try_load()) {
+            case Everything3::LoadStatus::Success: {
+                print::println("Successfully loaded everything3!");
+                if (const auto ver = everything3.client().get_version()) {
+                    print::println("Everything version: {}.{}.{}.{} (IPC pipe v{})",
+                        ver->major, ver->minor, ver->revision, ver->build, ver->ipc_pipe_version);
+                }
+
+                const auto executable_path_opt = windows::current_executable_path();
+                if (executable_path_opt) {
+                    const auto build_folder = executable_path_opt->get().parent_path().parent_path();
+                    const auto query1_w = QueryW::from_directory_absolute(build_folder.native());
+                    const auto query1_utf8 = QueryUtf8::from_directory_absolute(windows::to_utf8_or_default(build_folder.native()));
+
+                    SearchOptions opts{};
+                    opts.RequestTotalSize = true;
+                    opts.Sorts = {
+                        {PropertyId::DateModified, false},
+                        {PropertyId::Name, true},
+                    };
+                    opts.Properties = {
+                        {PropertyId::Name, PropertyRequestFormat::Raw},
+                        {PropertyId::Path, PropertyRequestFormat::Raw},
+                        {PropertyId::DateModified, PropertyRequestFormat::Raw},
+                        {PropertyId::Size, PropertyRequestFormat::Raw},
+                    };
+
+                    print::println("Performing SDK3 Wide query: {}", windows::to_utf8_or_default(query1_w.get()));
+                    if (everything3.do_query(query1_w, opts)) {
+                        print::println("SDK3 query success! Files: {} ; Folders: {} ; Total: {} ; TotalSize: {}",
+                            everything3.query_file_count(),
+                            everything3.query_folder_count(),
+                            everything3.query_results_count(),
+                            everything3.total_results_size().value_or(0));
+
+                        everything3.walk_results<PropertyId::Name, PropertyId::Path, PropertyId::DateModified, PropertyId::Size>(Callbacks{
+                            .on_file = [](const auto& i) {
+                                print::println("File - Path: {} ; Name (UTF-8): {} ; DateModified: {} ; Size: {}",
+                                    i.path_utf8_or_default(), i.name_utf8_or_default(),
+                                    i.date_modified_or_default(), i.size_or_default());
+                            },
+                            .on_directory = [](const auto& i) {
+                                print::println("Directory - Path: {} ; Name (Wide->UTF8): {} ; Size: {}",
+                                    windows::to_utf8_or_default(i.path_w_or_default()),
+                                    windows::to_utf8_or_default(i.name_w_or_default()),
+                                    i.size_or_default());
+                            },
+                            .on_root = [](const auto& i) {
+                                print::println("Root - Name: {}", i.name_utf8_or_default());
+                            }
+                        });
+                    }
+
+                    print::println("Performing SDK3 UTF-8 query: {}", query1_utf8.get());
+                    if (everything3.do_query(query1_utf8, opts)) {
+                        print::println("SDK3 UTF-8 query returned {} results", everything3.query_results_count());
+                    }
+                } else {
+                    print::println("Failed to get executable path! Not testing everything3 query...");
+                }
+                break;
+            }
+            case Everything3::LoadStatus::FailedToLaunchExe: {
+                print::println("Failed to launch everything3 exe!");
+                break;
+            }
+            case Everything3::LoadStatus::NoExeFound: {
+                print::println("Everything3 exe not found!");
+                break;
+            }
+            case Everything3::LoadStatus::NotRunning: {
+                print::println("Everything3 failed to run (not running)!");
+                break;
+            }
+            case Everything3::LoadStatus::OtherError: {
+                print::println("Other error occurred loading everything3!");
+                break;
+            }
+            case Everything3::LoadStatus::UACRejected: {
+                print::println("UAC Prompt rejected!");
+                break;
+            }
+            case Everything3::LoadStatus::Timeout: {
+                print::println("Timed out waiting for everything3 database!");
+                break;
+            }
+        }
+        // closed when out of scope via WM_USER (SAVE_DB + EXIT) to EVERYTHING_TASKBAR_NOTIFICATION_(usylibpp_test3)
+    }
+    #endif
     #ifdef USYLIBPP_ENABLE_TASK_DIALOG_DARK_MODE
     ulp::win::td::info(L"Hello!", L"Usylibpp message", L"usylibpp body....\nThis will timeout after 5 seconds!", nullptr, 5000);
     #endif

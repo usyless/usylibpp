@@ -59,7 +59,10 @@ These are printed when configuring, which will be more up to date probably
 - `USYLIBPP_ENABLE_WINTOAST` (BOOL, Default: OFF) - Includes WinToast in the project and enables the helpers for it
 - `USYLIBPP_WINTOAST_GIT_TAG` (STRING, Default: "v1.3.2")
 
-- `USYLIBPP_ENABLE_VOIDTOOLS_EVERYTHING` (BOOL, Default: OFF) - Includes a basic c++ wrapper + helpers for voidtools everything
+- `USYLIBPP_ENABLE_VOIDTOOLS_EVERYTHING` (BOOL, Default: OFF) - Includes a basic c++ wrapper + helpers for voidtools everything (SDK2)
+
+- `USYLIBPP_ENABLE_VOIDTOOLS_EVERYTHING3` (BOOL, Default: OFF) - Includes the c++ wrapper + helpers for voidtools everything 1.5 SDK3
+- `USYLIBPP_VOIDTOOLS_EVERYTHING3_GIT_TAG` (STRING, Default: "4b4393519f79249e781cf40d1306d20519330c58")
 
 ### Linux Specific (Not very tested)
 - `USYLIBPP_ENABLE_LINUX` (BOOL, Default: ON) - Enables the basic windows wrapper stuff that I've also made for linux

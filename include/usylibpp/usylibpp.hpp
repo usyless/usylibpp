@@ -19,6 +19,7 @@
 #endif
 
 #include "everything/everything.hpp" // IWYU pragma: export
+#include "everything3/everything3.hpp" // IWYU pragma: export
 
 #include "discord.hpp" // IWYU pragma: export
 #include "strings.hpp" // IWYU pragma: export

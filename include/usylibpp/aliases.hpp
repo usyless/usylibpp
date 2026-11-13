@@ -18,6 +18,8 @@ namespace usylibpp {
     namespace types {}
     namespace print {}
     namespace init {}
+    namespace everything {}
+    namespace everything3 {}
     namespace EverythingExtra {}
 };
 

@@ -350,6 +350,104 @@ This includes windows.h along with various other headers, but enables all of the
             target_link_libraries(voidtools_everything PUBLIC usylibpp_common)
             target_link_libraries(usylibpp_usylibpp INTERFACE voidtools_everything)
         endif()
+
+        set(USYLIBPP_ENABLE_VOIDTOOLS_EVERYTHING3
+            OFF
+            CACHE BOOL
+            "Enable use of the voidtools everything sdk3"
+        )
+
+        message(STATUS "Voidtools Everything SDK3 Support (USYLIBPP_ENABLE_VOIDTOOLS_EVERYTHING3): ${USYLIBPP_ENABLE_VOIDTOOLS_EVERYTHING3}")
+
+        if(USYLIBPP_ENABLE_VOIDTOOLS_EVERYTHING3)
+            if(NOT USYLIBPP_ENABLE_WIL)
+                message(FATAL_ERROR "USYLIBPP_ENABLE_VOIDTOOLS_EVERYTHING3 requires USYLIBPP_ENABLE_WIL")
+            endif()
+
+            target_compile_definitions(usylibpp_usylibpp INTERFACE "USYLIBPP_ENABLE_VOIDTOOLS_EVERYTHING3")
+
+            set(USYLIBPP_VOIDTOOLS_EVERYTHING3_GIT_TAG
+                "4b4393519f79249e781cf40d1306d20519330c58"
+                CACHE STRING
+                "Git commit or tag to use when checking out voidtools everything_sdk3"
+            )
+
+            message(STATUS "Voidtools Everything SDK3 git tag (USYLIBPP_VOIDTOOLS_EVERYTHING3_GIT_TAG): ${USYLIBPP_VOIDTOOLS_EVERYTHING3_GIT_TAG}")
+
+            include(FetchContent)
+
+            cmake_policy(SET CMP0169 OLD)
+
+            FetchContent_Declare(
+                voidtools_everything3
+                GIT_REPOSITORY https://github.com/voidtools/everything_sdk3.git
+                GIT_TAG ${USYLIBPP_VOIDTOOLS_EVERYTHING3_GIT_TAG}
+                EXCLUDE_FROM_ALL
+            )
+
+            FetchContent_MakeAvailable(voidtools_everything3)
+
+            add_library(voidtools_everything3 STATIC
+                "${voidtools_everything3_SOURCE_DIR}/src/Everything3.c"
+            )
+
+            target_compile_features(voidtools_everything3 PRIVATE
+                c_std_17
+            )
+
+            target_include_directories(voidtools_everything3 PUBLIC
+                "${voidtools_everything3_SOURCE_DIR}/include"
+            )
+
+            target_compile_definitions(voidtools_everything3
+                PRIVATE
+                    EVERYTHING3_LIB
+                INTERFACE
+                    "EVERYTHING3_USERAPI="
+            )
+
+            if (MSVC)
+                target_compile_options(voidtools_everything3 PRIVATE
+                    /EHsc
+
+                    $<$<CONFIG:Debug>:
+                        /RTC1
+                        /Zi
+                        /Od
+                    >
+
+                    $<$<CONFIG:Release>:
+                        /O2
+                        /Ob2
+                        /Oi
+                        /Oy
+                        /Gy
+                    >
+                )
+            elseif (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+                target_compile_options(voidtools_everything3 PRIVATE
+                    $<$<CONFIG:Debug>:
+                        -g
+                        -O0
+                    >
+
+                    $<$<CONFIG:Release>:
+                        -O3
+                        -ffunction-sections
+                        -fdata-sections
+                        -fomit-frame-pointer
+                    >
+                )
+            endif()
+
+            target_link_libraries(voidtools_everything3 PUBLIC
+                usylibpp_common
+                ole32
+                oleaut32
+                user32
+            )
+            target_link_libraries(usylibpp_usylibpp INTERFACE voidtools_everything3)
+        endif()
     endif()
 endif()
 
