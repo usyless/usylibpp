@@ -139,6 +139,12 @@ public:
     }
 
     void start(HWND notify, UINT msg, unsigned threads = 3) {
+        {
+            const std::scoped_lock lk{m_};
+            if (!stopping_ && !workers_.empty() && notify_ == notify && msg_ == msg && workers_.size() == threads) {
+                return;
+            }
+        }
         if (!workers_.empty()) stop();
         {
             const std::scoped_lock lk{m_};
