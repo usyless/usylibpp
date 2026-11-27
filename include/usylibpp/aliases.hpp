@@ -8,10 +8,14 @@ namespace usylibpp {
         namespace images {}
         namespace darkmode {}
         namespace fs {}
+        namespace http {}
+        namespace updater {}
     }
     namespace time {}
     namespace discord {}
+    namespace util {}
     namespace utils {}
+    namespace ui {}
     namespace strings {}
     namespace files {}
     namespace wintoast {}

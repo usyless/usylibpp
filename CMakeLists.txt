@@ -448,6 +448,72 @@ This includes windows.h along with various other headers, but enables all of the
             )
             target_link_libraries(usylibpp_usylibpp INTERFACE voidtools_everything3)
         endif()
+
+        set(USYLIBPP_ENABLE_HTTP
+            OFF
+            CACHE BOOL
+            "Enable WinHTTP client helper (windows/http.hpp)"
+        )
+
+        message(STATUS "WinHTTP support (USYLIBPP_ENABLE_HTTP): ${USYLIBPP_ENABLE_HTTP}")
+
+        if(USYLIBPP_ENABLE_HTTP)
+            if(NOT USYLIBPP_ENABLE_WIL)
+                message(FATAL_ERROR "USYLIBPP_ENABLE_HTTP requires USYLIBPP_ENABLE_WIL")
+            endif()
+
+            target_compile_definitions(usylibpp_usylibpp INTERFACE "USYLIBPP_ENABLE_HTTP")
+            target_link_libraries(usylibpp_usylibpp INTERFACE winhttp)
+        endif()
+
+        set(USYLIBPP_ENABLE_UPDATER
+            OFF
+            CACHE BOOL
+            "Enable GitHub release updater helpers (windows/updater.hpp)"
+        )
+
+        message(STATUS "Updater support (USYLIBPP_ENABLE_UPDATER): ${USYLIBPP_ENABLE_UPDATER}")
+
+        if(USYLIBPP_ENABLE_UPDATER)
+            if(NOT USYLIBPP_ENABLE_HTTP)
+                message(FATAL_ERROR "USYLIBPP_ENABLE_UPDATER requires USYLIBPP_ENABLE_HTTP")
+            endif()
+
+            target_compile_definitions(usylibpp_usylibpp INTERFACE "USYLIBPP_ENABLE_UPDATER")
+            target_link_libraries(usylibpp_usylibpp INTERFACE bcrypt shell32)
+        endif()
+
+        set(USYLIBPP_ENABLE_UI
+            OFF
+            CACHE BOOL
+            "Enable Direct2D / Direct3D11 / DirectComposition / Media Foundation UI module (ui/ui.hpp)"
+        )
+
+        message(STATUS "UI module (USYLIBPP_ENABLE_UI): ${USYLIBPP_ENABLE_UI}")
+
+        if(USYLIBPP_ENABLE_UI)
+            if(NOT USYLIBPP_ENABLE_WIL)
+                message(FATAL_ERROR "USYLIBPP_ENABLE_UI requires USYLIBPP_ENABLE_WIL")
+            endif()
+
+            target_compile_definitions(usylibpp_usylibpp INTERFACE "USYLIBPP_ENABLE_UI")
+            target_link_libraries(usylibpp_usylibpp INTERFACE
+                d2d1
+                d3d11
+                dcomp
+                dwmapi
+                dwrite
+                dxgi
+                windowscodecs
+                mfplat
+                mf
+                mfuuid
+                shlwapi
+                ole32
+                shell32
+                gdi32
+            )
+        endif()
     endif()
 endif()
 
