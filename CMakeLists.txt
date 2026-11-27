@@ -504,6 +504,7 @@ This includes windows.h along with various other headers, but enables all of the
                 dwmapi
                 dwrite
                 dxgi
+                runtimeobject
                 windowscodecs
                 mfplat
                 mf

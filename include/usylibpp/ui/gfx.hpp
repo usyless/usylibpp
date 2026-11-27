@@ -9,13 +9,14 @@
 #include <dcomp.h>
 #include <dwmapi.h>
 #include <dwrite_3.h>
-#include <dxgi1_3.h>
+#include <dxgi1_6.h>
 #include <wincodec.h>
 #include <wil/com.h>
 
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <cstring>
 #include <filesystem>
 #include <functional>
 #include <optional>
@@ -23,6 +24,89 @@
 #include <vector>
 
 namespace usylibpp::ui {
+
+/// Per-monitor color space, HDR status, and Windows SDR content brightness reference.
+struct MonitorColorInfo {
+    DXGI_COLOR_SPACE_TYPE color_space = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+    float sdr_white_nits = 80.0f;  // Windows "SDR content brightness" in nits (80..480+)
+    float sdr_white_scale = 1.0f;  // sdr_white_nits / 80.0f (linear scRGB SDR white reference)
+    float max_luminance = 80.0f;   // panel peak luminance (nits) reported by DXGI_OUTPUT_DESC1
+    float min_luminance = 0.0f;
+    bool is_hdr = false;           // true when monitor is outputting HDR10 ST.2084 / BT.2020
+};
+
+/// Queries the Windows "SDR content brightness" scale (`sdr_nits / 80.0`, >= 1.0) for `hmon` via DisplayConfig.
+[[nodiscard]] inline float query_monitor_sdr_white_scale(HMONITOR hmon) noexcept {
+    if (!hmon) return 1.0f;
+    MONITORINFOEXW mi{};
+    mi.cbSize = sizeof(mi);
+    if (!GetMonitorInfoW(hmon, &mi)) return 1.0f;
+
+    std::vector<DISPLAYCONFIG_PATH_INFO> paths;
+    std::vector<DISPLAYCONFIG_MODE_INFO> modes;
+    LONG rc = ERROR_INSUFFICIENT_BUFFER;
+    for (int attempt = 0; attempt < 3 && rc == ERROR_INSUFFICIENT_BUFFER; ++attempt) {
+        UINT32 num_paths = 0;
+        UINT32 num_modes = 0;
+        rc = GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &num_paths, &num_modes);
+        if (rc != ERROR_SUCCESS || num_paths == 0) return 1.0f;
+        try {
+            paths.resize(num_paths);
+            modes.resize(num_modes);
+        } catch (...) {
+            return 1.0f;
+        }
+        rc = QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &num_paths, paths.data(), &num_modes, modes.data(), nullptr);
+        if (rc == ERROR_SUCCESS) {
+            paths.resize(num_paths);
+        }
+    }
+    if (rc != ERROR_SUCCESS) return 1.0f;
+
+    for (const DISPLAYCONFIG_PATH_INFO& path : paths) {
+        DISPLAYCONFIG_SOURCE_DEVICE_NAME src_name{};
+        src_name.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME;
+        src_name.header.size = sizeof(src_name);
+        src_name.header.adapterId = path.sourceInfo.adapterId;
+        src_name.header.id = path.sourceInfo.id;
+        if (DisplayConfigGetDeviceInfo(&src_name.header) != ERROR_SUCCESS) continue;
+        if (_wcsicmp(src_name.viewGdiDeviceName, mi.szDevice) != 0) continue;
+
+        DISPLAYCONFIG_SDR_WHITE_LEVEL white_lvl{};
+        white_lvl.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_SDR_WHITE_LEVEL;
+        white_lvl.header.size = sizeof(white_lvl);
+        white_lvl.header.adapterId = path.targetInfo.adapterId;
+        white_lvl.header.id = path.targetInfo.id;
+        if (DisplayConfigGetDeviceInfo(&white_lvl.header) == ERROR_SUCCESS && white_lvl.SDRWhiteLevel > 0) {
+            return std::clamp(static_cast<float>(white_lvl.SDRWhiteLevel) / 1000.0f, 1.0f, 20.0f);
+        }
+        break;
+    }
+    return 1.0f;
+}
+
+/// Queries DXGI 1.6 (`IDXGIOutput6`) color space / luminance metadata and DisplayConfig SDR white level.
+[[nodiscard]] inline MonitorColorInfo query_monitor_color_info(HMONITOR hmon, IDXGIOutput* output = nullptr) noexcept {
+    MonitorColorInfo info{};
+    if (output) {
+        wil::com_ptr<IDXGIOutput6> out6;
+        if (SUCCEEDED(output->QueryInterface(IID_PPV_ARGS(&out6))) && out6) {
+            DXGI_OUTPUT_DESC1 desc1{};
+            if (SUCCEEDED(out6->GetDesc1(&desc1))) {
+                info.color_space = desc1.ColorSpace;
+                info.is_hdr = (desc1.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020);
+                if (desc1.MaxLuminance > 0.0f) info.max_luminance = desc1.MaxLuminance;
+                info.min_luminance = desc1.MinLuminance;
+                if (!hmon) hmon = desc1.Monitor;
+            }
+        }
+    }
+    if (hmon) {
+        info.sdr_white_scale = query_monitor_sdr_white_scale(hmon);
+        info.sdr_white_nits = info.sdr_white_scale * 80.0f;
+    }
+    return info;
+}
 
 /// Process-wide graphics device shared by every window. Recreated wholesale on device loss or when
 /// the adapter set changes (eGPU unplug, driver update, TDR); `epoch()` bumps on every recreation so
@@ -64,7 +148,7 @@ public:
     [[nodiscard]] IWICImagingFactory* wic() const noexcept { return wic_.get(); }
     [[nodiscard]] ID3D11Device* d3d() const noexcept { return d3d_.get(); }
     [[nodiscard]] ID3D11DeviceContext* d3d_context() const noexcept { return d3d_ctx_.get(); }
-    [[nodiscard]] IDXGIFactory2* dxgi_factory() const noexcept { return dxgi_factory_.get(); }
+    [[nodiscard]] IDXGIFactory6* dxgi_factory() const noexcept { return dxgi_factory_.get(); }
     [[nodiscard]] IDXGIDevice* dxgi_device() const noexcept { return dxgi_device_.get(); }
     [[nodiscard]] ID2D1Device6* d2d_device() const noexcept { return d2d_device_.get(); }
     [[nodiscard]] uint64_t epoch() const noexcept { return epoch_; }
@@ -86,7 +170,7 @@ public:
     /// without tearing down a healthy D3D11/D2D device.
     bool refresh_dxgi_factory() noexcept {
         if (dxgi_factory_ && dxgi_factory_->IsCurrent()) return true;
-        wil::com_ptr<IDXGIFactory2> fresh;
+        wil::com_ptr<IDXGIFactory6> fresh;
         if (FAILED(CreateDXGIFactory2(0, IID_PPV_ARGS(&fresh))) || !fresh) return false;
         dxgi_factory_ = std::move(fresh);
         return true;
@@ -99,7 +183,7 @@ public:
     }
 
     /// True when the D3D device was lost, its adapter disappeared, or `hwnd` now sits on another GPU's monitor.
-    /// Refreshes a stale `IDXGIFactory2` (e.g. after a UAC Secure Desktop switch) in place rather than
+    /// Refreshes a stale `IDXGIFactory6` (e.g. after a UAC Secure Desktop switch) in place rather than
     /// triggering a full device rebuild when the GPU itself has not changed.
     [[nodiscard]] bool adapter_stale(HWND hwnd) noexcept {
         if (device_lost()) return true;
@@ -115,7 +199,7 @@ public:
     std::function<void()> on_device_changed;
 
 private:
-    static wil::com_ptr<IDXGIAdapter1> find_adapter(IDXGIFactory2* f, LUID luid) noexcept {
+    static wil::com_ptr<IDXGIAdapter1> find_adapter(IDXGIFactory6* f, LUID luid) noexcept {
         if (!f) return nullptr;
         for (UINT i = 0;; ++i) {
             wil::com_ptr<IDXGIAdapter1> a;
@@ -127,7 +211,7 @@ private:
         }
         return nullptr;
     }
-    static wil::com_ptr<IDXGIAdapter1> window_adapter(IDXGIFactory2* f, HWND hwnd) noexcept {
+    static wil::com_ptr<IDXGIAdapter1> window_adapter(IDXGIFactory6* f, HWND hwnd) noexcept {
         if (!f || !hwnd) return nullptr;
         HMONITOR mon = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
         for (UINT i = 0;; ++i) {
@@ -155,7 +239,7 @@ private:
         d3d_.reset();
         dxgi_factory_.reset();
 
-        wil::com_ptr<IDXGIFactory2> factory;
+        wil::com_ptr<IDXGIFactory6> factory;
         if (FAILED(CreateDXGIFactory2(0, IID_PPV_ARGS(&factory)))) return false;
         wil::com_ptr<IDXGIAdapter1> adapter = window_adapter(factory.get(), hint);
         if (!adapter) factory->EnumAdapters1(0, &adapter);
@@ -208,6 +292,18 @@ public:
 
     [[nodiscard]] bool liquid_glass_registered() const noexcept { return liquid_glass_registered_; }
     void mark_liquid_glass_registered() noexcept { liquid_glass_registered_ = true; }
+    [[nodiscard]] bool is_effect_registered(const GUID& clsid) const noexcept {
+        return std::ranges::any_of(registered_effects_, [&](const GUID& g) noexcept {
+            return std::memcmp(&g, &clsid, sizeof(GUID)) == 0;
+        });
+    }
+    void mark_effect_registered(const GUID& clsid) noexcept {
+        if (is_effect_registered(clsid)) return;
+        try {
+            registered_effects_.push_back(clsid);
+        } catch (...) {
+        }
+    }
 
     void wait_gpu() noexcept {
         if (!d3d_ || !d3d_ctx_) return;
@@ -242,12 +338,13 @@ private:
     wil::com_ptr<ID3D11Device> d3d_;
     wil::com_ptr<ID3D11DeviceContext> d3d_ctx_;
     wil::com_ptr<ID3D11Query> frame_query_;
-    wil::com_ptr<IDXGIFactory2> dxgi_factory_;
+    wil::com_ptr<IDXGIFactory6> dxgi_factory_;
     wil::com_ptr<IDXGIDevice> dxgi_device_;
     wil::com_ptr<ID2D1Device6> d2d_device_;
     LUID luid_{};
     bool warp_ = false;
     bool liquid_glass_registered_ = false;
+    std::vector<GUID> registered_effects_;
     int glass_target_count_ = 0;
     uint64_t epoch_ = 0;
 };
@@ -322,7 +419,13 @@ public:
             release();
             return false;
         }
-        if (FAILED(gfx_->dxgi_factory()->CreateSwapChainForComposition(gfx_->d3d(), &desc, nullptr, &swap_))) {
+        wil::com_ptr<IDXGISwapChain1> sc1;
+        if (FAILED(gfx_->dxgi_factory()->CreateSwapChainForComposition(gfx_->d3d(), &desc, nullptr, &sc1)) || !sc1) {
+            release();
+            return false;
+        }
+        swap_ = sc1.try_query<IDXGISwapChain3>();
+        if (!swap_) {
             release();
             return false;
         }
@@ -366,6 +469,7 @@ public:
     [[nodiscard]] float scale() const noexcept { return dpi_ / 96.0f; }
     [[nodiscard]] D2D1_SIZE_F size() const noexcept { return {.width = static_cast<float>(w_) / scale(), .height = static_cast<float>(h_) / scale()}; }
     [[nodiscard]] ID2D1Bitmap1* target_bitmap() const noexcept { return target_.get(); }
+    [[nodiscard]] IDXGISwapChain3* swap_chain() const noexcept { return swap_.get(); }
     [[nodiscard]] UINT pixel_width() const noexcept { return w_; }
     [[nodiscard]] UINT pixel_height() const noexcept { return h_; }
     [[nodiscard]] float dpi() const noexcept { return dpi_; }
@@ -640,7 +744,7 @@ private:
     D2D1_RECT_F clip_rect_{};
     float clip_radius_ = -1.0f;
     uint64_t clip_geom_epoch_ = 0;
-    wil::com_ptr<IDXGISwapChain1> swap_;
+    wil::com_ptr<IDXGISwapChain3> swap_;
     wil::com_ptr<IDCompositionDevice> dcomp_;
     wil::com_ptr<IDCompositionTarget> dcomp_target_;
     wil::com_ptr<IDCompositionVisual> visual_;
