@@ -5,6 +5,7 @@
 #include <windows.h>
 #include <d2d1_3.h>
 #include <d2d1_3helper.h>
+#include <d2d1effects_2.h>
 #include <d3d11.h>
 #include <dcomp.h>
 #include <dwmapi.h>
@@ -15,6 +16,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstdint>
 #include <cstring>
 #include <filesystem>
@@ -180,6 +182,28 @@ public:
     [[nodiscard]] wil::com_ptr<IDXGIAdapter1> current_adapter() noexcept {
         if (!refresh_dxgi_factory() || !dxgi_factory_) return nullptr;
         return find_adapter(dxgi_factory_.get(), luid_);
+    }
+
+    /// Queries HDR status, color space, and Windows SDR content brightness for the monitor containing `hwnd`.
+    [[nodiscard]] MonitorColorInfo window_color_info(HWND hwnd) noexcept {
+        if (!hwnd) return {};
+        HMONITOR mon = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+        if (!mon) return {};
+        if (refresh_dxgi_factory() && dxgi_factory_) {
+            for (UINT i = 0;; ++i) {
+                wil::com_ptr<IDXGIAdapter1> a;
+                if (FAILED(dxgi_factory_->EnumAdapters1(i, &a)) || !a) break;
+                for (UINT j = 0;; ++j) {
+                    wil::com_ptr<IDXGIOutput> o;
+                    if (FAILED(a->EnumOutputs(j, &o)) || !o) break;
+                    DXGI_OUTPUT_DESC od{};
+                    if (SUCCEEDED(o->GetDesc(&od)) && od.Monitor == mon) {
+                        return query_monitor_color_info(mon, o.get());
+                    }
+                }
+            }
+        }
+        return query_monitor_color_info(mon, nullptr);
     }
 
     /// True when the D3D device was lost, its adapter disappeared, or `hwnd` now sits on another GPU's monitor.
@@ -378,9 +402,43 @@ public:
         liquid_glass_ = on;
         sync_glass_budget(on);
         dirty_tracker_.reset();
+        if (ready()) (void)sync_hdr(true);
     }
 
     [[nodiscard]] bool liquid_glass() const noexcept { return liquid_glass_; }
+    [[nodiscard]] bool is_hdr() const noexcept { return hdr_; }
+    [[nodiscard]] DXGI_FORMAT pixel_format() const noexcept {
+        return hdr_ ? DXGI_FORMAT_R16G16B16A16_FLOAT : DXGI_FORMAT_B8G8R8A8_UNORM;
+    }
+    [[nodiscard]] float sdr_white_scale() const noexcept { return hdr_ ? sdr_white_scale_ : 1.0f; }
+
+    /// Synchronizes swapchain HDR state (FP16 scRGB on HDR monitors when Liquid Glass is active, BGRA8 otherwise)
+    /// and the Windows SDR content brightness multiplier. Returns true if the target or white level changed.
+    bool sync_hdr(bool force_query = false) noexcept {
+        if (!gfx_ || !gfx_->ready() || !hwnd_) return false;
+        if (!liquid_glass_) {
+            if (!hdr_) return false;
+            return rebuild();
+        }
+        HMONITOR mon = MonitorFromWindow(hwnd_, MONITOR_DEFAULTTONEAREST);
+        const ULONGLONG now = GetTickCount64();
+        if (!force_query && mon == hdr_mon_ && (!hdr_ || now < hdr_white_refresh_tick_)) {
+            return false;
+        }
+        const MonitorColorInfo ci = gfx_->window_color_info(hwnd_);
+        hdr_mon_ = mon;
+        hdr_white_refresh_tick_ = now + 2000u;
+        const bool want_hdr = ci.is_hdr;
+        if (want_hdr != hdr_) {
+            return rebuild();
+        }
+        if (hdr_ && std::fabs(ci.sdr_white_scale - sdr_white_scale_) > 1e-3f) {
+            sdr_white_scale_ = ci.sdr_white_scale;
+            dirty_tracker_.reset();
+            return true;
+        }
+        return false;
+    }
 
     bool rebuild() noexcept {
         if (!gfx_ || !gfx_->ready()) {
@@ -388,7 +446,7 @@ public:
             return false;
         }
         sync_glass_budget(liquid_glass_);
-        // Keep the HWND's DirectComposition target alive across swap-effect rebuilds on theme switches.
+        // Keep the HWND's DirectComposition target alive across swap-effect rebuilds on theme/HDR switches.
         const bool keep_dcomp = (dcomp_ && dcomp_target_ && visual_ && epoch_ == gfx_->epoch());
         if (keep_dcomp) {
             release_swap_and_dc();
@@ -405,6 +463,10 @@ public:
         w_ = static_cast<UINT>(std::max(1L, rc.right - rc.left));
         h_ = static_cast<UINT>(std::max(1L, rc.bottom - rc.top));
 
+        const MonitorColorInfo ci = (liquid_glass_ && hwnd_) ? gfx_->window_color_info(hwnd_) : MonitorColorInfo{};
+        hdr_mon_ = hwnd_ ? MonitorFromWindow(hwnd_, MONITOR_DEFAULTTONEAREST) : nullptr;
+        hdr_white_refresh_tick_ = GetTickCount64() + 2000u;
+
         DXGI_SWAP_CHAIN_DESC1 desc{};
         desc.Width = w_;
         desc.Height = h_;
@@ -419,15 +481,37 @@ public:
             release();
             return false;
         }
-        wil::com_ptr<IDXGISwapChain1> sc1;
-        if (FAILED(gfx_->dxgi_factory()->CreateSwapChainForComposition(gfx_->d3d(), &desc, nullptr, &sc1)) || !sc1) {
-            release();
-            return false;
+
+        hdr_ = false;
+        sdr_white_scale_ = 1.0f;
+        if (liquid_glass_ && ci.is_hdr && !gfx_->is_warp()) {
+            DXGI_SWAP_CHAIN_DESC1 hdr_desc = desc;
+            hdr_desc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+            wil::com_ptr<IDXGISwapChain1> sc1;
+            if (SUCCEEDED(gfx_->dxgi_factory()->CreateSwapChainForComposition(gfx_->d3d(), &hdr_desc, nullptr, &sc1)) && sc1) {
+                wil::com_ptr<IDXGISwapChain3> sc3 = sc1.try_query<IDXGISwapChain3>();
+                UINT sup = 0;
+                if (sc3 &&
+                    SUCCEEDED(sc3->CheckColorSpaceSupport(DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709, &sup)) &&
+                    (sup & static_cast<UINT>(DXGI_SWAP_CHAIN_COLOR_SPACE_SUPPORT_FLAG_PRESENT)) != 0u &&
+                    SUCCEEDED(sc3->SetColorSpace1(DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709))) {
+                    swap_ = std::move(sc3);
+                    hdr_ = true;
+                    sdr_white_scale_ = ci.sdr_white_scale;
+                }
+            }
         }
-        swap_ = sc1.try_query<IDXGISwapChain3>();
         if (!swap_) {
-            release();
-            return false;
+            wil::com_ptr<IDXGISwapChain1> sc1;
+            if (FAILED(gfx_->dxgi_factory()->CreateSwapChainForComposition(gfx_->d3d(), &desc, nullptr, &sc1)) || !sc1) {
+                release();
+                return false;
+            }
+            swap_ = sc1.try_query<IDXGISwapChain3>();
+            if (!swap_) {
+                release();
+                return false;
+            }
         }
         if (!keep_dcomp) {
             if (FAILED(DCompositionCreateDevice(gfx_->dxgi_device(), IID_PPV_ARGS(&dcomp_))) ||
@@ -494,6 +578,53 @@ public:
         return bmp_brush_.get();
     }
 
+    /// Pooled image brush converting an SDR sRGB bitmap to linear FP16 scRGB scaled by `sdr_white_scale_`.
+    /// Each call in a frame gets its own slot because D2D evaluates effect inputs at Flush/EndDraw.
+    /// Lazily initialized only on HDR targets (zero overhead on SDR monitors).
+    [[nodiscard]] ID2D1ImageBrush* sdr_image_brush(ID2D1Bitmap* bmp, D2D1_RECT_F src_rect,
+                                                   D2D1_INTERPOLATION_MODE interp = D2D1_INTERPOLATION_MODE_LINEAR) noexcept {
+        if (!bmp || !dc_ || !hdr_) return nullptr;
+        if (!srgb_cc_ || !scrgb_cc_) {
+            if (FAILED(dc_->CreateColorContext(D2D1_COLOR_SPACE_SRGB, nullptr, 0, &srgb_cc_)) || !srgb_cc_ ||
+                FAILED(dc_->CreateColorContext(D2D1_COLOR_SPACE_SCRGB, nullptr, 0, &scrgb_cc_)) || !scrgb_cc_) {
+                srgb_cc_.reset();
+                scrgb_cc_.reset();
+                return nullptr;
+            }
+        }
+        if (sdr_brush_cursor_ >= sdr_brush_pool_.size()) {
+            SdrBrushSlot slot{};
+            if (FAILED(dc_->CreateEffect(CLSID_D2D1ColorManagement, &slot.cm_fx)) || !slot.cm_fx) return nullptr;
+            slot.cm_fx->SetValue(D2D1_COLORMANAGEMENT_PROP_SOURCE_COLOR_CONTEXT, srgb_cc_.get());
+            slot.cm_fx->SetValue(D2D1_COLORMANAGEMENT_PROP_DESTINATION_COLOR_CONTEXT, scrgb_cc_.get());
+            slot.cm_fx->SetValue(D2D1_COLORMANAGEMENT_PROP_QUALITY, D2D1_COLORMANAGEMENT_QUALITY_BEST);
+            slot.cm_fx->SetValue(D2D1_PROPERTY_PRECISION, D2D1_BUFFER_PRECISION_16BPC_FLOAT);
+            if (FAILED(dc_->CreateEffect(CLSID_D2D1WhiteLevelAdjustment, &slot.wl_fx)) || !slot.wl_fx) return nullptr;
+            slot.wl_fx->SetInputEffect(0, slot.cm_fx.get());
+            slot.wl_fx->SetValue(D2D1_WHITELEVELADJUSTMENT_PROP_OUTPUT_WHITE_LEVEL, 80.0f);
+            slot.wl_fx->SetValue(D2D1_PROPERTY_PRECISION, D2D1_BUFFER_PRECISION_16BPC_FLOAT);
+            wil::com_ptr<ID2D1Image> out_img;
+            slot.wl_fx->GetOutput(&out_img);
+            const D2D1_IMAGE_BRUSH_PROPERTIES ibp = D2D1::ImageBrushProperties(
+                src_rect, D2D1_EXTEND_MODE_CLAMP, D2D1_EXTEND_MODE_CLAMP, interp);
+            if (!out_img || FAILED(dc_->CreateImageBrush(out_img.get(), &ibp, nullptr, &slot.img_brush)) || !slot.img_brush) {
+                return nullptr;
+            }
+            try {
+                sdr_brush_pool_.push_back(std::move(slot));
+            } catch (...) {
+                return nullptr;
+            }
+        }
+        SdrBrushSlot& slot = sdr_brush_pool_[sdr_brush_cursor_++];
+        slot.cm_fx->SetInput(0, bmp);
+        // WhiteLevelAdjustment multiplies by (INPUT_WHITE_LEVEL / OUTPUT_WHITE_LEVEL): map sRGB 1.0 -> sdr_white_scale_.
+        slot.wl_fx->SetValue(D2D1_WHITELEVELADJUSTMENT_PROP_INPUT_WHITE_LEVEL, sdr_white_scale_ * 80.0f);
+        slot.img_brush->SetSourceRectangle(&src_rect);
+        slot.img_brush->SetInterpolationMode(interp);
+        return slot.img_brush.get();
+    }
+
     /// Reusable layer for anti-aliased rounded clipping without per-frame allocations.
     [[nodiscard]] ID2D1Layer* clip_layer() noexcept {
         if (!clip_layer_ && dc_) {
@@ -539,6 +670,7 @@ public:
     /// Refreshes `dpi_` and the D2D target bitmap when the window's DPI changes without a pixel resize.
     bool sync_dpi() noexcept {
         if (!hwnd_ || !ready()) return ready();
+        if (liquid_glass_ && sync_hdr(true)) return ready();
         const auto dpi = static_cast<float>(GetDpiForWindow(hwnd_));
         if (dpi <= 0.0f || dpi == dpi_) return true;
         dpi_ = dpi;
@@ -563,6 +695,10 @@ public:
                       bool* did_pace_out = nullptr) {
         if (did_pace_out) *did_pace_out = false;
         if (!ready()) return false;
+        if (liquid_glass_ && sync_hdr(false)) {
+            if (!ready()) return false;
+            full_redraw = true;
+        }
         const float s = scale();
         if (capture_) full_redraw = true;
         // Liquid Glass drag frames are paced against DWM below so the swapchain flip and the HWND move
@@ -606,6 +742,7 @@ public:
 
         HRESULT hr = dc_->EndDraw();
         if (bmp_brush_) bmp_brush_->SetBitmap(nullptr);
+        detach_sdr_brushes();
         if (SUCCEEDED(hr) && capture_) {
             capture_ok_ = write_png(*capture_);
             capture_.reset();
@@ -652,8 +789,26 @@ public:
     [[nodiscard]] bool capture_ok() const noexcept { return capture_ok_; }
 
 private:
+    struct SdrBrushSlot {
+        wil::com_ptr<ID2D1Effect> cm_fx;
+        wil::com_ptr<ID2D1Effect> wl_fx;
+        wil::com_ptr<ID2D1ImageBrush> img_brush;
+    };
+
+    void detach_sdr_brushes() noexcept {
+        const size_t used = std::min(sdr_brush_cursor_, sdr_brush_pool_.size());
+        for (size_t i = 0; i < used; ++i) {
+            if (sdr_brush_pool_[i].cm_fx) sdr_brush_pool_[i].cm_fx->SetInput(0, nullptr);
+        }
+        sdr_brush_cursor_ = 0;
+    }
+
     void release_swap_and_dc() noexcept {
         if (bmp_brush_) bmp_brush_->SetBitmap(nullptr);
+        detach_sdr_brushes();
+        sdr_brush_pool_.clear();
+        srgb_cc_.reset();
+        scrgb_cc_.reset();
         bmp_brush_.reset();
         solid_brush_.reset();
         clip_layer_.reset();
@@ -664,6 +819,8 @@ private:
         target_.reset();
         swap_.reset();
         dc_.reset();
+        hdr_ = false;
+        sdr_white_scale_ = 1.0f;
         ++target_epoch_;
     }
 
@@ -671,12 +828,27 @@ private:
         wil::com_ptr<IDXGISurface> surface;
         if (FAILED(swap_->GetBuffer(0, IID_PPV_ARGS(&surface)))) return false;
         const auto props = D2D1::BitmapProperties1(D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_CANNOT_DRAW,
-                                                   D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED), dpi_, dpi_);
+                                                   D2D1::PixelFormat(pixel_format(), D2D1_ALPHA_MODE_PREMULTIPLIED), dpi_, dpi_);
         if (FAILED(dc_->CreateBitmapFromDxgiSurface(surface.get(), &props, &target_))) return false;
         dc_->SetTarget(target_.get());
         dc_->SetDpi(dpi_, dpi_);
         dc_->SetTextAntialiasMode(D2D1_TEXT_ANTIALIAS_MODE_GRAYSCALE);
         return true;
+    }
+
+    static float half_to_float(uint16_t h) noexcept {
+        const uint32_t s = (h >> 15u) & 1u;
+        const uint32_t e = (h >> 10u) & 31u;
+        const uint32_t f = h & 1023u;
+        if (e == 0u) return (s ? -1.0f : 1.0f) * std::ldexp(static_cast<float>(f), -24);
+        if (e == 31u) return 0.0f;
+        return (s ? -1.0f : 1.0f) * std::ldexp(static_cast<float>(1024u + f), static_cast<int>(e) - 25);
+    }
+
+    static uint8_t linear_to_srgb_u8(float x) noexcept {
+        x = std::clamp(x, 0.0f, 1.0f);
+        const float s = (x <= 0.0031308f) ? (x * 12.92f) : ((1.055f * std::pow(x, 1.0f / 2.4f)) - 0.055f);
+        return static_cast<uint8_t>(std::clamp(static_cast<int>(std::lround(s * 255.0f)), 0, 255));
     }
 
     bool write_png(const std::filesystem::path& path) {
@@ -696,15 +868,37 @@ private:
 
         // Composite over a dark backdrop so translucent areas read correctly in the PNG
         std::vector<uint8_t> px(static_cast<size_t>(desc.Width) * desc.Height * 4);
-        for (UINT y = 0; y < desc.Height; ++y) {
-            const uint8_t* src = static_cast<const uint8_t*>(m.pData) + (static_cast<size_t>(y) * m.RowPitch);
-            uint8_t* dst = px.data() + (static_cast<size_t>(y) * desc.Width * 4);
-            for (UINT x = 0; x < desc.Width; ++x) {
-                const size_t px_off = static_cast<size_t>(x) * 4u;
-                const uint8_t a = src[px_off + 3];
-                static constexpr std::array<uint8_t, 3> bg = {0x1a, 0x18, 0x1c};
-                for (size_t c = 0; c < 3; ++c) dst[px_off + c] = static_cast<uint8_t>(src[px_off + c] + (bg[c] * (255 - a) / 255));
-                dst[px_off + 3] = 255;
+        if (desc.Format == DXGI_FORMAT_R16G16B16A16_FLOAT) {
+            const float inv_scale = 1.0f / std::max(sdr_white_scale_, 1.0f);
+            static constexpr std::array<float, 3> bg_lin = {0.0103f, 0.0091f, 0.0116f}; // sRGB #1a181c in linear
+            for (UINT y = 0; y < desc.Height; ++y) {
+                const auto* src = reinterpret_cast<const uint16_t*>(static_cast<const uint8_t*>(m.pData) + (static_cast<size_t>(y) * m.RowPitch));
+                uint8_t* dst = px.data() + (static_cast<size_t>(y) * desc.Width * 4);
+                for (UINT x = 0; x < desc.Width; ++x) {
+                    const size_t s_off = static_cast<size_t>(x) * 4u;
+                    const float a = std::clamp(half_to_float(src[s_off + 3]), 0.0f, 1.0f);
+                    const float inv_a = 1.0f - a;
+                    const float r = std::max(0.0f, (half_to_float(src[s_off + 0]) * inv_scale) + (bg_lin[0] * inv_a));
+                    const float g = std::max(0.0f, (half_to_float(src[s_off + 1]) * inv_scale) + (bg_lin[1] * inv_a));
+                    const float b = std::max(0.0f, (half_to_float(src[s_off + 2]) * inv_scale) + (bg_lin[2] * inv_a));
+                    const size_t d_off = static_cast<size_t>(x) * 4u;
+                    dst[d_off + 0] = linear_to_srgb_u8(b);
+                    dst[d_off + 1] = linear_to_srgb_u8(g);
+                    dst[d_off + 2] = linear_to_srgb_u8(r);
+                    dst[d_off + 3] = 255;
+                }
+            }
+        } else {
+            for (UINT y = 0; y < desc.Height; ++y) {
+                const uint8_t* src = static_cast<const uint8_t*>(m.pData) + (static_cast<size_t>(y) * m.RowPitch);
+                uint8_t* dst = px.data() + (static_cast<size_t>(y) * desc.Width * 4);
+                for (UINT x = 0; x < desc.Width; ++x) {
+                    const size_t px_off = static_cast<size_t>(x) * 4u;
+                    const uint8_t a = src[px_off + 3];
+                    static constexpr std::array<uint8_t, 3> bg = {0x1a, 0x18, 0x1c};
+                    for (size_t c = 0; c < 3; ++c) dst[px_off + c] = static_cast<uint8_t>(src[px_off + c] + (bg[c] * (255 - a) / 255));
+                    dst[px_off + 3] = 255;
+                }
             }
         }
         gfx_->d3d_context()->Unmap(staging.get(), 0);
@@ -739,6 +933,10 @@ private:
     wil::com_ptr<ID2D1Bitmap1> target_;
     wil::com_ptr<ID2D1SolidColorBrush> solid_brush_;
     wil::com_ptr<ID2D1BitmapBrush1> bmp_brush_;
+    std::vector<SdrBrushSlot> sdr_brush_pool_;
+    size_t sdr_brush_cursor_ = 0;
+    wil::com_ptr<ID2D1ColorContext> srgb_cc_;
+    wil::com_ptr<ID2D1ColorContext> scrgb_cc_;
     wil::com_ptr<ID2D1Layer> clip_layer_;
     wil::com_ptr<ID2D1RoundedRectangleGeometry> clip_geom_;
     D2D1_RECT_F clip_rect_{};
@@ -759,6 +957,10 @@ private:
     bool capture_ok_ = false;
     bool liquid_glass_ = false;
     bool counted_glass_ = false;
+    bool hdr_ = false;
+    float sdr_white_scale_ = 1.0f;
+    HMONITOR hdr_mon_ = nullptr;
+    ULONGLONG hdr_white_refresh_tick_ = 0;
     bool dcomp_commit_pending_ = false;
 };
 
