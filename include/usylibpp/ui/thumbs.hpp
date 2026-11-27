@@ -225,7 +225,9 @@ public:
                 }
             }
         }
-        return !done_scratch_.empty();
+        const bool any = !done_scratch_.empty();
+        done_scratch_.clear();
+        return any;
     }
 
     /// Device lost / recreated: every bitmap belongs to the old device.
@@ -250,7 +252,10 @@ public:
             pending_.clear();
             queue_.clear();
             done_.clear();
+            done_.shrink_to_fit();
         }
+        done_scratch_.clear();
+        done_scratch_.shrink_to_fit();
         reset_gpu();
         failed_.clear();
     }
