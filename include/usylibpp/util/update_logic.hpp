@@ -159,8 +159,8 @@ struct UpdateState {
 [[nodiscard]] inline std::optional<GithubAsset> pick_release_asset(
     std::span<const GithubAsset> assets,
     bool prefer_7z,
-    std::string_view preferred_7z = {},
-    std::string_view preferred_zip = {}) {
+    std::string_view preferred_7z,
+    std::string_view preferred_zip) {
     const auto ends_with_ci = [](std::string_view s, std::string_view suffix) {
         if (s.size() < suffix.size()) return false;
         const std::string_view tail = s.substr(s.size() - suffix.size());
