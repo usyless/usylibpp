@@ -24,7 +24,7 @@ enum class TooltipHoverAction : uint8_t {
 template <typename RectT>
 struct HoverTooltipBase {
     static constexpr uint32_t DELAY_MS = 380u;
-    static constexpr int64_t WARM_WINDOW_MS = 500;
+    static constexpr int64_t WARM_WINDOW_MS = 200;
 
     RectT anchor{};
     RectT pending_anchor{};
