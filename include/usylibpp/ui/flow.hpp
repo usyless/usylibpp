@@ -1,8 +1,17 @@
 #pragma once
 
 #include <algorithm>
+#include <array>
+#include <cstddef>
 #include <span>
 #include <vector>
+
+#if defined(_WIN32) && defined(USYLIBPP_ENABLE_UI)
+#include <d2d1_3.h>
+
+#include <functional>
+#include <utility>
+#endif
 
 namespace usylibpp::ui {
 
@@ -79,5 +88,113 @@ inline FlowResult flow_layout(std::span<const FlowItem> items, float gap_x, floa
     result.height = flow_layout_into(items, gap_x, gap_y, avail, result.placements);
     return result;
 }
+
+#if defined(_WIN32) && defined(USYLIBPP_ENABLE_UI)
+/// Inline-buffered flow container for Direct2D draw callbacks.
+/// Stores up to `InlineCap` items inline on the stack without heap allocation, spilling to `std::vector` only if exceeded.
+template <size_t InlineCap = 8>
+class BasicFlow {
+public:
+    using DrawFn = std::function<void(D2D1_RECT_F)>;
+
+    BasicFlow(float gap_x, float gap_y) noexcept : gap_x_{gap_x}, gap_y_{gap_y} {}
+
+    void add(float w, float h, DrawFn draw, bool grow = false) {
+        if (heap_items_.empty() && count_ < InlineCap) {
+            inline_items_[count_] = FlowItem{.width = w, .height = h, .grow = grow};
+            inline_draws_[count_] = std::move(draw);
+            ++count_;
+            return;
+        }
+        if (heap_items_.empty()) {
+            heap_items_.reserve(InlineCap * 2);
+            heap_draws_.reserve(InlineCap * 2);
+            heap_items_.assign(inline_items_.begin(), inline_items_.begin() + static_cast<std::ptrdiff_t>(count_));
+            for (size_t i = 0; i < count_; ++i) {
+                heap_draws_.push_back(std::move(inline_draws_[i]));
+            }
+            count_ = 0;
+        }
+        heap_items_.push_back(FlowItem{.width = w, .height = h, .grow = grow});
+        heap_draws_.push_back(std::move(draw));
+    }
+
+    template <size_t OtherCap>
+    void add_group(BasicFlow<OtherCap> inner, float avail, bool grow = false) {
+        const float group_w = std::min(inner.natural_width(), avail);
+        const float group_h = inner.height(group_w);
+        add(
+            group_w, group_h,
+            [inner = std::move(inner)](D2D1_RECT_F r) { inner.draw(r.left, r.top, r.right - r.left); },
+            grow);
+    }
+
+    [[nodiscard]] size_t size() const noexcept {
+        return heap_items_.empty() ? count_ : heap_items_.size();
+    }
+
+    [[nodiscard]] bool empty() const noexcept {
+        return size() == 0;
+    }
+
+    [[nodiscard]] float natural_width() const noexcept {
+        const std::span<const FlowItem> items = items_span();
+        float total = 0.0f;
+        for (const FlowItem& item : items) {
+            total += item.width;
+        }
+        return items.empty() ? 0.0f : (total + (gap_x_ * static_cast<float>(items.size() - 1)));
+    }
+
+    [[nodiscard]] float height(float avail) const noexcept {
+        return flow_layout_into(items_span(), gap_x_, gap_y_, avail, {});
+    }
+
+    void draw(float x, float y, float avail) const {
+        const std::span<const FlowItem> items = items_span();
+        const std::span<const DrawFn> draws = draws_span();
+        if (items.size() <= InlineCap) {
+            std::array<FlowPlacement, InlineCap> stack_placements; // NOLINT(cppcoreguidelines-pro-type-member-init)
+            const std::span<FlowPlacement> out{stack_placements.data(), items.size()};
+            flow_layout_into(items, gap_x_, gap_y_, avail, out);
+            for (size_t i = 0; i < items.size(); ++i) {
+                const FlowPlacement& p = out[i];
+                draws[i](D2D1_RECT_F{x + p.x, y + p.y, x + p.x + p.width, y + p.y + items[i].height});
+            }
+            return;
+        }
+        const FlowResult layout = flow_layout(items, gap_x_, gap_y_, avail);
+        for (size_t i = 0; i < items.size(); ++i) {
+            const FlowPlacement& p = layout.placements[i];
+            draws[i](D2D1_RECT_F{x + p.x, y + p.y, x + p.x + p.width, y + p.y + items[i].height});
+        }
+    }
+
+private:
+    [[nodiscard]] std::span<const FlowItem> items_span() const noexcept {
+        if (!heap_items_.empty()) {
+            return heap_items_;
+        }
+        return {inline_items_.data(), count_};
+    }
+
+    [[nodiscard]] std::span<const DrawFn> draws_span() const noexcept {
+        if (!heap_draws_.empty()) {
+            return heap_draws_;
+        }
+        return {inline_draws_.data(), count_};
+    }
+
+    float gap_x_;
+    float gap_y_;
+    size_t count_ = 0;
+    std::array<FlowItem, InlineCap> inline_items_{};
+    std::array<DrawFn, InlineCap> inline_draws_{};
+    std::vector<FlowItem> heap_items_;
+    std::vector<DrawFn> heap_draws_;
+};
+
+using Flow = BasicFlow<8>;
+#endif
 
 } // namespace usylibpp::ui
