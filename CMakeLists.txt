@@ -513,7 +513,6 @@ This includes windows.h along with various other headers, but enables all of the
                 ole32
                 shell32
                 gdi32
-                uxtheme
             )
         endif()
     endif()
