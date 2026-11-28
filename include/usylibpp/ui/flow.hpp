@@ -159,14 +159,14 @@ public:
             flow_layout_into(items, gap_x_, gap_y_, avail, out);
             for (size_t i = 0; i < items.size(); ++i) {
                 const FlowPlacement& p = out[i];
-                draws[i](D2D1_RECT_F{x + p.x, y + p.y, x + p.x + p.width, y + p.y + items[i].height});
+                draws[i](D2D1_RECT_F{.left = x + p.x, .top = y + p.y, .right = x + p.x + p.width, .bottom = y + p.y + items[i].height});
             }
             return;
         }
         const FlowResult layout = flow_layout(items, gap_x_, gap_y_, avail);
         for (size_t i = 0; i < items.size(); ++i) {
             const FlowPlacement& p = layout.placements[i];
-            draws[i](D2D1_RECT_F{x + p.x, y + p.y, x + p.x + p.width, y + p.y + items[i].height});
+            draws[i](D2D1_RECT_F{.left = x + p.x, .top = y + p.y, .right = x + p.x + p.width, .bottom = y + p.y + items[i].height});
         }
     }
 
