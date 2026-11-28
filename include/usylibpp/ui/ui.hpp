@@ -10,6 +10,7 @@
 #include "window_lifecycle.hpp" // IWYU pragma: export
 
 #if defined(_WIN32) && defined(USYLIBPP_ENABLE_UI)
+#include "drag_drop.hpp" // IWYU pragma: export
 #include "gfx.hpp" // IWYU pragma: export
 #include "thumbs.hpp" // IWYU pragma: export
 #include "video_player.hpp" // IWYU pragma: export
